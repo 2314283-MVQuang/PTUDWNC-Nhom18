@@ -9,21 +9,20 @@ using Microsoft.AspNetCore.Identity;
 namespace CulinaryBlog.Application.Features.Auth.Commands.Register;
 
 /// <summary>
-/// FR-AUTH-001. Flow: kiểm tra email chưa tồn tại → tạo ApplicationUser → UserManager.CreateAsync
-/// (Identity tự hash PBKDF2, CONS-004) → gán role mặc định "Author" → sinh cặp token → lưu
-/// RefreshToken → gửi email chào mừng.
+/// FR-AUTH-001 (Buổi 2).
+/// Kiểm tra email chưa tồn tại -> tạo ApplicationUser -> UserManager.CreateAsync (PBKDF2)
+/// -> gán role "Author" -> trả về UserProfileDto (không có mật khẩu).
 /// </summary>
 public class RegisterCommandHandler(
     UserManager<ApplicationUser> userManager,
-    IJwtService jwtService,
-    IRefreshTokenRepository refreshTokenRepository,
+    RoleManager<IdentityRole> roleManager,
     IUnitOfWork unitOfWork,
     IEmailService emailService)
-    : IRequestHandler<RegisterCommand, AuthResponseDto>
+    : IRequestHandler<RegisterCommand, UserProfileDto>
 {
     private const string DefaultRole = "Author";
 
-    public async Task<AuthResponseDto> Handle(RegisterCommand request, CancellationToken ct)
+    public async Task<UserProfileDto> Handle(RegisterCommand request, CancellationToken ct)
     {
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
@@ -31,9 +30,13 @@ public class RegisterCommandHandler(
             throw new ConflictException("Email đã được sử dụng.");
         }
 
+        var userName = !string.IsNullOrWhiteSpace(request.UserName)
+            ? request.UserName
+            : request.Email.Split('@')[0];
+
         var user = new ApplicationUser
         {
-            UserName = request.UserName,
+            UserName = userName,
             Email = request.Email,
             DisplayName = request.FullName,
             EmailConfirmed = false,
@@ -45,32 +48,27 @@ public class RegisterCommandHandler(
             throw ToValidationException(createResult);
         }
 
+        if (!await roleManager.RoleExistsAsync(DefaultRole))
+        {
+            await roleManager.CreateAsync(new IdentityRole(DefaultRole));
+        }
+
         await userManager.AddToRoleAsync(user, DefaultRole);
         var roles = await userManager.GetRolesAsync(user);
 
-        var accessToken = jwtService.GenerateAccessToken(user, roles);
-        var (rawRefreshToken, refreshTokenHash) = jwtService.GenerateRefreshToken();
-
-        await refreshTokenRepository.AddAsync(
-            new RefreshToken
-            {
-                UserId = user.Id,
-                TokenHash = refreshTokenHash,
-                ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
-            },
-            ct);
-
         await unitOfWork.SaveChangesAsync(ct);
 
-        // FR-JOB-001: TODO (nhóm làm tiếp) — đổi thành Hangfire fire-and-forget khi tích hợp Hangfire.
-        // Tạm gọi trực tiếp (đồng bộ) để scaffold chạy được ngay.
-        await emailService.SendWelcomeEmailAsync(user.Email!, user.DisplayName, ct);
+        // Gửi email chào mừng
+        try
+        {
+            await emailService.SendWelcomeEmailAsync(user.Email!, user.DisplayName, ct);
+        }
+        catch
+        {
+            // Không để lỗi gửi email ảnh hưởng kết quả đăng ký
+        }
 
-        return new AuthResponseDto(
-            accessToken,
-            rawRefreshToken,
-            jwtService.AccessTokenLifetimeSeconds,
-            new UserProfileDto(user.Id, user.Email!, user.DisplayName, user.AvatarUrl, user.Bio, roles));
+        return new UserProfileDto(user.Id, user.Email!, user.DisplayName, user.AvatarUrl, user.Bio, roles);
     }
 
     private static ValidationException ToValidationException(IdentityResult result)

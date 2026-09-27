@@ -161,8 +161,8 @@ app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapAuthEndpoints();
 app.MapHealthEndpoints();
+app.MapCategoryEndpoints();
 
 app.Run();

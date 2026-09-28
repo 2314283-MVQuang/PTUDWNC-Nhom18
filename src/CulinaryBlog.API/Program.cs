@@ -5,14 +5,35 @@ using CulinaryBlog.API.Extensions;
 using CulinaryBlog.API.Middleware;
 using CulinaryBlog.Application;
 using CulinaryBlog.Infrastructure;
+using CulinaryBlog.Infrastructure.Persistence;
+using CulinaryBlog.Infrastructure.Persistence.Seed;
 using CulinaryBlog.Infrastructure.Services;
-using CulinaryBlog.Infrastructure.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
+using Serilog;
 
+// Bootstrap logger: bắt lỗi xảy ra TRƯỚC khi builder.Host.UseSerilog() đọc được cấu hình từ
+// appsettings (vd sai connection string lúc AddDbContext) — không có bootstrap logger thì lỗi
+// giai đoạn này chỉ hiện ra console mặc định, không ghi log có cấu trúc được.
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ---------------------------------------------------------------------------
+// FR-OBS-002 (Tuần 3): Serilog thay Microsoft.Extensions.Logging mặc định — đọc cấu hình từ
+// section "Serilog" trong appsettings.json (sink Console + Seq, xem docker-compose.yml service
+// "seq"). ReadFrom.Services(services) cho phép Serilog dùng Enricher đăng ký qua DI nếu cần sau.
+// ---------------------------------------------------------------------------
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
 
 // ---------------------------------------------------------------------------
 // Đăng ký service — mỗi tầng có 1 extension method DI riêng (mục 6.2: Program.cs +
@@ -70,37 +91,78 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
+// ---------------------------------------------------------------------------
+// FR-OBS-003 (Tuần 3): OpenTelemetry tracing cơ bản — instrument request HTTP đến (ASP.NET Core)
+// và HttpClient đi ra, cộng thêm trace các câu lệnh SQL qua Npgsql (cách thực tế để "thấy" EF
+// Core, vì EF Core không tự phát Activity riêng — mọi lệnh SQL cuối cùng đều qua Npgsql).
+// Có cấu hình "OpenTelemetry:OtlpEndpoint" (vd collector/Tempo) → xuất qua OTLP; KHÔNG có (mặc
+// định máy dev chưa dựng collector) → in trace ra console để vẫn xem được, không mất tác dụng.
+// ---------------------------------------------------------------------------
+var otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(serviceName: "CulinaryBlog.API"))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddNpgsql();
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
+        }
+        else
+        {
+            tracing.AddConsoleExporter();
+        }
+    });
+
 var app = builder.Build();
 
-var scope = app.Services.CreateScope();
-var db = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Infrastructure.Persistence.CulinaryBlogDbContext>();
-await DbInitializer.SeedAsync(db);
+// ---------------------------------------------------------------------------
+// RoleSeeder (Tuần 3 — "phân quyền Role"): tạo sẵn role "Admin"/"Author" trong AspNetRoles nếu
+// CHƯA có. PHẢI chạy ở MỌI environment (khác DbSeeder ở dưới, chỉ chạy Development) — thiếu
+// bước này thì RegisterCommandHandler.AddToRoleAsync(user, "Author") sẽ lỗi ngay cả ở production.
+// ---------------------------------------------------------------------------
+using (var roleSeedScope = app.Services.CreateScope())
+{
+    var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
+}
 
 // ---------------------------------------------------------------------------
 // Middleware pipeline
 // ---------------------------------------------------------------------------
-app.UseMiddleware<GlobalExceptionMiddleware>(); // Phải đứng ĐẦU pipeline để bắt mọi exception phía sau.
+app.UseMiddleware<CorrelationIdMiddleware>(); // Đứng TRƯỚC GlobalException — request lỗi 500 vẫn cần có CorrelationId trong log.
+app.UseMiddleware<GlobalExceptionMiddleware>(); // Phải đứng ĐẦU pipeline (sau CorrelationId) để bắt mọi exception phía sau.
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference(); // UI tại /scalar (mục 6.2), thay Swagger UI.
+
+    // Sinh dữ liệu mẫu ngẫu nhiên bằng Bogus (chỉ ở Development, KHÔNG bao giờ chạy ở production).
+    // DbSeeder tự kiểm tra số lượng hiện có và chỉ chèn thêm cho tới khi đạt tối thiểu 20
+    // categories / 100 recipes (mỗi recipe >= 10 nguyên liệu, >= 5 bước) — xem
+    // Infrastructure/Persistence/Seed/DbSeeder.cs. An toàn khi chạy lại nhiều lần.
+    // GIỮ LẠI theo yêu cầu Lab: đảm bảo database luôn có đủ dữ liệu mẫu, dù các module CRUD
+    // Category/Recipe (FR-CAT, FR-RCP...) đã tạm gỡ khỏi phạm vi triển khai để phân công lại.
+    using (var seedScope = app.Services.CreateScope())
+    {
+        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
+        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
+    }
 }
 
 app.UseHttpsRedirection();
 app.UseCors();
-app.UseDefaultFiles();
-app.UseStaticFiles(); // Phục vụ ảnh từ LocalFileStorageService (TODO: bỏ khi chuyển sang MinIO).
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// FR-OBS-001: TODO (nhóm làm tiếp) — thay bằng health check thật (DB + Redis + MinIO) qua
-// AspNetCore.HealthChecks.NpgSql/Redis/Minio khi tích hợp các service đó.
-app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).WithTags("Health");
-
 app.MapAuthEndpoints();
-app.MapCategoriesEndpoints();
-app.MapRecipesEndpoints();
+app.MapHealthEndpoints();
 
 app.Run();

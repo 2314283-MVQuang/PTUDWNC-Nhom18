@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>CulinaryBlog.API</RootNamespace>
@@ -9,16 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Phiên bản dưới đây là ước lượng tốt nhất (môi trường dựng scaffold không có internet để
-         tra NuGet) — chạy `dotnet restore`, nếu lỗi version thì `dotnet add package <Tên>` để
-         lấy bản mới nhất tương thích net10.0. -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
     <!-- Scalar UI tại /scalar (mục 6.2) — thay thế Swagger UI cổ điển. -->
     <PackageReference Include="Scalar.AspNetCore" Version="2.0.8" />
-    <!-- "dotnet ef" cần thấy gói này ở chính STARTUP project (API), không chỉ ở Infrastructure —
-         nếu không sẽ báo lỗi "doesn't reference Microsoft.EntityFrameworkCore.Design". -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

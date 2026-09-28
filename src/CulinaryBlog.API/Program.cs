@@ -3,7 +3,9 @@ using System.Text.Json.Serialization;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.API.Middleware;
+using CulinaryBlog.API.Services;
 using CulinaryBlog.Application;
+using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Infrastructure;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Seed;
@@ -83,6 +85,9 @@ builder.Services.AddCors(options =>
         .AllowCredentials());
 });
 
+builder.Services.AddOutputCache();
+builder.Services.AddScoped<ICacheInvalidator, OutputCacheInvalidator>();
+
 builder.Services.AddOpenApi();
 
 // Cho phép body JSON gửi/nhận enum dạng chuỗi (vd "Easy" thay vì số 1) — dễ đọc hơn khi test API.
@@ -107,7 +112,7 @@ builder.Services.AddOpenTelemetry()
         tracing
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
-            .AddNpgsql();
+            .AddSource("Npgsql");
 
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
@@ -158,6 +163,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors();
+app.UseOutputCache();
 
 app.UseAuthentication();
 app.UseAuthorization();

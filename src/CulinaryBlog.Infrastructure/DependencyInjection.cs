@@ -61,9 +61,20 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUserService>();
 
-        // --- Email: FR-AUTH-001 (Register) gửi email chào mừng qua service này ---
+        // --- Email: FR-AUTH-001 (Register) gửi email chào mừng qua service này; Tuần 3 thêm
+        // reset mật khẩu + xác nhận email (cùng interface IEmailService) ---
         // IFileStorageService đã gỡ cùng module Recipe (upload ảnh công thức, không thuộc FR-AUTH).
         services.AddScoped<IEmailService, ConsoleEmailService>();
+
+        // --- Health checks (FR-OBS-001, Tuần 3) ---
+        // "postgresql" gắn tag "ready" — dùng cho /health/ready (app đã sẵn sàng nhận traffic
+        // chưa, CÓ kiểm tra dependency ngoài). /health/live KHÔNG chạy check nào (xem
+        // API/Endpoints/HealthEndpoints.cs) nên không cần đăng ký gì thêm ở đây cho liveness.
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Thiếu ConnectionStrings:DefaultConnection.");
+
+        services.AddHealthChecks()
+            .AddNpgSql(connectionString, name: "postgresql", tags: ["ready"]);
 
         return services;
     }

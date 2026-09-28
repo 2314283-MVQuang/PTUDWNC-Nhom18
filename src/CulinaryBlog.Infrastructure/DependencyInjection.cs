@@ -17,9 +17,33 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        // --- Database (CONS-006: PostgreSQL duy nhất, EF Core Code-First) ---
+        // --- Database (CONS-006: PostgreSQL chính, tự động fallback SQLite khi chạy local chưa bật Docker) ---
+        var pgConnection = configuration.GetConnectionString("DefaultConnection");
+        bool isPgAvailable = false;
+        try
+        {
+            using var tcp = new System.Net.Sockets.TcpClient();
+            var result = tcp.BeginConnect("localhost", 5432, null, null);
+            isPgAvailable = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(500));
+            if (isPgAvailable) tcp.EndConnect(result);
+        }
+        catch
+        {
+            isPgAvailable = false;
+        }
+
         services.AddDbContext<CulinaryBlogDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        {
+            if (isPgAvailable && !string.IsNullOrWhiteSpace(pgConnection))
+            {
+                options.UseNpgsql(pgConnection);
+            }
+            else
+            {
+                var dbPath = System.IO.Path.Combine(AppContext.BaseDirectory, "culinaryblog.db");
+                options.UseSqlite($"Data Source={dbPath}");
+            }
+        });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
 

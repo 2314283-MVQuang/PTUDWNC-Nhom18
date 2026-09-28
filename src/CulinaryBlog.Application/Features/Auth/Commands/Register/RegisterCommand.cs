@@ -7,5 +7,5 @@ namespace CulinaryBlog.Application.Features.Auth.Commands.Register;
 public record RegisterCommand(
     string FullName,
     string Email,
-    string UserName,
+    string? UserName,
     string Password) : IRequest<AuthResponseDto>;

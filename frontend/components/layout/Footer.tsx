@@ -13,8 +13,8 @@ const LINK_GROUPS = [
   {
     title: "Tài khoản",
     links: [
-      { href: "/auth/login", label: "Đăng nhập" },
-      { href: "/auth/register", label: "Đăng ký" },
+      { href: "/login", label: "Đăng nhập" },
+      { href: "/register", label: "Đăng ký" },
       { href: "/dashboard/recipes/new", label: "Đăng công thức" },
     ],
   },

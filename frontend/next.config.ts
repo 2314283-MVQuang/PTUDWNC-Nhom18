@@ -36,6 +36,18 @@ const nextConfig: NextConfig = {
   },
   // Bật React strict mode để bắt lỗi sớm trong quá trình dev - tốt cho intern học.
   reactStrictMode: true,
+  async rewrites() {
+    return [
+      {
+        source: "/auth/login",
+        destination: "/login",
+      },
+      {
+        source: "/auth/register",
+        destination: "/register",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

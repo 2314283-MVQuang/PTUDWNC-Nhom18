@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CulinaryBlog — Tinh Hoa Nghệ Thuật Ẩm Thực & Món Ngon Mỗi Ngày</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ea580c;
+            --primary-hover: #c2410c;
+            --primary-light: #fff7ed;
+            --secondary: #0f172a;
+            --accent: #f59e0b;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --bg-page: #fafaf9;
+            --bg-card: #ffffff;
+            --border: #e7e5e4;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-full: 9999px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Header & Navigation --- */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.85rem 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .nav-container {
+            max-width: 1240px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            text-decoration: none;
+            color: var(--secondary);
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-logo .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(234, 88, 12, 0.3);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1.75rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: color 0.15s ease;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.65rem 1.25rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border-color: var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+        }
+
+        /* User Profile Button in Navbar */
+        .user-menu {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f97316, #fb923c);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            border: 2px solid #fff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .user-info-text {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .user-name {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--secondary);
+            line-height: 1.2;
+        }
+
+        .user-role-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--primary-light);
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 0.15rem;
+            width: fit-content;
+        }
+
+        .btn-logout {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.82rem;
+            border-radius: 8px;
+            margin-left: 0.5rem;
+        }
+
+        .btn-logout:hover {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            position: relative;
+            background: linear-gradient(180deg, #fff7ed 0%, var(--bg-page) 100%);
+            padding: 4.5rem 1.5rem 3.5rem;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #fff;
+            border: 1px solid #fed7aa;
+            padding: 0.35rem 1rem;
+            border-radius: var(--radius-full);
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 2px 6px rgba(234, 88, 12, 0.08);
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 3.25rem;
+            font-weight: 700;
+            color: var(--secondary);
+            line-height: 1.2;
+            max-width: 820px;
+            margin: 0 auto 1.25rem;
+            letter-spacing: -0.01em;
+        }
+
+        .hero h1 span {
+            color: var(--primary);
+            font-style: italic;
+        }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 620px;
+            margin: 0 auto 2.25rem;
+        }
+
+        /* Search Bar */
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            background: #fff;
+            border-radius: var(--radius-full);
+            padding: 0.4rem 0.5rem 0.4rem 1.4rem;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border);
+        }
+
+        .search-container input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            color: var(--text-main);
+            background: transparent;
+        }
+
+        .search-container input::placeholder {
+            color: #94a3b8;
+        }
+
+        .search-container button {
+            border-radius: var(--radius-full);
+            padding: 0.75rem 1.5rem;
+        }
+
+        .trending-keywords {
+            margin-top: 1.25rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+
+        .keyword-tag {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--border);
+            padding: 0.2rem 0.75rem;
+            border-radius: var(--radius-full);
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .keyword-tag:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #fff;
+        }
+
+        /* --- Section Container --- */
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 3.5rem 1.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 2rem;
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        .section-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+
+        .view-all-link {
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: gap 0.15s ease;
+        }
+
+        .view-all-link:hover {
+            gap: 0.6rem;
+        }
+
+        /* --- Categories Grid --- */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .category-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1.5rem 1rem;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-main);
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .category-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: #fed7aa;
+        }
+
+        .category-icon {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 0.85rem;
+            transition: transform 0.25s ease;
+        }
+
+        .category-card:hover .category-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .category-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--secondary);
+            margin-bottom: 0.2rem;
+        }
+
+        .category-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* --- Recipes Grid --- */
+        .recipes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.75rem;
+        }
+
+        .recipe-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: #fed7aa;
+        }
+
+        .recipe-thumbnail-wrapper {
+            position: relative;
+            height: 200px;
+            background: #e2e8f0;
+            overflow: hidden;
+        }
+
+        .recipe-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .recipe-card:hover .recipe-thumbnail {
+            transform: scale(1.05);
+        }
+
+        .recipe-tag {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(4px);
+            padding: 0.25rem 0.65rem;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .recipe-heart-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 34px;
+            height: 34px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.15s ease;
+        }
+
+        .recipe-heart-btn:hover {
+            transform: scale(1.15);
+            background: #fff;
+        }
+
+        .recipe-content {
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .recipe-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 0.65rem;
+        }
+
+        .recipe-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .recipe-title {
+            font-size: 1.12rem;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .recipe-desc {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .recipe-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.85rem;
+            border-top: 1px solid #f5f5f4;
+            font-size: 0.85rem;
+        }
+
+        .recipe-author {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .author-mini-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #fb923c;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .rating-stars {
+            color: #f59e0b;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+
+        /* --- Community Banner --- */
+        .cta-section {
+            background: linear-gradient(135deg, var(--secondary) 0%, #1e293b 100%);
+            border-radius: 24px;
+            padding: 3.5rem 2.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+            margin: 2rem auto;
+            max-width: 1240px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .cta-content {
+            max-width: 600px;
+        }
+
+        .cta-content h2 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            line-height: 1.25;
+        }
+
+        .cta-content p {
+            font-size: 1.05rem;
+            color: #94a3b8;
+            margin-bottom: 1.75rem;
+        }
+
+        /* --- Footer --- */
+        .footer {
+            background: #fff;
+            border-top: 1px solid var(--border);
+            padding: 4rem 1.5rem 2rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .footer-grid {
+            max-width: 1240px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-col h4 {
+            color: var(--secondary);
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+        }
+
+        .footer-col ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .footer-col a {
+            text-decoration: none;
+            color: var(--text-muted);
+            transition: color 0.15s ease;
+        }
+
+        .footer-col a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding-top: 1.75rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        /* ==========================================================================
+           AUTH MODAL — CHUẨN THƯƠNG MẠI (ĐĂNG NHẬP / ĐĂNG KÝ)
+           ========================================================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 1rem;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-card {
+            background: #fff;
+            width: 100%;
+            max-width: 480px;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            position: relative;
+            transform: scale(0.95) translateY(10px);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 36px;
+            height: 36px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 1.1rem;
+            transition: all 0.15s ease;
+            z-index: 10;
+        }
+
+        .modal-close-btn:hover {
+            background: #e2e8f0;
+            color: var(--secondary);
+        }
+
+        .modal-header {
+            padding: 2rem 2rem 1.25rem;
+            text-align: center;
+        }
+
+        .modal-header h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.75rem;
+            color: var(--secondary);
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+
+        .modal-header p {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+        }
+
+        /* Auth Tabs */
+        .auth-tabs {
+            display: flex;
+            margin: 0 2rem 1.5rem;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: var(--radius-full);
+        }
+
+        .auth-tab-btn {
+            flex: 1;
+            padding: 0.65rem;
+            text-align: center;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-full);
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .auth-tab-btn.active {
+            background: #fff;
+            color: var(--secondary);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .modal-body {
+            padding: 0 2rem 2rem;
+        }
+
+        .form-pane {
+            display: none;
+        }
+
+        .form-pane.active {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .input-group {
+            margin-bottom: 1.15rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--secondary);
+            margin-bottom: 0.4rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            outline: none;
+            transition: all 0.15s ease;
+            background: #fafaf9;
+            color: var(--text-main);
+        }
+
+        .input-wrapper input:focus {
+            background: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+        }
+
+        .password-toggle-btn {
+            position: absolute;
+            right: 12px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .password-toggle-btn:hover {
+            color: var(--text-main);
+        }
+
+        .form-helper-text {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .form-options-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            margin-top: 0.5rem;
+        }
+
+        /* Commercial Notification Banners */
+        .toast-banner {
+            padding: 0.85rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.88rem;
+            margin-bottom: 1.25rem;
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .toast-banner.error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        .toast-banner.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        .divider-row {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 1.5rem 0;
+            color: #94a3b8;
+            font-size: 0.82rem;
+        }
+
+        .divider-row::before, .divider-row::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .divider-row span {
+            padding: 0 0.85rem;
+        }
+
+        .terms-privacy-note {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 1.25rem;
+            line-height: 1.4;
+        }
+
+        .terms-privacy-note a {
+            color: var(--text-muted);
+            text-decoration: underline;
+        }
+
+        /* Password strength indicator bar */
+        .strength-meter {
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            margin-top: 0.4rem;
+            overflow: hidden;
+            display: flex;
+            gap: 2px;
+        }
+
+        .strength-bar {
+            flex: 1;
+            height: 100%;
+            background: #cbd5e1;
+            transition: background-color 0.2s ease;
+        }
+
+        .strength-bar.weak { background: #ef4444; }
+        .strength-bar.medium { background: #f59e0b; }
+        .strength-bar.strong { background: #22c55e; }
+
+        @media (max-width: 900px) {
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .cta-section { flex-direction: column; text-align: center; }
+            .hero h1 { font-size: 2.35rem; }
+        }
+
+        @media (max-width: 640px) {
+            .nav-links { display: none; }
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== THANH ĐIỀU HƯỚNG ==================== -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="#" class="brand-logo">
+                <div class="logo-icon">🍳</div>
+                <span>CulinaryBlog</span>
+            </a>
+
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#" class="active">Trang Chủ</a></li>
+                    <li><a href="#recipes">Khám Phá Món Ngon</a></li>
+                    <li><a href="#categories">Danh Mục</a></li>
+                    <li><a href="#community">Cộng Đồng</a></li>
+                    <li><a href="#footer">Về Chúng Tôi</a></li>
+                </ul>
+            </nav>
+
+            <div class="nav-actions">
+                <!-- Khi chưa đăng nhập -->
+                <div id="guestActions" style="display: flex; gap: 0.65rem;">
+                    <button class="btn btn-outline" onclick="openAuthModal('login')">Đăng Nhập</button>
+                    <button class="btn btn-primary" onclick="openAuthModal('register')">Tạo Tài Khoản</button>
+                </div>
+
+                <!-- Khi đã đăng nhập -->
+                <div id="userProfileBadge" class="user-menu">
+                    <div class="user-avatar" id="navUserAvatar">Q</div>
+                    <div class="user-info-text">
+                        <span class="user-name" id="navUserName">Mai Văn Quang</span>
+                        <span class="user-role-badge" id="navUserRole">Tác Giả Ẩm Thực</span>
+                    </div>
+                    <button class="btn btn-logout" onclick="handleLogout()" title="Đăng xuất khỏi hệ thống">
+                        Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== BANNER HERO ==================== -->
+    <section class="hero">
+        <div class="hero-badge">
+            ✨ Cộng đồng hơn 50.000 đầu bếp & người yêu ẩm thực
+        </div>
+        <h1>Khơi Dậy Đam Mê Ẩm Thực Trong <span>Căn Bếp Của Bạn</span></h1>
+        <p>Khám phá hơn 1.000+ công thức nấu ăn chuẩn vị, bí quyết chế biến từ các chuyên gia ẩm thực hàng đầu Việt Nam.</p>
+
+        <div class="search-container">
+            <input type="text" id="recipeSearchInput" placeholder="Tìm kiếm món canh, sườn nướng, bánh ngọt, đồ uống...">
+            <button class="btn btn-primary" onclick="handleSearch()">Tìm Kiếm</button>
+        </div>
+
+        <div class="trending-keywords">
+            <span>Tìm kiếm phổ biến:</span>
+            <span class="keyword-tag" onclick="quickSearch('Phở Bò Hà Nội')">Phở Bò</span>
+            <span class="keyword-tag" onclick="quickSearch('Sườn Xào Chua Ngọt')">Sườn Xào Chua Ngọt</span>
+            <span class="keyword-tag" onclick="quickSearch('Bún Chả')">Bún Chả</span>
+            <span class="keyword-tag" onclick="quickSearch('Bánh Mì Chảo')">Bánh Mì Chảo</span>
+            <span class="keyword-tag" onclick="quickSearch('Salad Cá Hồi')">Salad Cá Hồi</span>
+        </div>
+    </section>
+
+    <!-- ==================== DANH MỤC NỔI BẬT ==================== -->
+    <section class="container" id="categories">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Danh Mục Ẩm Thực Nổi Bật</h2>
+                <p class="section-subtitle">Lựa chọn món ngon theo từng phong cách và khẩu vị yêu thích</p>
+            </div>
+            <a href="#" class="view-all-link">Xem tất cả 20+ danh mục &rarr;</a>
+        </div>
+
+        <div class="categories-grid" id="categoriesGrid">
+            <a href="#" class="category-card">
+                <div class="category-icon">🥗</div>
+                <div class="category-name">Món Khai Vị</div>
+                <div class="category-count">128 công thức</div>
+            </a>
+            <a href="#" class="category-card">
+                <div class="category-icon">🍲</div>
+                <div class="category-name">Món Chính</div>
+                <div class="category-count">342 công thức</div>
+            </a>
+            <a href="#" class="category-card">
+                <div class="category-icon">🥩</div>
+                <div class="category-name">Món Nướng BBQ</div>
+                <div class="category-count">95 công thức</div>
+            </a>
+            <a href="#" class="category-card">
+                <div class="category-icon">🌱</div>
+                <div class="category-name">Món Ăn Chay</div>
+                <div class="category-count">164 công thức</div>
+            </a>
+            <a href="#" class="category-card">
+                <div class="category-icon">🍰</div>
+                <div class="category-name">Bánh & Tráng Miệng</div>
+                <div class="category-count">210 công thức</div>
+            </a>
+            <a href="#" class="category-card">
+                <div class="category-icon">🍹</div>
+                <div class="category-name">Đồ Uống Pha Chế</div>
+                <div class="category-count">88 công thức</div>
+            </a>
+        </div>
+    </section>
+
+    <!-- ==================== CÔNG THỨC THỊNH HÀNH ==================== -->
+    <section class="container" id="recipes" style="padding-top: 0;">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Công Thức Thịnh Hành Hôm Nay</h2>
+                <p class="section-subtitle">Được bình chọn và nấu nhiều nhất bởi cộng đồng thành viên tuần này</p>
+            </div>
+            <a href="#" class="view-all-link">Xem tất cả công thức &rarr;</a>
+        </div>
+
+        <div class="recipes-grid">
+            <!-- Card 1 -->
+            <article class="recipe-card">
+                <div class="recipe-thumbnail-wrapper">
+                    <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" alt="Salad Bơ Ức Gà" class="recipe-thumbnail">
+                    <span class="recipe-tag">Healthy</span>
+                    <button class="recipe-heart-btn" title="Lưu công thức">❤️</button>
+                </div>
+                <div class="recipe-content">
+                    <div class="recipe-meta-row">
+                        <span class="recipe-meta-item">⏱️ 20 phút</span>
+                        <span class="recipe-meta-item">🔥 Dễ</span>
+                        <span class="recipe-meta-item">👥 2 người</span>
+                    </div>
+                    <h3 class="recipe-title">Salad Bơ Ức Gà Áp Chảo Sốt Mè Rang</h3>
+                    <p class="recipe-desc">Món ăn thanh mát, dồi dào protein và chất xơ, thích hợp cho bữa tối nhẹ nhàng hoặc thực đơn Eat Clean.</p>
+                    <div class="recipe-footer">
+                        <div class="recipe-author">
+                            <div class="author-mini-avatar">Q</div>
+                            <span>Chef Quang</span>
+                        </div>
+                        <div class="rating-stars">★ 4.9 (142)</div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Card 2 -->
+            <article class="recipe-card">
+                <div class="recipe-thumbnail-wrapper">
+                    <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80" alt="Bò Bít Tết Sốt Tiêu Đen" class="recipe-thumbnail">
+                    <span class="recipe-tag">Món Chính</span>
+                    <button class="recipe-heart-btn" title="Lưu công thức">❤️</button>
+                </div>
+                <div class="recipe-content">
+                    <div class="recipe-meta-row">
+                        <span class="recipe-meta-item">⏱️ 35 phút</span>
+                        <span class="recipe-meta-item">🔥 Trung bình</span>
+                        <span class="recipe-meta-item">👥 4 người</span>
+                    </div>
+                    <h3 class="recipe-title">Bò Bít Tết Thăn Ngoại Sốt Tiêu Đen Chuẩn Âu</h3>
+                    <p class="recipe-desc">Thịt bò mềm mọng nước, quyện cùng nước sốt tiêu đen cay nồng đậm đà làm say lòng bất kỳ thực khách nào.</p>
+                    <div class="recipe-footer">
+                        <div class="recipe-author">
+                            <div class="author-mini-avatar">A</div>
+                            <span>An Nhiên</span>
+                        </div>
+                        <div class="rating-stars">★ 5.0 (230)</div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Card 3 -->
+            <article class="recipe-card">
+                <div class="recipe-thumbnail-wrapper">
+                    <img src="https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=600&q=80" alt="Mì Ý Hải Sản" class="recipe-thumbnail">
+                    <span class="recipe-tag">Ẩm Thực Ý</span>
+                    <button class="recipe-heart-btn" title="Lưu công thức">❤️</button>
+                </div>
+                <div class="recipe-content">
+                    <div class="recipe-meta-row">
+                        <span class="recipe-meta-item">⏱️ 25 phút</span>
+                        <span class="recipe-meta-item">🔥 Dễ</span>
+                        <span class="recipe-meta-item">👥 3 người</span>
+                    </div>
+                    <h3 class="recipe-title">Spaghetti Hải Sản Tôm Mực Sốt Cà Chua Tươi</h3>
+                    <p class="recipe-desc">Sợi mì dẻo dai hòa quyện vị ngọt tự nhiên của tôm mực tươi ngon cùng nước sốt cà chua thảo mộc thơm lừng.</p>
+                    <div class="recipe-footer">
+                        <div class="recipe-author">
+                            <div class="author-mini-avatar">H</div>
+                            <span>Hoàng Yến</span>
+                        </div>
+                        <div class="rating-stars">★ 4.8 (89)</div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Card 4 -->
+            <article class="recipe-card">
+                <div class="recipe-thumbnail-wrapper">
+                    <img src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80" alt="Bánh Tiramisu" class="recipe-thumbnail">
+                    <span class="recipe-tag">Tráng Miệng</span>
+                    <button class="recipe-heart-btn" title="Lưu công thức">❤️</button>
+                </div>
+                <div class="recipe-content">
+                    <div class="recipe-meta-row">
+                        <span class="recipe-meta-item">⏱️ 45 phút</span>
+                        <span class="recipe-meta-item">🔥 Trung bình</span>
+                        <span class="recipe-meta-item">👥 6 người</span>
+                    </div>
+                    <h3 class="recipe-title">Bánh Tiramisu Cà Phê Rượu Vang Không Cần Lò Nướng</h3>
+                    <p class="recipe-desc">Lớp kem Mascarpone béo ngậy xen kẽ bánh sampa thấm đẫm hương vị cà phê nồng nàn quyến rũ.</p>
+                    <div class="recipe-footer">
+                        <div class="recipe-author">
+                            <div class="author-mini-avatar">M</div>
+                            <span>Minh Trang</span>
+                        </div>
+                        <div class="rating-stars">★ 4.9 (176)</div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- ==================== BANNER KÊU GỌI CỘNG ĐỒNG ==================== -->
+    <section class="cta-section" id="community">
+        <div class="cta-content">
+            <h2>Bạn Có Công Thức Nấu Ăn Độc Đáo Của Riêng Mình?</h2>
+            <p>Trở thành Tác Giả Ẩm Thực tại CulinaryBlog để lưu giữ công thức gia đình, truyền cảm hứng và nhận được sự mến mộ từ hàng vạn người đam mê vào bếp.</p>
+            <button class="btn btn-primary" onclick="openAuthModal('register')">Bắt Đầu Chia Sẻ Ngay</button>
+        </div>
+        <div>
+            <div style="font-size: 5rem; text-align: center;">👨‍🍳✨</div>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER THƯƠNG MẠI ==================== -->
+    <footer class="footer" id="footer">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <a href="#" class="brand-logo" style="margin-bottom: 1rem;">
+                    <div class="logo-icon">🍳</div>
+                    <span>CulinaryBlog</span>
+                </a>
+                <p style="max-width: 320px; line-height: 1.6; margin-bottom: 1.25rem;">
+                    Nền tảng cộng đồng ẩm thực trực tuyến kết nối hàng triệu người yêu nấu ăn, chia sẻ công thức và lưu giữ hương vị yêu thương mỗi ngày.
+                </p>
+                <div style="display: flex; gap: 0.75rem; font-size: 1.2rem;">
+                    <span>📘</span> <span>📸</span> <span>📹</span> <span>✉️</span>
+                </div>
+            </div>
+
+            <div class="footer-col">
+                <h4>Khám Phá</h4>
+                <ul>
+                    <li><a href="#">Món Ngon Gia Đình</a></li>
+                    <li><a href="#">Ẩm Thực Vùng Miền</a></li>
+                    <li><a href="#">Món Ăn Healthy & Diet</a></li>
+                    <li><a href="#">Công Thức Bánh Ngọt</a></li>
+                    <li><a href="#">Bộ Sưu Tập Cuối Tuần</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Cộng Đồng</h4>
+                <ul>
+                    <li><a href="#" onclick="openAuthModal('register')">Đăng Ký Tác Giả</a></li>
+                    <li><a href="#">Thử Thách Nấu Ăn</a></li>
+                    <li><a href="#">Bảng Xếp Hạng Đầu Bếp</a></li>
+                    <li><a href="#">Cẩm Nang & Mẹo Vào Bếp</a></li>
+                    <li><a href="#">Sự Kiện Ẩm Thực</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Hỗ Trợ & Pháp Lý</h4>
+                <ul>
+                    <li><a href="#">Quy Định Đăng Bài</a></li>
+                    <li><a href="#">Chính Sách Bảo Mật</a></li>
+                    <li><a href="#">Điều Khoản Dịch Vụ</a></li>
+                    <li><a href="#">Liên Hệ & Hợp Tác</a></li>
+                    <li><a href="#">Trung Tâm Trợ Giúp</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <div>&copy; 2026 CulinaryBlog Inc. Tất cả quyền được bảo lưu.</div>
+            <div style="display: flex; gap: 1.5rem;">
+                <a href="#" style="color: inherit; text-decoration: none;">Bảo mật</a>
+                <a href="#" style="color: inherit; text-decoration: none;">Điều khoản</a>
+                <a href="#" style="color: inherit; text-decoration: none;">Quyền riêng tư</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==========================================================================
+         MODAL ĐĂNG NHẬP / ĐĂNG KÝ THÀNH VIÊN
+         ========================================================================== -->
+    <div class="modal-overlay" id="authModal" onclick="closeAuthModalOnBackdrop(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <button class="modal-close-btn" onclick="closeAuthModal()" title="Đóng cửa sổ">&times;</button>
+
+            <div class="modal-header">
+                <h3 id="modalTitle">Chào mừng bạn trở lại!</h3>
+                <p id="modalSubtitle">Đăng nhập để lưu công thức yêu thích và chia sẻ món ngon</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab-btn active" id="tabLoginBtn" onclick="switchAuthTab('login')">Đăng Nhập</button>
+                <button type="button" class="auth-tab-btn" id="tabRegisterBtn" onclick="switchAuthTab('register')">Đăng Ký Tài Khoản</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Thông báo lỗi / thành công trang nhã -->
+                <div id="authToastBanner" class="toast-banner"></div>
+
+                <!-- 1. FORM ĐĂNG NHẬP -->
+                <form id="loginFormPane" class="form-pane active" onsubmit="handleLoginSubmit(event)">
+                    <div class="input-group">
+                        <label for="loginEmailInput">Địa chỉ Email</label>
+                        <div class="input-wrapper">
+                            <input type="email" id="loginEmailInput" placeholder="tenban@gmail.com" required autocomplete="email">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="loginPasswordInput">Mật khẩu</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="loginPasswordInput" placeholder="••••••••" required autocomplete="current-password">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('loginPasswordInput', this)">Hiện</button>
+                        </div>
+                    </div>
+
+                    <div class="form-options-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rememberMeCheckbox" checked>
+                            <span>Ghi nhớ đăng nhập</span>
+                        </label>
+                        <a href="javascript:void(0)" class="forgot-link" onclick="alert('Tính năng khôi phục mật khẩu sẽ gửi mã OTP đến email của bạn.')">Quên mật khẩu?</a>
+                    </div>
+
+                    <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-submit">
+                        Đăng Nhập Ngay
+                    </button>
+
+                    <p class="terms-privacy-note">
+                        Bằng việc đăng nhập, bạn đồng ý với <a href="#">Điều khoản sử dụng</a> và <a href="#">Chính sách bảo mật</a> của CulinaryBlog.
+                    </p>
+                </form>
+
+                <!-- 2. FORM ĐĂNG KÝ -->
+                <form id="registerFormPane" class="form-pane" onsubmit="handleRegisterSubmit(event)">
+                    <div class="input-group">
+                        <label for="regFullNameInput">Họ và tên của bạn</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="regFullNameInput" placeholder="Ví dụ: Mai Văn Quang" required autocomplete="name">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="regEmailInput">Địa chỉ Email</label>
+                        <div class="input-wrapper">
+                            <input type="email" id="regEmailInput" placeholder="tenban@gmail.com" required autocomplete="email">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="regUserNameInput">Tên tài khoản (viết liền, không dấu)</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="regUserNameInput" placeholder="Ví dụ: vanquang_chef" autocomplete="username">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="regPasswordInput">Mật khẩu đăng nhập</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="regPasswordInput" placeholder="Tối thiểu 8 ký tự an toàn" required oninput="checkPasswordStrength(this.value)" autocomplete="new-password">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('regPasswordInput', this)">Hiện</button>
+                        </div>
+                        <div class="strength-meter">
+                            <div class="strength-bar" id="strengthBar1"></div>
+                            <div class="strength-bar" id="strengthBar2"></div>
+                            <div class="strength-bar" id="strengthBar3"></div>
+                        </div>
+                        <span class="form-helper-text">
+                            🛡️ Mật khẩu tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+                        </span>
+                    </div>
+
+                    <div class="form-options-row" style="margin-bottom: 0.85rem;">
+                        <label class="checkbox-label" style="align-items: flex-start;">
+                            <input type="checkbox" id="regTermsCheckbox" required style="margin-top: 3px;">
+                            <span>Tôi đã đọc và đồng ý với Quy chế hoạt động & Điều khoản thành viên</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="registerSubmitBtn" class="btn btn-primary btn-submit">
+                        Tạo Tài Khoản Thành Viên
+                    </button>
+
+                    <p class="terms-privacy-note">
+                        Sau khi hoàn tất đăng ký, bạn có thể đăng tải công thức và tham gia thảo luận cùng cộng đồng.
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== LOGIC JAVASCRIPT ==================== -->
+    <script>
+        // Cấu hình URL API Backend (Tự động thích ứng nếu chạy cùng port hoặc localhost:5000)
+        const API_BASE_URL = window.location.protocol.startsWith('http') 
+            ? (window.location.port === '5000' ? '' : 'http://localhost:5000')
+            : 'http://localhost:5000';
+
+        // Khởi tạo trạng thái khi tải trang
+        document.addEventListener('DOMContentLoaded', () => {
+            restoreUserSession();
+        });
+
+        // Quản lý Modal Đăng Nhập / Đăng Ký
+        function openAuthModal(targetTab = 'login') {
+            const modal = document.getElementById('authModal');
+            hideToast();
+            switchAuthTab(targetTab);
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('authModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            hideToast();
+        }
+
+        function closeAuthModalOnBackdrop(e) {
+            if (e.target.id === 'authModal') {
+                closeAuthModal();
+            }
+        }
+
+        function switchAuthTab(tab) {
+            hideToast();
+            const tabLoginBtn = document.getElementById('tabLoginBtn');
+            const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+            const loginPane = document.getElementById('loginFormPane');
+            const registerPane = document.getElementById('registerFormPane');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalSubtitle = document.getElementById('modalSubtitle');
+
+            if (tab === 'login') {
+                tabLoginBtn.classList.add('active');
+                tabRegisterBtn.classList.remove('active');
+                loginPane.classList.add('active');
+                registerPane.classList.remove('active');
+                modalTitle.textContent = 'Chào mừng bạn trở lại!';
+                modalSubtitle.textContent = 'Đăng nhập để tiếp tục khám phá và lưu trữ công thức yêu thích';
+            } else {
+                tabRegisterBtn.classList.add('active');
+                tabLoginBtn.classList.remove('active');
+                registerPane.classList.add('active');
+                loginPane.classList.remove('active');
+                modalTitle.textContent = 'Tạo tài khoản mới';
+                modalSubtitle.textContent = 'Gia nhập cộng đồng CulinaryBlog hoàn toàn miễn phí';
+            }
+        }
+
+        function togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = 'Ẩn';
+            } else {
+                input.type = 'password';
+                btn.textContent = 'Hiện';
+            }
+        }
+
+        // Đo độ mạnh mật khẩu (hiển thị trực quan cho người dùng)
+        function checkPasswordStrength(val) {
+            const b1 = document.getElementById('strengthBar1');
+            const b2 = document.getElementById('strengthBar2');
+            const b3 = document.getElementById('strengthBar3');
+
+            b1.className = 'strength-bar';
+            b2.className = 'strength-bar';
+            b3.className = 'strength-bar';
+
+            if (!val) return;
+
+            let score = 0;
+            if (val.length >= 8) score++;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+            if (/[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) score++;
+
+            if (score >= 1) b1.className = 'strength-bar weak';
+            if (score >= 2) { b1.className = 'strength-bar medium'; b2.className = 'strength-bar medium'; }
+            if (score >= 3) { b1.className = 'strength-bar strong'; b2.className = 'strength-bar strong'; b3.className = 'strength-bar strong'; }
+        }
+
+        function showToast(message, type = 'error') {
+            const toast = document.getElementById('authToastBanner');
+            toast.textContent = message;
+            toast.className = `toast-banner ${type}`;
+            toast.style.display = 'block';
+        }
+
+        function hideToast() {
+            const toast = document.getElementById('authToastBanner');
+            toast.style.display = 'none';
+        }
+
+        // ======================================================================
+        // XỬ LÝ ĐĂNG KÝ TÀI KHOẢN (POST /auth/register)
+        // ======================================================================
+        async function handleRegisterSubmit(e) {
+            e.preventDefault();
+            hideToast();
+
+            const fullName = document.getElementById('regFullNameInput').value.trim();
+            const email = document.getElementById('regEmailInput').value.trim();
+            const userName = document.getElementById('regUserNameInput').value.trim();
+            const password = document.getElementById('regPasswordInput').value;
+
+            // Kiểm tra mật khẩu chuẩn trước khi gửi
+            if (password.length < 8) {
+                showToast('Mật khẩu của bạn phải có ít nhất 8 ký tự.');
+                return;
+            }
+
+            const btn = document.getElementById('registerSubmitBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Đang khởi tạo tài khoản...';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fullName: fullName,
+                        email: email,
+                        userName: userName || email.split('@')[0],
+                        password: password
+                    })
+                });
+
+                const data = await response.json().catch(() => null);
+
+                if (response.status === 201) {
+                    showToast('🎉 Đăng ký thành công! Đang tự động chuyển hướng...', 'success');
+                    
+                    // Tự động chuyển thông tin sang form đăng nhập hoặc tự đăng nhập
+                    setTimeout(async () => {
+                        document.getElementById('loginEmailInput').value = email;
+                        document.getElementById('loginPasswordInput').value = password;
+                        // Tiến hành đăng nhập lấy token luôn
+                        await performLogin(email, password, fullName);
+                    }, 1000);
+
+                } else if (response.status === 409) {
+                    showToast('Địa chỉ email này đã được sử dụng. Vui lòng đăng nhập hoặc chọn email khác!', 'error');
+                } else if (response.status === 422) {
+                    let errMsg = 'Thông tin chưa hợp lệ: ';
+                    if (data && data.errors) {
+                        const firstKey = Object.keys(data.errors)[0];
+                        errMsg += data.errors[firstKey][0] || 'Vui lòng kiểm tra lại mật khẩu.';
+                    } else {
+                        errMsg += 'Mật khẩu cần tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.';
+                    }
+                    showToast(errMsg, 'error');
+                } else {
+                    showToast(data?.detail || 'Không thể tạo tài khoản vào lúc này. Vui lòng thử lại sau!', 'error');
+                }
+            } catch (err) {
+                showToast('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng hoặc máy chủ API.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // ======================================================================
+        // XỬ LÝ ĐĂNG NHẬP (POST /auth/login)
+        // ======================================================================
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            hideToast();
+
+            const email = document.getElementById('loginEmailInput').value.trim();
+            const password = document.getElementById('loginPasswordInput').value;
+
+            const btn = document.getElementById('loginSubmitBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Đang xác thực...';
+
+            try {
+                await performLogin(email, password);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function performLogin(email, password, fallbackName = '') {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json().catch(() => null);
+
+                if (response.status === 200 && data) {
+                    showToast('Đăng nhập thành công! Đang đồng bộ...', 'success');
+
+                    // Lưu session vào localStorage
+                    const userProfile = {
+                        email: email,
+                        displayName: fallbackName || email.split('@')[0],
+                        accessToken: data.accessToken,
+                        refreshToken: data.refreshToken,
+                        role: 'Tác Giả Ẩm Thực'
+                    };
+                    localStorage.setItem('culinary_user', JSON.stringify(userProfile));
+
+                    setTimeout(() => {
+                        closeAuthModal();
+                        updateNavbarUser(userProfile);
+                    }, 600);
+
+                } else if (response.status === 401) {
+                    showToast('Địa chỉ email hoặc mật khẩu không chính xác. Vui lòng thử lại!', 'error');
+                } else {
+                    showToast(data?.detail || 'Đăng nhập không thành công. Vui lòng kiểm tra lại!', 'error');
+                }
+            } catch (err) {
+                showToast('Không thể kết nối tới dịch vụ xác thực. Vui lòng thử lại sau!', 'error');
+            }
+        }
+
+        // Cập nhật trạng thái người dùng trên Header
+        function updateNavbarUser(user) {
+            const guestActions = document.getElementById('guestActions');
+            const userProfileBadge = document.getElementById('userProfileBadge');
+            const navUserName = document.getElementById('navUserName');
+            const navUserAvatar = document.getElementById('navUserAvatar');
+            const navUserRole = document.getElementById('navUserRole');
+
+            if (user && user.email) {
+                guestActions.style.display = 'none';
+                userProfileBadge.style.display = 'flex';
+                
+                const displayName = user.displayName || user.email.split('@')[0];
+                navUserName.textContent = displayName;
+                navUserAvatar.textContent = displayName.charAt(0).toUpperCase();
+                navUserRole.textContent = user.role || 'Thành Viên';
+            } else {
+                guestActions.style.display = 'flex';
+                userProfileBadge.style.display = 'none';
+            }
+        }
+
+        // Khôi phục session khi refresh trang
+        function restoreUserSession() {
+            try {
+                const saved = localStorage.getItem('culinary_user');
+                if (saved) {
+                    const user = JSON.parse(saved);
+                    updateNavbarUser(user);
+                }
+            } catch {}
+        }
+
+        // Đăng xuất
+        function handleLogout() {
+            if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi CulinaryBlog không?')) {
+                localStorage.removeItem('culinary_user');
+                updateNavbarUser(null);
+            }
+        }
+
+        // Tìm kiếm nhanh
+        function quickSearch(keyword) {
+            document.getElementById('recipeSearchInput').value = keyword;
+            handleSearch();
+        }
+
+        function handleSearch() {
+            const q = document.getElementById('recipeSearchInput').value.trim();
+            if (q) {
+                alert(`Đang tìm kiếm công thức cho: "${q}"...`);
+            }
+        }
+    </script>
+</body>
+</html>

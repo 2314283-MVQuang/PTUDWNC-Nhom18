@@ -1,25 +1,18 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import { AuthShell } from "@/components/layout/AuthShell";
-import { RegisterForm } from "@/components/forms/RegisterForm";
+import { AuthCombinedForm } from "@/components/forms/AuthCombinedForm";
 
-export const metadata = { title: "Đăng ký" };
+export const metadata = { title: "Đăng ký tài khoản" };
 
-// Mục 9: "/auth/register" — CSR.
 export default function RegisterPage() {
   return (
     <AuthShell
-      title="Tạo tài khoản"
-      subtitle="Vài giây là bạn có thể bắt đầu đăng công thức"
-      footer={
-        <>
-          Đã có tài khoản?{" "}
-          <Link href="/auth/login" className="font-semibold text-brand-700 hover:underline">
-            Đăng nhập
-          </Link>
-        </>
-      }
+      title="Tài khoản CulinaryBlog"
+      subtitle="Đăng ký tài khoản mới hoặc đăng nhập vào hệ thống"
     >
-      <RegisterForm />
+      <Suspense fallback={<div className="skeleton h-56 w-full" />}>
+        <AuthCombinedForm initialTab="register" />
+      </Suspense>
     </AuthShell>
   );
 }

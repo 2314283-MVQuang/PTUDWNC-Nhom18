@@ -1,29 +1,17 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { AuthShell } from "@/components/layout/AuthShell";
-import { LoginForm } from "@/components/forms/LoginForm";
+import { AuthCombinedForm } from "@/components/forms/AuthCombinedForm";
 
-export const metadata = { title: "Đăng nhập" };
+export const metadata = { title: "Đăng nhập / Đăng ký" };
 
-// Mục 9: "/auth/login" — CSR (form tương tác), redirect nếu đã đăng nhập (xử lý ở middleware.ts
-// khi user cố vào /dashboard mà chưa login sẽ được đưa về đây, không phải chiều ngược lại ở đây).
 export default function LoginPage() {
   return (
     <AuthShell
-      title="Chào mừng trở lại"
-      subtitle="Đăng nhập để quản lý công thức của bạn"
-      footer={
-        <>
-          Chưa có tài khoản?{" "}
-          <Link href="/auth/register" className="font-semibold text-brand-700 hover:underline">
-            Đăng ký ngay
-          </Link>
-        </>
-      }
+      title="Tài khoản CulinaryBlog"
+      subtitle="Đăng nhập hoặc đăng ký tài khoản để khám phá và quản lý công thức"
     >
-      {/* useSearchParams() bên trong LoginForm cần bọc Suspense theo yêu cầu của Next.js App Router. */}
       <Suspense fallback={<div className="skeleton h-56 w-full" />}>
-        <LoginForm />
+        <AuthCombinedForm initialTab="login" />
       </Suspense>
     </AuthShell>
   );

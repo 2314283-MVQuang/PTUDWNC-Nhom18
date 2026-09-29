@@ -5,13 +5,14 @@
 #
 #    docker compose up -d postgres       # chỉ dựng database (đủ cho backend .NET chạy)
 #    docker compose up -d postgres adminer   # thêm giao diện web xem/sửa dữ liệu
+#    docker compose up -d seq            # Seq — web UI log tập trung (Tuần 3, FR-OBS-002)
 #    docker compose up --build api       # chạy backend .NET trong container
 #    docker compose up --build frontend  # chạy frontend bằng Docker
 #    docker compose down                 # dừng tất cả, GIỮ LẠI dữ liệu
 #    docker compose down -v              # dừng và XOÁ SẠCH dữ liệu database
 #
-#  Các service khác trong tài liệu đặc tả (redis, minio, nginx, seq, mailhog —
-#  mục 6.4) sẽ thêm sau khi backend cần đến, chưa cần lúc này.
+#  Các service khác trong tài liệu đặc tả (redis, minio, nginx, mailhog — mục 6.4) sẽ thêm sau
+#  khi backend cần đến, chưa cần lúc này.
 # =============================================================================
 
 services:
@@ -65,6 +66,25 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Seq — web UI xem structured log tập trung (FR-OBS-002, Tuần 3). Backend ghi log qua sink
+  # Serilog.Sinks.Seq (xem appsettings.json section "Serilog") gửi tới cổng ingestion 5341 —
+  # cổng này giữ nguyên số để chạy `dotnet run` NGOÀI Docker (không qua service "api" dưới đây)
+  # cũng gửi log vào Seq được luôn, không cần đổi appsettings.
+  # Mở http://localhost:8081 để xem log (KHÔNG dùng cổng 5341 cho web UI — cổng đó chỉ nhận log).
+  # Không cần dữ liệu Seq sống sót qua lần dựng lại (không đáng cho phạm vi Lab) nên không khai
+  # báo volume — `docker compose down` là mất sạch log cũ, chấp nhận được.
+  # ---------------------------------------------------------------------------
+  seq:
+    image: datalust/seq:latest
+    container_name: culinaryblog-seq
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "8081:80"
+      - "5341:5341"
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------

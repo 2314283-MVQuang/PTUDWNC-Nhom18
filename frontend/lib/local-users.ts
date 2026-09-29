@@ -111,22 +111,27 @@ export function findLocalUser(identifier: string, password?: string): LocalUser 
 
 export function registerLocalUser(userData: {
   account: string;
+  email?: string;
   password: string;
   fullName?: string;
 }): LocalUser {
   const users = ensureStorage();
   const rawAccount = userData.account.trim().toLowerCase();
+  const rawEmail = userData.email?.trim().toLowerCase();
 
   const existing = users.find(
-    (u) => u.email.toLowerCase() === rawAccount || u.userName.toLowerCase() === rawAccount
+    (u) =>
+      u.userName.toLowerCase() === rawAccount ||
+      u.email.toLowerCase() === rawAccount ||
+      (rawEmail && u.email.toLowerCase() === rawEmail)
   );
 
   if (existing) {
-    throw new Error("Tên tài khoản này đã được sử dụng. Vui lòng chọn tên khác!");
+    throw new Error("Tên tài khoản hoặc email này đã được sử dụng. Vui lòng chọn tên khác!");
   }
 
   const isEmail = rawAccount.includes("@");
-  const email = isEmail ? userData.account.trim() : `${userData.account.trim()}@culinaryblog.local`;
+  const email = userData.email?.trim() || (isEmail ? userData.account.trim() : `${userData.account.trim()}@culinaryblog.local`);
   const userName = userData.account.trim();
 
   const newUser: LocalUser = {

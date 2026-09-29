@@ -24,20 +24,14 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // State form Đăng ký (đúng 3 trường: tài khoản, mật khẩu, xác minh lại mật khẩu)
+  // State form Đăng ký
   const [regAccount, setRegAccount] = useState("");
+  const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [regError, setRegError] = useState<string | null>(null);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
-
-  // Điền nhanh tài khoản mẫu
-  function handleQuickFill(acc: string, pass: string) {
-    setLoginAccount(acc);
-    setLoginPassword(pass);
-    setLoginError(null);
-  }
 
   // Xử lý Đăng nhập
   async function handleLoginSubmit(e: React.FormEvent) {
@@ -83,8 +77,14 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
     setRegSuccess(null);
 
     const acc = regAccount.trim();
+    const email = regEmail.trim();
+
     if (!acc) {
       setRegError("Vui lòng nhập tên tài khoản.");
+      return;
+    }
+    if (!email) {
+      setRegError("Vui lòng nhập email đăng ký.");
       return;
     }
     if (!regPassword) {
@@ -92,7 +92,7 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
       return;
     }
     if (regPassword !== regConfirmPassword) {
-      setRegError("Mật khẩu xác minh không khớp. Vui lòng nhập lại!");
+      setRegError("Mật khẩu xác nhận không khớp. Vui lòng nhập lại!");
       return;
     }
 
@@ -103,6 +103,7 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           account: acc,
+          email: email,
           password: regPassword,
           confirmPassword: regConfirmPassword,
         }),
@@ -116,7 +117,7 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
         return;
       }
 
-      setRegSuccess(`Đăng ký tài khoản "${acc}" thành công! Đang lưu vào hệ thống...`);
+      setRegSuccess(`Đăng ký tài khoản "${acc}" thành công! Đang chuyển hướng...`);
 
       // Lưu sẵn thông tin sang form Đăng nhập
       setLoginAccount(acc);
@@ -126,7 +127,7 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
       setTimeout(async () => {
         const loginRes = await signIn("credentials", {
           account: acc,
-          email: acc,
+          email: email,
           password: regPassword,
           redirect: false,
         });
@@ -135,7 +136,6 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
           router.push(callbackUrl);
           router.refresh();
         } else {
-          // Nếu không tự redirect thì chuyển sang tab Đăng nhập để người dùng bấm
           setTab("login");
           setLoginError(null);
           setIsRegistering(false);
@@ -186,42 +186,6 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
       {/* ======================= TAB ĐĂNG NHẬP ======================= */}
       {tab === "login" && (
         <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
-          {/* Hộp tài khoản mẫu trong đề bài */}
-          <div className="rounded-xl border border-brand-200 bg-brand-50/90 p-3.5 text-xs text-neutral-700 shadow-xs">
-            <p className="font-semibold text-brand-900 mb-2 flex items-center gap-1.5">
-              <span>🔑</span> Tài khoản mẫu trong đề bài (Bấm để điền nhanh):
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill("admin@culinaryblog.local", "Admin@123")}
-                className="flex items-center justify-between rounded-lg border border-brand-200 bg-white p-2.5 text-left hover:border-brand-400 hover:bg-brand-50/50 transition-colors shadow-2xs cursor-pointer"
-              >
-                <div>
-                  <div className="font-semibold text-neutral-800">admin@culinaryblog.local</div>
-                  <div className="text-[11px] text-neutral-500 font-mono">Mật khẩu: Admin@123 (Quyền: Admin)</div>
-                </div>
-                <span className="text-[11px] font-semibold text-brand-700 bg-brand-100 px-2.5 py-1 rounded-md">
-                  Điền ngay
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill("author@culinaryblog.local", "Author@123")}
-                className="flex items-center justify-between rounded-lg border border-brand-200 bg-white p-2.5 text-left hover:border-brand-400 hover:bg-brand-50/50 transition-colors shadow-2xs cursor-pointer"
-              >
-                <div>
-                  <div className="font-semibold text-neutral-800">author@culinaryblog.local</div>
-                  <div className="text-[11px] text-neutral-500 font-mono">Mật khẩu: Author@123 (Quyền: Author)</div>
-                </div>
-                <span className="text-[11px] font-semibold text-brand-700 bg-brand-100 px-2.5 py-1 rounded-md">
-                  Điền ngay
-                </span>
-              </button>
-            </div>
-          </div>
-
           {loginError && (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {loginError}
@@ -235,9 +199,9 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
           )}
 
           <Input
-            label="Tài khoản (Tên đăng nhập hoặc Email)"
+            label="Tài khoản"
             type="text"
-            placeholder="Ví dụ: 2312 hoặc admin@culinaryblog.local"
+            placeholder="Nhập tên đăng nhập hoặc email"
             value={loginAccount}
             onChange={(e) => setLoginAccount(e.target.value)}
           />
@@ -245,7 +209,7 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
           <Input
             label="Mật khẩu"
             type="password"
-            placeholder="Nhập mật khẩu (Ví dụ: 123)"
+            placeholder="Nhập mật khẩu"
             value={loginPassword}
             onChange={(e) => setLoginPassword(e.target.value)}
           />
@@ -258,7 +222,10 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
             Chưa có tài khoản?{" "}
             <button
               type="button"
-              onClick={() => setTab("register")}
+              onClick={() => {
+                setTab("register");
+                setRegError(null);
+              }}
               className="font-semibold text-brand-700 hover:underline cursor-pointer"
             >
               Đăng ký tài khoản mới
@@ -270,11 +237,6 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
       {/* ======================= TAB ĐĂNG KÝ ======================= */}
       {tab === "register" && (
         <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4">
-          <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-xs text-blue-900">
-            <p className="font-semibold mb-1">📝 Hướng dẫn đăng ký nhanh:</p>
-            <p>Nhập tên tài khoản bất kỳ (vd: <span className="font-mono font-bold">2312</span>), mật khẩu (vd: <span className="font-mono font-bold">123</span>) và xác minh lại mật khẩu. Sau khi đăng ký xong tài khoản sẽ được lưu để bạn đăng nhập.</p>
-          </div>
-
           {regError && (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {regError}
@@ -288,23 +250,31 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
           )}
 
           <Input
-            label="Tài khoản"
+            label="Tên tài khoản"
             type="text"
-            placeholder="Nhập tên tài khoản (Ví dụ: 2312)"
+            placeholder="Nhập tên tài khoản"
             value={regAccount}
             onChange={(e) => setRegAccount(e.target.value)}
           />
 
           <Input
+            label="Email đăng ký"
+            type="email"
+            placeholder="Nhập địa chỉ email"
+            value={regEmail}
+            onChange={(e) => setRegEmail(e.target.value)}
+          />
+
+          <Input
             label="Mật khẩu"
             type="password"
-            placeholder="Nhập mật khẩu (Ví dụ: 123)"
+            placeholder="Nhập mật khẩu"
             value={regPassword}
             onChange={(e) => setRegPassword(e.target.value)}
           />
 
           <Input
-            label="Xác minh lại mật khẩu"
+            label="Xác nhận lại mật khẩu"
             type="password"
             placeholder="Nhập lại mật khẩu ở trên"
             value={regConfirmPassword}
@@ -312,14 +282,17 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
           />
 
           <Button type="submit" isLoading={isRegistering} className="mt-2 text-base">
-            Xác nhận Đăng ký
+            Xác nhận đăng ký
           </Button>
 
           <p className="text-center text-xs text-neutral-500 mt-1">
             Đã có tài khoản?{" "}
             <button
               type="button"
-              onClick={() => setTab("login")}
+              onClick={() => {
+                setTab("login");
+                setLoginError(null);
+              }}
               className="font-semibold text-brand-700 hover:underline cursor-pointer"
             >
               Quay lại Đăng nhập

@@ -33,6 +33,7 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
         var (statusCode, title) = exception switch
         {
             ValidationException => (422, "Dữ liệu không hợp lệ"),
+            CategoryNotFoundException => ((int)HttpStatusCode.NotFound, "Không tìm thấy tài nguyên"),
             NotFoundException => ((int)HttpStatusCode.NotFound, "Không tìm thấy tài nguyên"),
             ConflictException => ((int)HttpStatusCode.Conflict, "Xung đột dữ liệu"),
             ForbiddenAccessException => ((int)HttpStatusCode.Forbidden, "Không có quyền truy cập"),

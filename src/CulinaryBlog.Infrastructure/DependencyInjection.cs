@@ -24,8 +24,8 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
 
         // --- Repositories ---
-        // CHỈ giữ lại những gì FR-AUTH cần. ICategoryRepository/IRecipeRepository đã gỡ cùng module
-        // Category/Recipe (xem ghi chú trong Program.cs) — sẽ đăng ký lại khi nhóm triển khai tiếp.
+        // --- Module-specific repositories ---
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ISlugGenerator, SlugGenerator>();
 

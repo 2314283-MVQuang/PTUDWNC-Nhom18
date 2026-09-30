@@ -7,7 +7,7 @@ public class Category : BaseEntity
 {
     public string Name { get; set; } = null!;
 
-    /// <summary>Sinh tự động từ Name (SlugHelper), KHÔNG đổi khi đổi tên để tránh broken link (FR-CAT-004).</summary>
+    /// <summary>Sinh từ Name khi tạo hoặc đổi tên; tự thêm hậu tố nếu slug đã tồn tại.</summary>
     public string Slug { get; set; } = null!;
 
     public string? Description { get; set; }

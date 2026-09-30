@@ -24,9 +24,10 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
 
         // --- Repositories ---
-        // CHỈ giữ lại những gì FR-AUTH cần. ICategoryRepository/IRecipeRepository đã gỡ cùng module
+        // CHỈ giữ lại những gì FR-AUTH cần. ICategoryRepository đã gỡ cùng module
         // Category/Recipe (xem ghi chú trong Program.cs) — sẽ đăng ký lại khi nhóm triển khai tiếp.
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IRecipeRepository, RecipeRepository>();
 
         // Repository generic cho các entity con (RecipeStep/RecipeIngredient/RecipeImage): Handler
         // chỉ cần Remove()/AddAsync() một dòng con nên không đáng viết repository chuyên biệt cho
@@ -61,16 +62,17 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUserService>();
 
+        // --- Google OAuth (FR-AUTH-003) ---
+        // Xác thực Google ID Token mà frontend (Auth.js) gửi lên POST /auth/google. "Google:ClientId"
+        // (appsettings.json) PHẢI trùng AUTH_GOOGLE_ID bên frontend (.env.local) — đây là "audience"
+        // Google gắn vào token lúc phát hành, sai giá trị này thì token hợp lệ vẫn bị từ chối.
+        services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.SectionName));
+        services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+
         // --- Email: FR-AUTH-001 (Register) gửi email chào mừng qua service này; Tuần 3 thêm
         // reset mật khẩu + xác nhận email (cùng interface IEmailService) ---
         // IFileStorageService đã gỡ cùng module Recipe (upload ảnh công thức, không thuộc FR-AUTH).
         services.AddScoped<IEmailService, ConsoleEmailService>();
-
-        // --- Google OAuth (FR-AUTH-003) ---
-        // Xác thực Google ID Token mà frontend (Auth.js) gửi lên POST /auth/google. ClientId đọc từ
-        // "Authentication:Google:ClientId" PHẢI trùng AUTH_GOOGLE_ID bên frontend (.env.local) —
-        // xem GoogleTokenValidator để biết vì sao (đây là "audience" của token).
-        services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 
         // --- Redis (Tuần 4) ---
         // Mâu thuẫn #3 (xem phan-tich-mau-thuan-SRS): chỉ dùng 1 tầng cache duy nhất — ASP.NET Core

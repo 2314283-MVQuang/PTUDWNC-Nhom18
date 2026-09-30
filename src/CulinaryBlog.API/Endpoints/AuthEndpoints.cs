@@ -15,7 +15,7 @@ using MediatR;
 
 namespace CulinaryBlog.API.Endpoints;
 
-/// <summary>Mục 8.1.</summary>
+/// <summary>Mục 8.1. FR-AUTH-003 (Google OAuth) đã triển khai — xem route /google bên dưới.</summary>
 public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
@@ -38,9 +38,10 @@ public static class AuthEndpoints
         // FR-AUTH-003: nhận Google ID Token frontend gửi lên (auth.ts gọi sau khi NextAuth nhận
         // được account.id_token từ Google) → xác thực + tìm/tạo user → phát JWT giống hệt
         // /login, /register để frontend dùng chung đúng 1 luồng session cho cả 3 cách đăng nhập.
-        group.MapPost("/google", async (GoogleLoginRequest request, ISender sender) =>
+        group.MapPost("/google", async (GoogleLoginRequest request, HttpContext http, ISender sender) =>
         {
-            var result = await sender.Send(new GoogleLoginCommand(request.IdToken));
+            var command = new GoogleLoginCommand(request.IdToken, http.Connection.RemoteIpAddress?.ToString());
+            var result = await sender.Send(command);
             return result.ToOkResponse();
         });
 

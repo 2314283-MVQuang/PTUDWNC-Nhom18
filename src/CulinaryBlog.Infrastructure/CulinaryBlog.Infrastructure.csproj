@@ -11,6 +11,7 @@
     <!-- Phiên bản dưới đây là ước lượng tốt nhất (môi trường dựng scaffold không có internet để
          tra NuGet) — chạy `dotnet restore`, nếu lỗi version thì `dotnet add package <Tên>` để
          lấy bản mới nhất tương thích net10.0 + PostgreSQL 16. -->
+    <PackageReference Include="Google.Apis.Auth" Version="1.76.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -39,9 +40,6 @@
          IMemoryCache/CachingBehavior/CacheInvalidationBehavior). Gói chính thức của Microsoft,
          cùng họ phiên bản với ASP.NET Core nên pin theo net10.0. -->
     <PackageReference Include="Microsoft.AspNetCore.OutputCaching.StackExchangeRedis" Version="10.0.0" />
-    <!-- FR-AUTH-003: xác thực Google ID Token (GoogleTokenValidator) — thư viện chính thức của
-         Google, không phụ thuộc ASP.NET Core nên dùng được bình thường trong class library này. -->
-    <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
   </ItemGroup>
 
   <ItemGroup>

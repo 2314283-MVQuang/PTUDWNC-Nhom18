@@ -48,10 +48,11 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // (API layer, Sdk.Web) chứ không phải Infrastructure — Infrastructure là class library thường,
 // không chắc có sẵn shared framework ASP.NET Core mà AddOutputCache()/OutputCachePolicyBuilder
 // cần. Policy TTL lấy đúng NFR-PERF-003 làm chuẩn duy nhất; người làm Category/Recipe/Search chỉ
-// cần gắn [OutputCache(PolicyName = "CategoryList"|"RecipeDetail"|"Search")] lên endpoint GET của
-// mình — KHÔNG tự cấu hình cache riêng. Invalidate khi Create/Update/Delete: inject
-// IOutputCacheStore rồi gọi EvictByTagAsync("categories"|"recipes"|"search", ct) trong Command
-// Handler tương ứng (tag đặt sẵn trong policy dưới đây).
+// cần gắn [OutputCache(PolicyName = "categories"|"RecipeDetail"|"Search")] (hoặc .CacheOutput(...)
+// như CategoryEndpoints.cs) lên endpoint GET của mình — KHÔNG tự cấu hình cache riêng. Invalidate
+// khi Create/Update/Delete: inject IOutputCacheStore rồi gọi
+// EvictByTagAsync("categories"|"recipes"|"search", ct) trong Command Handler tương ứng (tag đặt
+// sẵn trong policy dưới đây).
 // ---------------------------------------------------------------------------
 var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
     ?? throw new InvalidOperationException(
@@ -65,8 +66,10 @@ builder.Services.AddStackExchangeRedisOutputCache(options =>
 
 builder.Services.AddOutputCache(options =>
 {
-    // Category list: TTL 30 phút (NFR-PERF-003, "ít thay đổi").
-    options.AddPolicy("CategoryList", policy => policy
+    // Category list: TTL 30 phút (NFR-PERF-003, "ít thay đổi"). Tên policy "categories" (chữ
+    // thường) khớp với .CacheOutput("categories") ở CategoryEndpoints.cs (FR-CAT-001) — ĐỪNG đổi
+    // tên nếu không sửa luôn bên đó.
+    options.AddPolicy("categories", policy => policy
         .Expire(TimeSpan.FromMinutes(30))
         .Tag("categories"));
 
@@ -213,6 +216,8 @@ app.UseAuthorization();
 app.UseOutputCache();
 
 app.MapAuthEndpoints();
+app.MapRecipeEndpoints();
+app.MapCategoryEndpoints();
 app.MapHealthEndpoints();
 
 app.Run();

@@ -9,15 +9,13 @@ using Microsoft.AspNetCore.Identity;
 namespace CulinaryBlog.Application.Features.Auth.Commands.GoogleLogin;
 
 /// <summary>
-/// FR-AUTH-003. Flow: xác thực IdToken với Google (IGoogleTokenValidator, implementation thật ở
-/// Infrastructure) → tìm user theo email đã xác minh trong token → CHƯA có thì tự tạo tài khoản mới
-/// (giống RegisterCommandHandler nhưng KHÔNG cần mật khẩu — tài khoản Google-only, EmailConfirmed =
-/// true luôn vì Google đã xác minh sẵn, xem GoogleUserInfo.EmailVerified được kiểm tra ở
-/// GoogleTokenValidator) → gán role mặc định "Author" → phát JWT y hệt Login/Register để frontend
-/// dùng chung đúng 1 luồng session cho cả 3 cách đăng nhập.
+/// FR-AUTH-003. Flow: xác minh idToken với Google → tìm user theo email → có thì đăng nhập
+/// luôn (tự liên kết với tài khoản email/password cùng email nếu có), chưa có thì tạo mới
+/// (không cần mật khẩu, EmailConfirmed = true vì Google đã xác thực email thật) → phát JWT +
+/// refresh token giống hệt Login/Register.
 /// </summary>
 public class GoogleLoginCommandHandler(
-    IGoogleTokenValidator googleTokenValidator,
+    IGoogleAuthService googleAuthService,
     UserManager<ApplicationUser> userManager,
     IJwtService jwtService,
     IRefreshTokenRepository refreshTokenRepository,
@@ -28,7 +26,7 @@ public class GoogleLoginCommandHandler(
 
     public async Task<AuthResponseDto> Handle(GoogleLoginCommand request, CancellationToken ct)
     {
-        var googleUser = await googleTokenValidator.ValidateAsync(request.IdToken, ct);
+        var googleUser = await googleAuthService.ValidateIdTokenAsync(request.IdToken, ct);
 
         var user = await userManager.FindByEmailAsync(googleUser.Email);
 
@@ -36,24 +34,22 @@ public class GoogleLoginCommandHandler(
         {
             user = new ApplicationUser
             {
-                UserName = googleUser.Email.Split('@')[0],
+                UserName = googleUser.Email,
                 Email = googleUser.Email,
-                DisplayName = googleUser.DisplayName,
-                AvatarUrl = googleUser.AvatarUrl,
-                EmailConfirmed = true,
+                DisplayName = googleUser.Name,
+                AvatarUrl = googleUser.PictureUrl,
+                EmailConfirmed = true, // Google đã xác thực email thay chúng ta rồi
             };
 
-            // Tài khoản Google-only: CreateAsync(user) KHÔNG truyền password vẫn hợp lệ với
-            // Identity (PasswordHash để null) — nếu sau này user muốn đặt mật khẩu để đăng nhập
-            // thường bằng email/password, dùng UserManager.AddPasswordAsync (ngoài phạm vi FR-AUTH-003).
-            var createResult = await userManager.CreateAsync(user);
+            var createResult = await userManager.CreateAsync(user); // không kèm password
             if (!createResult.Succeeded)
             {
                 throw ToValidationException(createResult);
             }
 
-            // Giống RegisterCommandHandler: role "Admin"/"Author" phải đã tồn tại sẵn trong
-            // AspNetRoles (RoleSeeder.SeedRolesAsync chạy ở Program.cs lúc khởi động).
+            // Role "Admin"/"Author" phải tồn tại sẵn trong AspNetRoles (RoleSeeder.SeedRolesAsync
+            // chạy ở Program.cs lúc khởi động) — kiểm tra kết quả giống RegisterCommandHandler,
+            // không âm thầm bỏ qua lỗi gán role.
             var addToRoleResult = await userManager.AddToRoleAsync(user, DefaultRole);
             if (!addToRoleResult.Succeeded)
             {
@@ -71,6 +67,7 @@ public class GoogleLoginCommandHandler(
                 UserId = user.Id,
                 TokenHash = refreshTokenHash,
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
+                CreatedByIp = request.IpAddress,
             },
             ct);
 

@@ -43,5 +43,16 @@
       "Author"
     ],
     "createdAt": "2026-09-18T05:24:07.773Z"
+  },
+  {
+    "id": "1318ea6f-ca0b-4f65-ac85-f0ac92f4fe54",
+    "email": "2312769@dli.edu.vn",
+    "password": "123",
+    "displayName": "TienHo",
+    "userName": "TienHo",
+    "roles": [
+      "Author"
+    ],
+    "createdAt": "2026-09-29T16:52:21.644Z"
   }
 ]

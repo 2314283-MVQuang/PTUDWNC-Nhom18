@@ -39,9 +39,14 @@ public class AuditInterceptor : SaveChangesInterceptor
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = now;
+                    if (entry.Entity.RowVersion == null || entry.Entity.RowVersion.Length == 0)
+                    {
+                        entry.Entity.RowVersion = System.Text.Encoding.UTF8.GetBytes(Guid.NewGuid().ToString("N"));
+                    }
                     break;
                 case EntityState.Modified:
                     entry.Entity.UpdatedAt = now;
+                    entry.Entity.RowVersion = System.Text.Encoding.UTF8.GetBytes(Guid.NewGuid().ToString("N"));
                     break;
             }
         }

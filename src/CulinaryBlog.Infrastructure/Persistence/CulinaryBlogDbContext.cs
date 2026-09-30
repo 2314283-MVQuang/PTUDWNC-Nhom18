@@ -32,6 +32,8 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<UploadedFile> UploadedFiles => Set<UploadedFile>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // Bắt buộc gọi trước — cấu hình các bảng AspNet* chuẩn.
@@ -46,6 +48,27 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
         builder.Entity<RecipeStep>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RecipeIngredient>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RecipeImage>().HasQueryFilter(x => !x.IsDeleted);
+        builder.Entity<UploadedFile>().HasQueryFilter(x => !x.IsDeleted);
+
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+        {
+            foreach (var entity in builder.Model.GetEntityTypes())
+            {
+                var rowVersionProp = entity.FindProperty("RowVersion");
+                if (rowVersionProp != null)
+                {
+                    rowVersionProp.IsConcurrencyToken = false;
+                    rowVersionProp.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
+                }
+            }
+        }
+    }
+
+    private class SqliteRowVersionGenerator : Microsoft.EntityFrameworkCore.ValueGeneration.ValueGenerator<byte[]>
+    {
+        public override bool GeneratesTemporaryValues => false;
+        public override byte[] Next(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+            => System.Text.Encoding.UTF8.GetBytes(Guid.NewGuid().ToString("N"));
     }
 
     /// <inheritdoc />

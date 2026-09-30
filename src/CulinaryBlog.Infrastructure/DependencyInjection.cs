@@ -88,8 +88,12 @@ public static class DependencyInjection
 
         // --- Email: FR-AUTH-001 (Register) gửi email chào mừng qua service này; Tuần 3 thêm
         // reset mật khẩu + xác nhận email (cùng interface IEmailService) ---
-        // IFileStorageService đã gỡ cùng module Recipe (upload ảnh công thức, không thuộc FR-AUTH).
         services.AddScoped<IEmailService, ConsoleEmailService>();
+
+        // --- UploadedFile Repository & MinIO Storage (FR-FILE-001) ---
+        services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
+        services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
+        services.AddScoped<IFileStorageService, MinioFileStorageService>();
 
         // --- Health checks (FR-OBS-001, Tuần 3) ---
         // "postgresql" gắn tag "ready" — dùng cho /health/ready (app đã sẵn sàng nhận traffic

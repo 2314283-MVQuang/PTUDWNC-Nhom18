@@ -13,6 +13,7 @@ using CulinaryBlog.Infrastructure.Persistence.Seed;
 using CulinaryBlog.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -138,6 +139,25 @@ using (var roleSeedScope = app.Services.CreateScope())
     var db = roleSeedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
     await db.Database.EnsureCreatedAsync();
 
+    if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+    {
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS ""UploadedFiles"" (
+                ""Id"" TEXT NOT NULL CONSTRAINT ""PK_UploadedFiles"" PRIMARY KEY,
+                ""FileName"" TEXT NOT NULL,
+                ""ContentType"" TEXT NOT NULL,
+                ""Size"" INTEGER NOT NULL,
+                ""StorageKey"" TEXT NOT NULL,
+                ""Url"" TEXT NOT NULL,
+                ""BucketName"" TEXT NOT NULL,
+                ""UploadedBy"" TEXT NULL,
+                ""CreatedAt"" TEXT NOT NULL,
+                ""UpdatedAt"" TEXT NULL,
+                ""IsDeleted"" INTEGER NOT NULL,
+                ""RowVersion"" BLOB NULL
+            );");
+    }
+
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
 
@@ -178,5 +198,6 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapHealthEndpoints();
 app.MapCategoryEndpoints();
+app.MapFileEndpoints();
 
 app.Run();

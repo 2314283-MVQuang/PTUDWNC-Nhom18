@@ -622,7 +622,7 @@ namespace CulinaryBlog.Infrastructure.Migrations
 
                             b1.HasKey("RecipeId");
 
-                            b1.ToTable("Recipes");
+                            b1.ToTable("Recipes", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("RecipeId");

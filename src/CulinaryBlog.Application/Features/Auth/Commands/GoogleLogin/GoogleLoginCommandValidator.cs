@@ -6,6 +6,6 @@ public class GoogleLoginCommandValidator : AbstractValidator<GoogleLoginCommand>
 {
     public GoogleLoginCommandValidator()
     {
-        RuleFor(x => x.IdToken).NotEmpty();
+        RuleFor(x => x.IdToken).NotEmpty().WithMessage("Thiếu Google ID Token.");
     }
 }

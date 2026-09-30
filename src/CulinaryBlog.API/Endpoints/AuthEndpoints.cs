@@ -3,6 +3,7 @@ using CulinaryBlog.API.Extensions;
 using CulinaryBlog.Application.Features.Auth.Commands.ChangePassword;
 using CulinaryBlog.Application.Features.Auth.Commands.ConfirmEmail;
 using CulinaryBlog.Application.Features.Auth.Commands.ForgotPassword;
+using CulinaryBlog.Application.Features.Auth.Commands.GoogleLogin;
 using CulinaryBlog.Application.Features.Auth.Commands.Login;
 using CulinaryBlog.Application.Features.Auth.Commands.Logout;
 using CulinaryBlog.Application.Features.Auth.Commands.Refresh;
@@ -10,7 +11,6 @@ using CulinaryBlog.Application.Features.Auth.Commands.Register;
 using CulinaryBlog.Application.Features.Auth.Commands.ResetPassword;
 using CulinaryBlog.Application.Features.Auth.Commands.UpdateProfile;
 using CulinaryBlog.Application.Features.Auth.Queries.Me;
-using CulinaryBlog.Application.Features.Auth.Commands.GoogleLogin;
 using MediatR;
 
 namespace CulinaryBlog.API.Endpoints;
@@ -35,16 +35,19 @@ public static class AuthEndpoints
             return result.ToOkResponse();
         });
 
-        group.MapPost("/refresh", async (RefreshRequest request, HttpContext http, ISender sender) =>
+        // FR-AUTH-003: nhận Google ID Token frontend gửi lên (auth.ts gọi sau khi NextAuth nhận
+        // được account.id_token từ Google) → xác thực + tìm/tạo user → phát JWT giống hệt
+        // /login, /register để frontend dùng chung đúng 1 luồng session cho cả 3 cách đăng nhập.
+        group.MapPost("/google", async (GoogleLoginRequest request, HttpContext http, ISender sender) =>
         {
-            var command = new RefreshTokenCommand(request.RefreshToken, http.Connection.RemoteIpAddress?.ToString());
+            var command = new GoogleLoginCommand(request.IdToken, http.Connection.RemoteIpAddress?.ToString());
             var result = await sender.Send(command);
             return result.ToOkResponse();
         });
 
-       group.MapPost("/google", async (GoogleRequest request, HttpContext http, ISender sender) =>
+        group.MapPost("/refresh", async (RefreshRequest request, HttpContext http, ISender sender) =>
         {
-            var command = new GoogleLoginCommand(request.IdToken, http.Connection.RemoteIpAddress?.ToString());
+            var command = new RefreshTokenCommand(request.RefreshToken, http.Connection.RemoteIpAddress?.ToString());
             var result = await sender.Send(command);
             return result.ToOkResponse();
         });
@@ -114,8 +117,9 @@ public static class AuthEndpoints
 
     private record LoginRequest(string Email, string Password);
 
+    private record GoogleLoginRequest(string IdToken);
+
     private record RefreshRequest(string RefreshToken);
-    private record GoogleRequest(string IdToken);
 
     /// <summary>Body cho PATCH /auth/me — KHÔNG có UserId (chống sửa hồ sơ người khác).</summary>
     private record UpdateProfileRequest(string? DisplayName, string? AvatarUrl, string? Bio);

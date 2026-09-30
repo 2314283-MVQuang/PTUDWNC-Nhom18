@@ -15,7 +15,6 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using Serilog;
-using Npgsql;
 
 // Bootstrap logger: bắt lỗi xảy ra TRƯỚC khi builder.Host.UseSerilog() đọc được cấu hình từ
 // appsettings (vd sai connection string lúc AddDbContext) — không có bootstrap logger thì lỗi
@@ -42,6 +41,50 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 // ---------------------------------------------------------------------------
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// ---------------------------------------------------------------------------
+// Tuần 4: Output Cache backed bởi Redis (mâu thuẫn #3 — chỉ 1 tầng cache duy nhất, bỏ hẳn
+// IMemoryCache/CachingBehavior/CacheInvalidationBehavior khỏi mọi thiết kế về sau). Đăng ký ở đây
+// (API layer, Sdk.Web) chứ không phải Infrastructure — Infrastructure là class library thường,
+// không chắc có sẵn shared framework ASP.NET Core mà AddOutputCache()/OutputCachePolicyBuilder
+// cần. Policy TTL lấy đúng NFR-PERF-003 làm chuẩn duy nhất; người làm Category/Recipe/Search chỉ
+// cần gắn [OutputCache(PolicyName = "categories"|"RecipeDetail"|"Search")] (hoặc .CacheOutput(...)
+// như CategoryEndpoints.cs) lên endpoint GET của mình — KHÔNG tự cấu hình cache riêng. Invalidate
+// khi Create/Update/Delete: inject IOutputCacheStore rồi gọi
+// EvictByTagAsync("categories"|"recipes"|"search", ct) trong Command Handler tương ứng (tag đặt
+// sẵn trong policy dưới đây).
+// ---------------------------------------------------------------------------
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
+    ?? throw new InvalidOperationException(
+        "Thiếu cấu hình Redis:ConnectionString (xem appsettings.json / docker-compose.yml service \"redis\").");
+
+builder.Services.AddStackExchangeRedisOutputCache(options =>
+{
+    options.Configuration = redisConnectionString;
+    options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "culinaryblog:";
+});
+
+builder.Services.AddOutputCache(options =>
+{
+    // Category list: TTL 30 phút (NFR-PERF-003, "ít thay đổi"). Tên policy "categories" (chữ
+    // thường) khớp với .CacheOutput("categories") ở CategoryEndpoints.cs (FR-CAT-001) — ĐỪNG đổi
+    // tên nếu không sửa luôn bên đó.
+    options.AddPolicy("categories", policy => policy
+        .Expire(TimeSpan.FromMinutes(30))
+        .Tag("categories"));
+
+    // Recipe detail: TTL 5 phút (NFR-PERF-003, cache-aside pattern).
+    options.AddPolicy("RecipeDetail", policy => policy
+        .Expire(TimeSpan.FromMinutes(5))
+        .Tag("recipes"));
+
+    // Search: TTL 1 phút, vary theo TOÀN BỘ query string (q, category, sort, page...) — 2 query
+    // khác nhau không được dùng chung 1 bản cache (NFR-PERF-003 + mâu thuẫn #3).
+    options.AddPolicy("Search", policy => policy
+        .Expire(TimeSpan.FromMinutes(1))
+        .SetVaryByQuery("*")
+        .Tag("search"));
+});
 
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtSecret = jwtSection["Secret"]
@@ -86,14 +129,6 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddOpenApi();
 
-// TODO (nhóm làm tiếp — MT-03/04): hiện dùng in-memory store vì Redis chưa được dựng
-// (xem docker-compose.yml). Khi nhóm thêm Redis, chỉ cần đổi cấu hình store ở đây —
-// code Handler/Endpoint của Category KHÔNG cần sửa gì.
-builder.Services.AddOutputCache(options =>
-{
-    options.AddPolicy("categories", policy => policy.Expire(TimeSpan.FromMinutes(30)));
-});
-
 // Cho phép body JSON gửi/nhận enum dạng chuỗi (vd "Easy" thay vì số 1) — dễ đọc hơn khi test API.
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -103,7 +138,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // ---------------------------------------------------------------------------
 // FR-OBS-003 (Tuần 3): OpenTelemetry tracing cơ bản — instrument request HTTP đến (ASP.NET Core)
 // và HttpClient đi ra, cộng thêm trace các câu lệnh SQL qua Npgsql (cách thực tế để "thấy" EF
-// Core, vì EF Core không tự phát Activity riêng — mọi lệnh SQL cuối cùng đều qua Npgsql).
+// Core, vì EF Core không tự phát Activity riêng — mọi lệnh SQL cuối cùng đều qua Npgsql). Npgsql
+// tự phát Activity dưới ActivitySource tên "Npgsql" SẴN (từ Npgsql 6+, không cần gói riêng) —
+// AddSource("Npgsql") chỉ là "đăng ký nghe" nguồn đó, KHÔNG dùng AddNpgsql() (tên đó là của EF Core
+// Npgsql.EntityFrameworkCore.PostgreSQL, dùng để đăng ký DbContext, khác hoàn toàn mục đích).
 // Có cấu hình "OpenTelemetry:OtlpEndpoint" (vd collector/Tempo) → xuất qua OTLP; KHÔNG có (mặc
 // định máy dev chưa dựng collector) → in trace ra console để vẫn xem được, không mất tác dụng.
 // ---------------------------------------------------------------------------
@@ -116,7 +154,7 @@ builder.Services.AddOpenTelemetry()
         tracing
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
-            .AddNpgsql();
+            .AddSource("Npgsql");
 
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
@@ -170,6 +208,11 @@ app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Tuần 4: Output Cache middleware (backend Redis, đăng ký ở khối AddStackExchangeRedisOutputCache/
+// AddOutputCache phía trên). Đứng SAU UseAuthorization để endpoint cache vẫn tôn trọng phân quyền
+// trước khi phục vụ từ cache — chỉ endpoint nào tự gắn [OutputCache(PolicyName = "...")] mới bị
+// cache, các endpoint Auth/health ở dưới KHÔNG bị ảnh hưởng vì không gắn policy nào.
 app.UseOutputCache();
 
 app.MapAuthEndpoints();

@@ -23,11 +23,25 @@
     <PackageReference Include="Bogus" Version="35.6.1" />
     <!-- Tuần 3 (FR-OBS-001): health check PostgreSQL cho /health, /health/ready. -->
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
+    <!-- Tuần 4: health check Redis — /health tổng hợp giờ phản ánh đúng cả 2 dependency ngoài
+         (Postgres + Redis) theo đúng mô tả FR-OBS-001. -->
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
     <!-- Tuần 3 (FR-OBS-003): Npgsql tự phát Activity/trace cho mỗi câu lệnh SQL nó gửi xuống
-         PostgreSQL — đây là cách thực tế để có "EF Core traces" (EF Core không tự phát trace
-         riêng, mọi lệnh SQL cuối cùng đều đi qua Npgsql). Đăng ký nguồn trace này ở
-         API/Program.cs bằng tracerBuilder.AddNpgsql(). -->
-    <PackageReference Include="Npgsql.OpenTelemetry" Version="10.0.0" />
+         PostgreSQL (ActivitySource tên "Npgsql") — đây là cách thực tế để có "EF Core traces" (EF
+         Core không tự phát trace riêng, mọi lệnh SQL cuối cùng đều đi qua Npgsql). Npgsql tự phát
+         Activity này SẴN kể từ Npgsql 6+, KHÔNG cần gói riêng — chỉ cần đăng ký nguồn trace ở
+         API/Program.cs bằng tracerBuilder.AddSource("Npgsql") (xem tài liệu chính thức Npgsql:
+         npgsql.org/doc/diagnostics/tracing.html). Gói "Npgsql.OpenTelemetry" (bản scaffold ban đầu
+         đoán tên khi không có internet tra NuGet) KHÔNG cung cấp đúng API tracerBuilder.AddNpgsql()
+         như tưởng — đã gỡ để tránh nhầm lẫn với NpgsqlServiceCollectionExtensions.AddNpgsql<TContext>
+         (EF Core, dùng để đăng ký DbContext, khác hoàn toàn mục đích). -->
+    <!-- Tuần 4: Output Cache backed bởi Redis (mâu thuẫn #3 — chỉ 1 tầng cache duy nhất, bỏ hẳn
+         IMemoryCache/CachingBehavior/CacheInvalidationBehavior). Gói chính thức của Microsoft,
+         cùng họ phiên bản với ASP.NET Core nên pin theo net10.0. -->
+    <PackageReference Include="Microsoft.AspNetCore.OutputCaching.StackExchangeRedis" Version="10.0.0" />
+    <!-- FR-AUTH-003: xác thực Google ID Token (GoogleTokenValidator) — thư viện chính thức của
+         Google, không phụ thuộc ASP.NET Core nên dùng được bình thường trong class library này. -->
+    <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
   </ItemGroup>
 
   <ItemGroup>

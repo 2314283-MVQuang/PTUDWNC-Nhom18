@@ -44,4 +44,35 @@ public static class RoleSeeder
             }
         }
     }
+
+    public static async Task SeedDefaultAdminAsync(
+        UserManager<CulinaryBlog.Domain.Entities.ApplicationUser> userManager,
+        ILogger logger)
+    {
+        var adminEmail = "admin@culinaryblog.local";
+        var existing = await userManager.FindByEmailAsync(adminEmail);
+        if (existing is null)
+        {
+            var adminUser = new CulinaryBlog.Domain.Entities.ApplicationUser
+            {
+                UserName = "admin",
+                Email = adminEmail,
+                DisplayName = "Quản trị viên",
+                EmailConfirmed = true,
+                IsActive = true
+            };
+            var result = await userManager.CreateAsync(adminUser, "Admin@123");
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+                await userManager.AddToRoleAsync(adminUser, "Author");
+                logger.LogInformation("RoleSeeder: đã tạo tài khoản Admin mặc định {Email}.", adminEmail);
+            }
+            else
+            {
+                logger.LogError("RoleSeeder: không tạo được tài khoản Admin: {Errors}",
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+        }
+    }
 }

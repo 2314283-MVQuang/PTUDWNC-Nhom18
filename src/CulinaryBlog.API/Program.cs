@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using CulinaryBlog.API.Endpoints;
@@ -68,6 +69,7 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = ClaimTypes.Role,
         };
     });
 
@@ -133,8 +135,14 @@ var app = builder.Build();
 // ---------------------------------------------------------------------------
 using (var roleSeedScope = app.Services.CreateScope())
 {
+    var db = roleSeedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
+    await db.Database.EnsureCreatedAsync();
+
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
+
+    var userManager = roleSeedScope.ServiceProvider.GetRequiredService<UserManager<CulinaryBlog.Domain.Entities.ApplicationUser>>();
+    await RoleSeeder.SeedDefaultAdminAsync(userManager, app.Logger);
 }
 
 // ---------------------------------------------------------------------------

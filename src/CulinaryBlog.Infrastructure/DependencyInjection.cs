@@ -24,9 +24,10 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
 
         // --- Repositories ---
-        // CHỈ giữ lại những gì FR-AUTH cần. ICategoryRepository/IRecipeRepository đã gỡ cùng module
+        // CHỈ giữ lại những gì FR-AUTH cần. ICategoryRepository đã gỡ cùng module
         // Category/Recipe (xem ghi chú trong Program.cs) — sẽ đăng ký lại khi nhóm triển khai tiếp.
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IRecipeRepository, RecipeRepository>();
 
         // Repository generic cho các entity con (RecipeStep/RecipeIngredient/RecipeImage): Handler
         // chỉ cần Remove()/AddAsync() một dòng con nên không đáng viết repository chuyên biệt cho

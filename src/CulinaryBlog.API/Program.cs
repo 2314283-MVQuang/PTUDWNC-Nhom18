@@ -15,6 +15,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using Serilog;
+using Npgsql;
 
 // Bootstrap logger: bắt lỗi xảy ra TRƯỚC khi builder.Host.UseSerilog() đọc được cấu hình từ
 // appsettings (vd sai connection string lúc AddDbContext) — không có bootstrap logger thì lỗi
@@ -172,6 +173,7 @@ app.UseAuthorization();
 app.UseOutputCache();
 
 app.MapAuthEndpoints();
+app.MapRecipeEndpoints();
 app.MapCategoryEndpoints();
 app.MapHealthEndpoints();
 

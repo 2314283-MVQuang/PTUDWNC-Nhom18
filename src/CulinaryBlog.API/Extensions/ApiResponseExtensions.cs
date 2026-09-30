@@ -10,6 +10,16 @@ public static class ApiResponseExtensions
 {
     public static IResult ToOkResponse<T>(this T data) => Results.Ok(new { data });
 
+    public static IResult ToCreatedResponse<T>(
+        this T data,
+        string location) =>
+        Results.Created(
+            location,
+            new
+            {
+                data
+            });
+
     public static IResult ToPagedResponse<T>(this PagedResult<T> paged) =>
         Results.Ok(new
         {

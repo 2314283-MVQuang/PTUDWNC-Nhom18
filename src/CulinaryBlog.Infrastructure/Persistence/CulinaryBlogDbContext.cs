@@ -74,6 +74,12 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
     /// <inheritdoc />
     public async Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken ct = default)
     {
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            await action();
+            return;
+        }
+
         await using var transaction = await Database.BeginTransactionAsync(ct);
 
         await action();

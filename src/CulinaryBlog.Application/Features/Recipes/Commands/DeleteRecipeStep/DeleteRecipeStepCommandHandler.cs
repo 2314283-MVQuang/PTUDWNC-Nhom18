@@ -38,8 +38,10 @@ public class DeleteRecipeStepCommandHandler(
             throw new NotFoundException(nameof(RecipeStep), request.StepId);
         }
 
-        // Soft delete bước cần xóa
+        // Soft delete bước cần xóa: gán số âm duy nhất để không đụng unique index (RecipeId, StepNumber)
         step.IsDeleted = true;
+        step.StepNumber = -Math.Abs(step.Id.GetHashCode());
+        if (step.StepNumber == 0) step.StepNumber = -10000;
         steps.Update(step);
 
         var remainingSteps = await steps.Query()

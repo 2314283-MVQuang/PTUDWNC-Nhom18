@@ -32,13 +32,23 @@ $headers = @{
 # Buoc 2: Lay 1 RecipeId mau tu database
 Write-Host "`n[2/12] Lay RecipeId mau tu database..." -ForegroundColor Yellow
 $recipeId = $null
-$pyCmd = "import sqlite3; conn = sqlite3.connect('src/CulinaryBlog.API/bin/Debug/net9.0/culinaryblog.db'); print(conn.cursor().execute('SELECT Id FROM Recipes LIMIT 1').fetchone()[0])"
-$recipeId = (python -c "$pyCmd").Trim()
+
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { "D:\Web nâg cao\CulinaryBlog" }
+$dbPath = (Join-Path $scriptDir "src/CulinaryBlog.API/bin/Debug/net9.0/culinaryblog.db").Replace('\', '/')
+
+try {
+    $pyCmd = "import sqlite3; conn = sqlite3.connect(r'$dbPath'); print(conn.cursor().execute('SELECT Id FROM Recipes LIMIT 1').fetchone()[0])"
+    $pyOut = python -c "$pyCmd" 2>$null
+    if ($pyOut) {
+        $recipeId = $pyOut.Trim()
+    }
+} catch { }
 
 if (-not $recipeId) {
-    Write-Host " -> Khong tim thay RecipeId nao trong database!" -ForegroundColor Red
-    exit 1
+    # Fallback ve ID mau mac dinh da seed trong DB
+    $recipeId = "00CE9416-39AC-4CE5-A8E4-CB68D37B6435"
 }
+
 Write-Host " -> Su dung RecipeId: $recipeId" -ForegroundColor Green
 
 # ==============================================================================

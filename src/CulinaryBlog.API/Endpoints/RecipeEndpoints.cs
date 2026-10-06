@@ -19,7 +19,7 @@ public static class RecipeEndpoints
             return Results.Ok(recipes);
         })
         .WithName("SearchRecipes")
-        .WithSummary("Search recipes using Vietnamese full-text search")
+        .WithSummary("Full-text Search Recipes")
         .WithDescription("Search recipe titles and descriptions, ignoring Vietnamese diacritics.")
         .Produces(StatusCodes.Status200OK);
     }

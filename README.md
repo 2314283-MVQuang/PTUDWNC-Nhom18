@@ -318,7 +318,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(auth): Tuan 3 - Quang lam Auth nang cao (change/forgot/reset password, confirm email, role seeder) + Observability (Serilog->Seq, OpenTelemetry, health checks)`
 
-**Chung Thiện Ý · Recipe CRUD cơ bản (Create/Read)** — ⬜ Đang làm
+**Chung Thiện Ý · Recipe CRUD cơ bản (Create/Read)** — ✅ Đã hoàn thành
 
 - **Cần làm:** entity `Recipe`/`RecipeStep`/`RecipeIngredient` + migration; `CreateRecipeCommand`, `GetRecipeByIdQuery`, `GetRecipesQuery`; **bắt buộc thêm** `IRecipeRepository`/`RecipeRepository` (interface này từng có trong scaffold gốc rồi bị gỡ khỏi `main` để Ý tự làm lại) và `RecipeNotFoundException`.
 
@@ -358,7 +358,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Lưu ý:** đây là việc hạ tầng/CI, **không phát sinh endpoint mới** — không tính vào yêu cầu "đủ endpoint" của tuần này; 4 endpoint Auth nâng cao của Tuần 3 vẫn giữ nguyên, không có cái nào dở dang.
 
-**Chung Thiện Ý · Recipe Update + concurrency; slug** — ⬜ Chưa làm
+**Chung Thiện Ý · Recipe Update + concurrency; slug** — ✅ Đã hoàn thành
 
 - **Cần làm:** `UpdateRecipeCommand` [Author-Owner/Admin] dùng `RowVersion` (concurrency token); bắt `DbUpdateConcurrencyException` khi `SaveChanges` → map sang **409 Conflict** (mâu thuẫn #5); slug trùng thì tự thêm hậu tố (mâu thuẫn #6).
 

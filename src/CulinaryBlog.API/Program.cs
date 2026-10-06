@@ -4,6 +4,7 @@ using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.API.Middleware;
 using CulinaryBlog.Application;
+using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Seed;
@@ -200,6 +201,10 @@ if (app.Environment.IsDevelopment())
     {
         var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
         await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
+
+        // Tài khoản Admin THẬT trong DB (chỉ Development) để test API cần quyền Admin.
+        var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        await RoleSeeder.SeedDevAdminAsync(userManager, app.Logger);
     }
 }
 

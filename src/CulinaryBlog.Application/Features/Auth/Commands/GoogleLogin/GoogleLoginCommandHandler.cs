@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Auth.Dtos;
 using CulinaryBlog.Domain.Entities;
@@ -43,13 +44,17 @@ public class GoogleLoginCommandHandler(
             var createResult = await userManager.CreateAsync(user); // không kèm password
             if (!createResult.Succeeded)
             {
-                var errors = createResult.Errors
-                    .GroupBy(e => e.Code, e => e.Description)
-                    .ToDictionary(g => g.Key, g => g.ToArray());
-                throw new Common.Exceptions.ValidationException(errors);
+                throw ToValidationException(createResult);
             }
 
-            await userManager.AddToRoleAsync(user, DefaultRole);
+            // Role "Admin"/"Author" phải tồn tại sẵn trong AspNetRoles (RoleSeeder.SeedRolesAsync
+            // chạy ở Program.cs lúc khởi động) — kiểm tra kết quả giống RegisterCommandHandler,
+            // không âm thầm bỏ qua lỗi gán role.
+            var addToRoleResult = await userManager.AddToRoleAsync(user, DefaultRole);
+            if (!addToRoleResult.Succeeded)
+            {
+                throw ToValidationException(addToRoleResult);
+            }
         }
 
         var roles = await userManager.GetRolesAsync(user);
@@ -73,5 +78,14 @@ public class GoogleLoginCommandHandler(
             rawRefreshToken,
             jwtService.AccessTokenLifetimeSeconds,
             new UserProfileDto(user.Id, user.Email!, user.DisplayName, user.AvatarUrl, user.Bio, roles));
+    }
+
+    private static ValidationException ToValidationException(IdentityResult result)
+    {
+        var errors = result.Errors
+            .GroupBy(e => e.Code, e => e.Description)
+            .ToDictionary(g => g.Key, g => g.ToArray());
+
+        return new ValidationException(errors);
     }
 }

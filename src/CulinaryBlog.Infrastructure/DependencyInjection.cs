@@ -61,6 +61,11 @@ public static class DependencyInjection
         services.AddScoped<IJwtService, JwtService>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUserService>();
+
+        // --- Google OAuth (FR-AUTH-003) ---
+        // Xác thực Google ID Token mà frontend (Auth.js) gửi lên POST /auth/google. "Google:ClientId"
+        // (appsettings.json) PHẢI trùng AUTH_GOOGLE_ID bên frontend (.env.local) — đây là "audience"
+        // Google gắn vào token lúc phát hành, sai giá trị này thì token hợp lệ vẫn bị từ chối.
         services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.SectionName));
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 
@@ -69,15 +74,37 @@ public static class DependencyInjection
         // IFileStorageService đã gỡ cùng module Recipe (upload ảnh công thức, không thuộc FR-AUTH).
         services.AddScoped<IEmailService, ConsoleEmailService>();
 
-        // --- Health checks (FR-OBS-001, Tuần 3) ---
-        // "postgresql" gắn tag "ready" — dùng cho /health/ready (app đã sẵn sàng nhận traffic
-        // chưa, CÓ kiểm tra dependency ngoài). /health/live KHÔNG chạy check nào (xem
+        // --- Redis (Tuần 4) ---
+        // Mâu thuẫn #3 (xem phan-tich-mau-thuan-SRS): chỉ dùng 1 tầng cache duy nhất — ASP.NET Core
+        // Output Cache middleware ở Presentation layer, backend bằng Redis (NFR-SCALE-001: cấm
+        // IMemoryCache vì không "distributed" khi chạy nhiều instance). KHÔNG dùng
+        // CachingBehavior/CacheInvalidationBehavior trong MediatR pipeline nữa — 2 lớp đó CHƯA từng
+        // được viết trong repo này (module Category/Recipe chưa code tới lúc gỡ mâu thuẫn), nên
+        // không có gì phải xoá, chỉ cần KHÔNG ai viết lại kiểu cache đó khi làm Category/Recipe sau.
+        // AddStackExchangeRedisOutputCache() + AddOutputCache() (policy TTL theo NFR-PERF-003) đăng
+        // ký ở API/Program.cs, không phải ở đây — 2 API đó thuộc ASP.NET Core shared framework, chỉ
+        // Sdk.Web (project API) chắc chắn có sẵn, project Infrastructure này là class library
+        // thường (Sdk "Microsoft.NET.Sdk"). Ở đây chỉ giữ connection string dùng chung cho health
+        // check Redis ngay dưới.
+        var redisConnectionString = configuration["Redis:ConnectionString"]
+            ?? throw new InvalidOperationException(
+                "Thiếu cấu hình Redis:ConnectionString (xem appsettings.json / docker-compose.yml service \"redis\").");
+
+        // --- Health checks (FR-OBS-001, Tuần 3 + Tuần 4) ---
+        // "postgresql"/"redis" gắn tag "ready" — dùng cho /health/ready (app đã sẵn sàng nhận
+        // traffic chưa, CÓ kiểm tra dependency ngoài). /health/live KHÔNG chạy check nào (xem
         // API/Endpoints/HealthEndpoints.cs) nên không cần đăng ký gì thêm ở đây cho liveness.
+        //
+        // NFR-REL-002: "Redis down → fallback database (không cache), không throw exception" — vì
+        // vậy connection string Redis có "abortConnect=false" (đặt ở appsettings.json/docker-compose)
+        // để app KHÔNG crash lúc khởi động nếu Redis tạm thời chưa sẵn sàng; health check "redis" ở
+        // đây chỉ để BÁO TRẠNG THÁI qua /health/ready, không làm app sập.
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Thiếu ConnectionStrings:DefaultConnection.");
 
         services.AddHealthChecks()
-            .AddNpgSql(connectionString, name: "postgresql", tags: ["ready"]);
+            .AddNpgSql(connectionString, name: "postgresql", tags: ["ready"])
+            .AddRedis(redisConnectionString, name: "redis", tags: ["ready"]);
 
         return services;
     }

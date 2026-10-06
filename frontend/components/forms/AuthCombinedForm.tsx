@@ -32,13 +32,6 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // Điền nhanh tài khoản mẫu
-  function handleQuickFill(acc: string, pass: string) {
-    setLoginAccount(acc);
-    setLoginPassword(pass);
-    setLoginError(null);
-  }
-
   // Xử lý Đăng nhập
   async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -186,42 +179,6 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
       {/* ======================= TAB ĐĂNG NHẬP ======================= */}
       {tab === "login" && (
         <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
-          {/* Hộp tài khoản mẫu trong đề bài */}
-          <div className="rounded-xl border border-brand-200 bg-brand-50/90 p-3.5 text-xs text-neutral-700 shadow-xs">
-            <p className="font-semibold text-brand-900 mb-2 flex items-center gap-1.5">
-              <span>🔑</span> Tài khoản mẫu trong đề bài (Bấm để điền nhanh):
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill("admin@culinaryblog.local", "Admin@123")}
-                className="flex items-center justify-between rounded-lg border border-brand-200 bg-white p-2.5 text-left hover:border-brand-400 hover:bg-brand-50/50 transition-colors shadow-2xs cursor-pointer"
-              >
-                <div>
-                  <div className="font-semibold text-neutral-800">admin@culinaryblog.local</div>
-                  <div className="text-[11px] text-neutral-500 font-mono">Mật khẩu: Admin@123 (Quyền: Admin)</div>
-                </div>
-                <span className="text-[11px] font-semibold text-brand-700 bg-brand-100 px-2.5 py-1 rounded-md">
-                  Điền ngay
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickFill("author@culinaryblog.local", "Author@123")}
-                className="flex items-center justify-between rounded-lg border border-brand-200 bg-white p-2.5 text-left hover:border-brand-400 hover:bg-brand-50/50 transition-colors shadow-2xs cursor-pointer"
-              >
-                <div>
-                  <div className="font-semibold text-neutral-800">author@culinaryblog.local</div>
-                  <div className="text-[11px] text-neutral-500 font-mono">Mật khẩu: Author@123 (Quyền: Author)</div>
-                </div>
-                <span className="text-[11px] font-semibold text-brand-700 bg-brand-100 px-2.5 py-1 rounded-md">
-                  Điền ngay
-                </span>
-              </button>
-            </div>
-          </div>
-
           {loginError && (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {loginError}
@@ -254,6 +211,15 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
             Đăng nhập
           </Button>
 
+          <div className="relative py-1 text-center text-xs text-neutral-400">
+            <span className="relative z-10 bg-white px-2">hoặc</span>
+            <div className="absolute inset-x-0 top-1/2 -z-0 border-t border-neutral-200" />
+          </div>
+
+          <Button type="button" variant="outline" onClick={() => signIn("google", { callbackUrl })}>
+            Đăng nhập với Google
+          </Button>
+
           <p className="text-center text-xs text-neutral-500 mt-1">
             Chưa có tài khoản?{" "}
             <button
@@ -270,11 +236,6 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
       {/* ======================= TAB ĐĂNG KÝ ======================= */}
       {tab === "register" && (
         <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4">
-          <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-xs text-blue-900">
-            <p className="font-semibold mb-1">📝 Hướng dẫn đăng ký nhanh:</p>
-            <p>Nhập tên tài khoản bất kỳ (vd: <span className="font-mono font-bold">2312</span>), mật khẩu (vd: <span className="font-mono font-bold">123</span>) và xác minh lại mật khẩu. Sau khi đăng ký xong tài khoản sẽ được lưu để bạn đăng nhập.</p>
-          </div>
-
           {regError && (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {regError}

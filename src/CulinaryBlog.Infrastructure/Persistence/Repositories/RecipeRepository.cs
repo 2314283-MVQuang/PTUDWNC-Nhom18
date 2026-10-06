@@ -7,7 +7,7 @@ namespace CulinaryBlog.Infrastructure.Persistence.Repositories;
 /// <summary>
 /// Cài đặt truy vấn đặc thù cho Recipe.
 /// CRUD cơ bản dùng lại RepositoryBase.
-////// </summary>
+/// </summary>
 public class RecipeRepository(CulinaryBlogDbContext dbContext)
     : RepositoryBase<Recipe>(dbContext), IRecipeRepository
 {
@@ -50,5 +50,15 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
         }
 
         return query.AnyAsync(ct);
+    }
+
+    public void SetOriginalRowVersion(
+        Recipe recipe,
+        byte[] expectedRowVersion)
+    {
+        DbContext
+            .Entry(recipe)
+            .Property(x => x.RowVersion)
+            .OriginalValue = expectedRowVersion;
     }
 }

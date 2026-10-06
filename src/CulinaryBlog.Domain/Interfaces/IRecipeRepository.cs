@@ -34,4 +34,12 @@ public interface IRecipeRepository : IRepository<Recipe>
         string slug,
         Guid? excludeRecipeId = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Đặt RowVersion mà client đã đọc thành OriginalValue của EF Core.
+    /// Nhờ đó UPDATE sẽ có điều kiện concurrency theo RowVersion cũ.
+    /// </summary>
+    void SetOriginalRowVersion(
+        Recipe recipe,
+        byte[] expectedRowVersion);
 }

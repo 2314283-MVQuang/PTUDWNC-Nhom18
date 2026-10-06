@@ -26,6 +26,7 @@ public static class DependencyInjection
         // --- Repositories ---
         // --- Module-specific repositories ---
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IRecipeRepository, RecipeRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ISlugGenerator, SlugGenerator>();
 

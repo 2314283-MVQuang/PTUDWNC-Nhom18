@@ -11,11 +11,10 @@ namespace CulinaryBlog.Infrastructure.Persistence;
 /// IdentityDbContext&lt;ApplicationUser&gt; tự tạo đủ 7 bảng Identity chuẩn (AspNetUsers,
 /// AspNetRoles, AspNetUserRoles...) đúng tên như trong db/init/02-schema.sql.
 ///
-/// LƯU Ý QUAN TRỌNG: DbContext này KHÔNG map cột "SearchVector" (tsvector) của bảng Recipes —
-/// cột đó do trigger PostgreSQL "trg_Recipes_search_vector" tự quản lý hoàn toàn (xem
-/// db/init/02-schema.sql). Nếu sau này nhóm chuyển sang dùng "dotnet ef migrations add" để tự
-/// sinh schema (thay vì chạy sẵn db/init/*.sql), migration đầu tiên sẽ THIẾU cột này và trigger —
-/// xem hướng dẫn phối hợp ở "db/README.md" mục cuối trước khi làm.
+/// Cột "SearchVector" (tsvector) của Recipes được map dưới dạng shadow property để truy vấn
+/// full-text search có thể tận dụng GIN index. Giá trị vẫn do trigger PostgreSQL
+/// "trg_Recipes_search_vector" quản lý (xem db/init/02-schema.sql). Nếu sau này chuyển sang
+/// EF migrations, cần bảo đảm cột, index và trigger tương ứng được tạo trong migration.
 /// </summary>
 public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> options)
     : IdentityDbContext<ApplicationUser>(options), IUnitOfWork

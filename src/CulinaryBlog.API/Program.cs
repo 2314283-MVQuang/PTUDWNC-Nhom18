@@ -103,5 +103,6 @@ app.UseAuthorization();
 
 app.MapAuthEndpoints();
 app.MapCategoryEndpoints();
+app.MapRecipeEndpoints();
 
 app.Run();

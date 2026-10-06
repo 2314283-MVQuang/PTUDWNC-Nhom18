@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 
 namespace CulinaryBlog.Infrastructure.Persistence.Repositories;
 
@@ -19,10 +20,8 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
         var normalizedKeyword = keyword.Trim();
         var recipes =
             from recipe in DbContext.Recipes.AsNoTracking()
-            let searchVector = EF.Functions.ToTsVector("simple", EF.Functions.Unaccent(recipe.Title))
-            let searchQuery = EF.Functions.WebSearchToTsQuery(
-                "simple",
-                EF.Functions.Unaccent(normalizedKeyword))
+            let searchVector = EF.Property<NpgsqlTsVector>(recipe, "SearchVector")
+            let searchQuery = EF.Functions.WebSearchToTsQuery("vietnamese", EF.Functions.Unaccent(normalizedKeyword))
             where searchVector.Matches(searchQuery)
             orderby searchVector.Rank(searchQuery) descending
             select recipe;

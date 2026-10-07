@@ -1,7 +1,6 @@
 using CulinaryBlog.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using NpgsqlTypes;
 
 namespace CulinaryBlog.Infrastructure.Persistence.Configurations;
 
@@ -45,9 +44,8 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
         });
         builder.Navigation(x => x.Nutrition).IsRequired();
 
-        builder.Property<NpgsqlTsVector>("SearchVector")
-            .HasColumnType("tsvector")
-            .ValueGeneratedOnAddOrUpdate();
+        // KHÔNG map cột "SearchVector" — trigger PostgreSQL tự quản lý hoàn toàn (xem
+        // db/init/02-schema.sql và ghi chú ở đầu CulinaryBlogDbContext.cs).
 
         builder.HasIndex(x => x.CategoryId);
         builder.HasIndex(x => x.AuthorId);

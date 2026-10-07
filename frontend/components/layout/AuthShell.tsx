@@ -6,7 +6,7 @@ interface AuthShellProps {
   title: string;
   subtitle: string;
   /** Dòng chữ + link ở cuối thẻ, vd. "Chưa có tài khoản? Đăng ký". */
-  footer: React.ReactNode;
+  footer?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -69,13 +69,13 @@ export function AuthShell({ title, subtitle, footer, children }: AuthShellProps)
 
       {/* ----- Cột phải: form ----- */}
       <main className="flex items-center justify-center px-4 py-12 sm:px-8">
-        <div className="w-full max-w-sm animate-fade-up">
-          <div className="rounded-card-lg border border-brand-100 bg-white p-8 shadow-lift">
+        <div className="w-full max-w-md animate-fade-up">
+          <div className="rounded-card-lg border border-brand-100 bg-white p-6 sm:p-8 shadow-lift">
             <h1 className="text-center font-display text-2xl font-bold text-neutral-900">{title}</h1>
             <p className="mt-2 text-center text-sm text-neutral-500">{subtitle}</p>
-            <div className="mt-7">{children}</div>
+            <div className="mt-6">{children}</div>
           </div>
-          <p className="mt-5 text-center text-sm text-neutral-500">{footer}</p>
+          {footer && <p className="mt-5 text-center text-sm text-neutral-500">{footer}</p>}
         </div>
       </main>
     </div>

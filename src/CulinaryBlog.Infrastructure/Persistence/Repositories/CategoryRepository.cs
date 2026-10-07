@@ -1,4 +1,4 @@
-    using CulinaryBlog.Domain.Entities;
+using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 

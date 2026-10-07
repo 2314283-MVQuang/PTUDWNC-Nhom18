@@ -13,10 +13,18 @@ namespace CulinaryBlog.API.Middleware;
 /// CONS-005: response lỗi PHẢI theo RFC 7807 (application/problem+json).
 /// TODO (nhóm làm tiếp): bổ sung mã lỗi chi tiết (RECIPE_CONCURRENCY_CONFLICT,
 /// CATEGORY_DELETE_HAS_RECIPES...) theo bảng mục 10.2 vào field "type"/"extensions" khi cần.
+/// 
+/// Middleware toàn cục:
+/// Application exception
+/// -> HTTP status
+/// -> RFC 7807 ProblemDetails.
 /// </summary>
-public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+public class GlobalExceptionMiddleware(
+    RequestDelegate next,
+    ILogger<GlobalExceptionMiddleware> logger)
 {
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(
+        HttpContext context)
     {
         try
         {
@@ -24,52 +32,148 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(
+                context,
+                ex);
         }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private async Task HandleExceptionAsync(
+        HttpContext context,
+        Exception exception)
     {
-        var (statusCode, title) = exception switch
-        {
-            ValidationException => (422, "Dữ liệu không hợp lệ"),
-            CategoryNotFoundException => ((int)HttpStatusCode.NotFound, "Không tìm thấy tài nguyên"),
-            NotFoundException => ((int)HttpStatusCode.NotFound, "Không tìm thấy tài nguyên"),
-            ConflictException => ((int)HttpStatusCode.Conflict, "Xung đột dữ liệu"),
-            ForbiddenAccessException => ((int)HttpStatusCode.Forbidden, "Không có quyền truy cập"),
-            UnauthorizedException => ((int)HttpStatusCode.Unauthorized, "Không được xác thực"),
-            LockedOutException => (423, "Tài khoản tạm khóa"),
-            _ => ((int)HttpStatusCode.InternalServerError, "Lỗi hệ thống"),
-        };
+        var (statusCode, title, type) =
+            exception switch
+            {
+                RecipeNotFoundException =>
+                    (
+                        (int)HttpStatusCode.NotFound,
+                        "Không tìm thấy công thức",
+                        "RECIPE_NOT_FOUND"
+                    ),
 
-        if (statusCode == (int)HttpStatusCode.InternalServerError)
+                RecipeConcurrencyConflictException =>
+                    (
+                        (int)HttpStatusCode.Conflict,
+                        "Dữ liệu Recipe đã bị thay đổi",
+                        "RECIPE_CONCURRENCY_CONFLICT"
+                    ),
+
+                CategoryNotFoundException =>
+                    (
+                        (int)HttpStatusCode.NotFound,
+                        "Không tìm thấy danh mục",
+                        "CATEGORY_NOT_FOUND"
+                    ),
+
+                InvalidFileException =>
+                    (
+                        (int)HttpStatusCode.BadRequest,
+                        "Tệp tin không hợp lệ",
+                        "FILE_INVALID"
+                    ),
+
+                ValidationException =>
+                    (
+                        422,
+                        "Dữ liệu không hợp lệ",
+                        "VALIDATION_ERROR"
+                    ),
+
+                NotFoundException =>
+                    (
+                        (int)HttpStatusCode.NotFound,
+                        "Không tìm thấy tài nguyên",
+                        "RESOURCE_NOT_FOUND"
+                    ),
+
+                ConflictException =>
+                    (
+                        (int)HttpStatusCode.Conflict,
+                        "Xung đột dữ liệu",
+                        "CONFLICT"
+                    ),
+
+                ForbiddenAccessException =>
+                    (
+                        (int)HttpStatusCode.Forbidden,
+                        "Không có quyền truy cập",
+                        "FORBIDDEN"
+                    ),
+
+                UnauthorizedException =>
+                    (
+                        (int)HttpStatusCode.Unauthorized,
+                        "Không được xác thực",
+                        "UNAUTHORIZED"
+                    ),
+
+                LockedOutException =>
+                    (
+                        423,
+                        "Tài khoản tạm khóa",
+                        "ACCOUNT_LOCKED"
+                    ),
+
+                _ =>
+                    (
+                        (int)HttpStatusCode.InternalServerError,
+                        "Lỗi hệ thống",
+                        "INTERNAL_SERVER_ERROR"
+                    )
+            };
+
+        if (statusCode ==
+            (int)HttpStatusCode.InternalServerError)
         {
-            // Không lộ stack trace ra ngoài (mục 5.3) — chỉ log nội bộ.
-            logger.LogError(exception, "Lỗi không xác định khi xử lý {Path}", context.Request.Path);
+            logger.LogError(
+                exception,
+                "Lỗi không xác định khi xử lý {Path}",
+                context.Request.Path);
         }
         else
         {
-            logger.LogWarning(exception, "{StatusCode} khi xử lý {Path}: {Message}", statusCode, context.Request.Path, exception.Message);
+            logger.LogWarning(
+                exception,
+                "{StatusCode} khi xử lý {Path}: {Message}",
+                statusCode,
+                context.Request.Path,
+                exception.Message);
         }
 
-        var problemDetails = new ProblemDetails
-        {
-            Status = statusCode,
-            Title = title,
-            Detail = statusCode == (int)HttpStatusCode.InternalServerError
-                ? "Đã có lỗi xảy ra ở máy chủ. Vui lòng thử lại sau."
-                : exception.Message,
-            Instance = context.Request.Path,
-        };
+        var problemDetails =
+            new ProblemDetails
+            {
+                Type = type,
+                Status = statusCode,
+                Title = title,
+
+                Detail =
+                    statusCode ==
+                    (int)HttpStatusCode.InternalServerError
+
+                    ? "Đã có lỗi xảy ra ở máy chủ. " +
+                      "Vui lòng thử lại sau."
+
+                    : exception.Message,
+
+                Instance = context.Request.Path
+            };
 
         if (exception is ValidationException validationException)
         {
-            problemDetails.Extensions["errors"] = validationException.Errors;
+            problemDetails.Extensions["errors"] =
+                validationException.Errors;
         }
 
-        context.Response.StatusCode = statusCode;
-        context.Response.ContentType = "application/problem+json";
+        context.Response.StatusCode =
+            statusCode;
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(problemDetails));
+        context.Response.ContentType =
+            "application/problem+json";
+
+        await context.Response.WriteAsync(
+            JsonSerializer.Serialize(
+                problemDetails));
     }
 }

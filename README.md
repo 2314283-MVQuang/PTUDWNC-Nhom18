@@ -295,163 +295,88 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 ---
 
-### Buổi 3 — Module Quản lý Danh mục (FR-CAT, 5 FR)
+### Buổi 3 (Tuần 3) — Bắt đầu module riêng của từng người ✅ Quang xong · còn lại đang làm
 
-**Mục tiêu:** Admin quản trị được danh mục đầy đủ CRUD, có cache đúng chuẩn NFR-PERF-003, và Category sẵn sàng cho Recipe tham chiếu ở Buổi 4.
+> ⚠️ **Đã cập nhật:** nội dung "Module Quản lý Danh mục (FR-CAT, 5 FR)" chia round-robin cho cả 4 người (bản cũ) không còn đúng thực tế. Nhóm chạy theo mô hình **mỗi người ôm trọn 1 module riêng** (Auth nâng cao/Observability — Recipe — Category — File Upload), khớp với nhánh Git thật trên GitHub. Bảng chi tiết đầy đủ nằm ở [`spec/phan_cong_chi_tiet_theo_buoi.md`](spec/phan_cong_chi_tiet_theo_buoi.md) mục "Tuần 3".
 
-**Tiến trình trong buổi:**
-1. Quang dựng trước tầng Output Cache + Redis (áp **MT-03**, **MT-04**) vì cả 4 FR đọc/ghi của buổi này đều cần dùng chung một tầng cache.
-2. Bảo Thịnh làm FR-CAT-003 trước (tạo danh mục) để có dữ liệu mẫu cho Thiện Ý/Quang test FR-CAT-001/002.
-3. Quốc Tiến làm FR-CAT-004 sau khi `ISlugGenerator` của Bảo Thịnh merge xong (tái sử dụng lại).
-4. Quang làm FR-CAT-005 cuối buổi, áp **MT-02** (soft delete).
-5. Cuối buổi: gộp nhánh, kiểm tra cache bị xóa đúng sau mỗi lệnh ghi.
+#### Yêu cầu tối thiểu Tuần 3 (giáo viên) — cho mỗi thành viên
 
-**Commit nền — Mai Văn Quang dẫn · MT-03 & MT-04 (hợp nhất tầng cache)**
+| # | Yêu cầu (giáo viên) | Áp dụng ra sao |
+| :-: | :--- | :--- |
+| 1 | Hoàn thành cài đặt các lớp domain exceptions | Mỗi người tự thêm exception riêng cho module mình (vd `RecipeNotFoundException`, `CategoryNotFoundException`, `InvalidFileException`) |
+| 2 | Hoàn thành cài đặt các lớp repository & unit of work | Mỗi người tự viết `I<Module>Repository`/`<Module>Repository` riêng — dùng chung `IUnitOfWork` đã có sẵn từ kiến trúc gốc |
+| 3 | Hoàn thành ít nhất 2 API endpoint/thành viên | Tự nhiên đạt với Recipe (3 endpoint)/Category (3 endpoint); File Upload cần chủ động thêm 1 endpoint nữa cho đủ 2 |
+| 4 | Middleware bắt lỗi toàn cục trả về problem details | Dùng chung `GlobalExceptionMiddleware` đã có sẵn trên `main` từ Buổi 2 — không ai cần viết lại |
 
-- **Cách làm:** viết `RedisOutputCacheStore : IOutputCacheStore`; cấu hình `AddOutputCache` với policy riêng cho `categories` (TTL 30 phút) và `recipes` (TTL 5 phút, dùng ở Buổi 4); xóa hẳn code `IMemoryCache` còn sót trong khung dự án từ Buổi 1; bỏ `CachingBehavior`/`CacheInvalidationBehavior` khỏi pipeline MediatR nếu có.
+**Mai Văn Quang · Auth nâng cao + Observability** — ✅ Đã hoàn thành
 
-- **Vì sao:** NFR-SCALE-001 cấm `IMemoryCache` vì nó không đồng bộ giữa nhiều instance API; dựng cache một lần ở đây để các FR còn lại (và cả Recipe/Search sau này) chỉ cần gắn `[OutputCache(PolicyName = "...")]` chứ không ai phải tự viết lại cơ chế cache.
+- **Cách làm:** `ChangePasswordCommand`, `ForgotPasswordCommand`/`ResetPasswordCommand`, `ConfirmEmailCommand`; `RoleSeeder` seed role "Admin"/"Author" vào `AspNetRoles` ở MỌI environment (không chỉ Development); Serilog đọc cấu hình từ section `Serilog` (sink Console + Seq); OpenTelemetry instrument HTTP (ASP.NET Core + HttpClient) và SQL (Npgsql), xuất OTLP nếu có collector, ngược lại in ra console.
 
-- **Xong khi:** gọi `GET /categories` hai lần liên tiếp, lần hai có dấu hiệu cache-hit rõ rệt; tắt Redis thì API vẫn chạy (không cache) chứ không crash.
+- **Vì sao:** tách riêng đổi mật khẩu (đã đăng nhập) khỏi quên/đặt lại mật khẩu (chưa đăng nhập được) vì luồng xác thực khác nhau hoàn toàn; `RoleSeeder` phải chạy mọi environment vì thiếu nó thì `AddToRoleAsync(user, "Author")` lúc đăng ký sẽ lỗi ngay cả ở production.
 
-- **Commit:** `feat(infra): unify caching layer to redis output cache per SRS v1.1.0 MT-03 MT-04`
+- **Xong khi:** 4 endpoint mới chạy đúng qua Scalar; role "Admin"/"Author" tồn tại sẵn trong DB ngay sau lần khởi động đầu tiên; log có `CorrelationId`, trace xuất được ra Seq (dev) hoặc console.
 
-**Chung Thiện Ý · FR-CAT-001 Xem danh sách**
+- **Commit:** `feat(auth): Tuan 3 - Quang lam Auth nang cao (change/forgot/reset password, confirm email, role seeder) + Observability (Serilog->Seq, OpenTelemetry, health checks)`
 
-- **Cách làm:** `GetCategoriesQuery`/Handler gọi `ICategoryRepository.GetAllAsync` (chỉ lấy `IsDeleted = false`); gắn `[OutputCache(PolicyName = "categories")]` lên `GET /categories`.
+**Chung Thiện Ý · Recipe CRUD cơ bản (Create/Read)** — ✅ Đã hoàn thành
 
-- **Vì sao:** danh sách danh mục gần như không đổi trong ngày nên TTL 30 phút (theo MT-04) là hợp lý, giảm tải DB đáng kể cho trang chủ vốn gọi API này liên tục.
+- **Cần làm:** entity `Recipe`/`RecipeStep`/`RecipeIngredient` + migration; `CreateRecipeCommand`, `GetRecipeByIdQuery`, `GetRecipesQuery`; **bắt buộc thêm** `IRecipeRepository`/`RecipeRepository` (interface này từng có trong scaffold gốc rồi bị gỡ khỏi `main` để Ý tự làm lại) và `RecipeNotFoundException`.
 
-- **Xong khi:** `GET /categories` trả danh sách đúng, không có danh mục đã xóa mềm; lần gọi thứ hai trong 30 phút nhanh hơn rõ rệt.
+- **Xong khi (mục tiêu):** `POST /api/v1/recipes`, `GET /api/v1/recipes/{id}`, `GET /api/v1/recipes` chạy đúng; gọi id không tồn tại trả lỗi qua `GlobalExceptionMiddleware` (ProblemDetails, không phải 500 thô).
 
-- **Commit:** `feat(categories): implement FR-CAT-001 list with output cache`
+**Nguyễn Ngọc Bảo Thịnh · Category CRUD + soft delete** — ⬜ Đang làm
 
-**Mai Văn Quang · FR-CAT-002 Xem chi tiết (kèm recipe)**
+- **Cần làm:** `CreateCategoryCommand`/`UpdateCategoryCommand`/`DeleteCategoryCommand` (`IsDeleted = true`, không xóa vật lý); slug tự thêm hậu tố khi trùng; **bắt buộc thêm** `ICategoryRepository`/`CategoryRepository` (cũng bị gỡ khỏi `main` cùng lý do trên) và `CategoryNotFoundException`.
 
-- **Cách làm:** `GetCategoryByIdQuery` join sang `Recipes` theo `CategoryId`, chỉ lấy recipe đã publish (`Status = Published`); dùng `PaginatedList<T>` (định nghĩa sẵn để Buổi 6 dùng lại cho Search).
+- **Xong khi (mục tiêu):** `POST`/`PUT`/`DELETE /api/v1/categories/{id}` chạy đúng; xóa xong category biến mất khỏi `GET /categories` nhưng vẫn còn trong DB.
 
-- **Vì sao:** hiển thị cả recipe chưa publish trong trang danh mục công khai sẽ lộ nội dung nháp của tác giả khác — phải lọc status ngay ở query, không lọc ở frontend.
+**Hồ Quốc Tiến · Setup File Upload (MinIO)** — ⬜ Đang làm
 
-- **Xong khi:** `GET /categories/{id}` trả đúng thông tin danh mục kèm recipe đã publish, phân trang hoạt động; trả 404 nếu `id` không tồn tại hoặc đã xóa mềm.
+- **Cần làm:** tích hợp MinIO SDK .NET, sinh presigned URL cho client upload ảnh trực tiếp, validate loại/kích thước file; **bắt buộc thêm** (module này vốn không có repository tự nhiên): entity `UploadedFile` + `IUploadedFileRepository`/`UploadedFileRepository` lưu metadata mỗi lần cấp presigned URL, `InvalidFileException` khi sai loại/kích thước, và endpoint thứ 2 (`GET /api/v1/files/{id}`) bên cạnh `POST /api/v1/files/presigned-url` để đủ tối thiểu 2 endpoint.
 
-- **Commit:** `feat(categories): implement FR-CAT-002 detail with published recipes`
+- **Xong khi (mục tiêu):** xin được presigned URL và upload thành công lên MinIO; file sai định dạng/quá lớn bị chặn với lỗi rõ ràng qua middleware chung; metadata file lưu được vào DB.
 
-**Nguyễn Ngọc Bảo Thịnh · FR-CAT-003 Tạo danh mục**
-
-- **Cách làm:** `CreateCategoryCommand` [Admin] + Validator (`name` 2–100 ký tự, `imageUrl` optional); kiểm tra tên trùng trước khi ghi; viết `ISlugGenerator.GenerateUniqueAsync` sinh slug từ tên theo cách tái sử dụng được cho cả Recipe ở Buổi 4 (đúng tinh thần MT-06 — đồng bộ cơ chế).
-
-- **Vì sao:** dựng `ISlugGenerator` dùng chung ngay từ Category để Buổi 4 không phải viết lại logic tự thêm hậu tố cho Recipe.
-
-- **Xong khi:** Admin tạo được danh mục mới với slug hợp lệ; user thường gọi endpoint bị 403; đặt tên trùng bị chặn ở tầng Application, không rơi xuống lỗi DB 500.
-
-- **Commit:** `feat(categories): implement FR-CAT-003 create with reusable slug generator`
-
-**Hồ Quốc Tiến · FR-CAT-004 Cập nhật danh mục**
-
-- **Cách làm:** `UpdateCategoryCommand` [Admin]; nếu đổi tên khiến slug trùng danh mục khác thì gọi lại `ISlugGenerator.GenerateUniqueAsync` để tự thêm hậu tố (`-2`, `-3`...) thay vì trả lỗi.
-
-- **Vì sao:** áp đúng nghị quyết MT-06 (đã chọn tự thêm hậu tố thay vì chặn 409) — trải nghiệm Admin không bị gián đoạn khi đặt trùng tên.
-
-- **Xong khi:** cập nhật tên trùng danh mục khác vẫn lưu thành công, slug tự đổi; cache `categories:*` bị xóa ngay sau khi cập nhật.
-
-- **Commit:** `feat(categories): implement FR-CAT-004 update with slug auto-suffix`
-
-**Mai Văn Quang · FR-CAT-005 Xóa danh mục**
-
-- **Cách làm:** áp MT-02: `DeleteCategoryCommand` [Admin] chỉ set `IsDeleted = true`; thêm Global Query Filter (`HasQueryFilter(c => !c.IsDeleted)`) trong `CategoryConfiguration` để mọi query khác tự động ẩn danh mục đã xóa mà không ai phải nhớ tự lọc.
-
-- **Vì sao:** Global Query Filter là cách an toàn nhất để đảm bảo "xóa mềm" thực sự ẩn dữ liệu ở mọi nơi — nếu để từng handler tự lọc `IsDeleted`, chỉ cần quên một chỗ là dữ liệu đã xóa lại lộ ra.
-
-- **Xong khi:** `DELETE /categories/{id}` xong thì danh mục biến mất khỏi mọi endpoint đọc, nhưng vẫn còn trong DB (kiểm tra trực tiếp bằng `psql`).
-
-- **Commit:** `feat(categories): implement FR-CAT-005 soft delete with global query filter`
-
-**Kiểm chứng cuối Buổi 3:** 5 FR-CAT chạy được end-to-end qua Scalar; cache tự xóa đúng sau Create/Update/Delete; slug không bao giờ trùng nhau trong bảng `Categories`.
+**Kiểm chứng cuối Buổi 3:** Quang xong 4/4; Ý, Thịnh, Tiến còn lại đang code — kiểm tra lại theo bảng "Yêu cầu tối thiểu" ở trên trước khi báo cáo nhóm.
 
 ---
 
-### Buổi 4 — Module Công thức (phần lõi) + Background Job (6 FR)
+### Buổi 4 (Tuần 4) — Tiếp tục sâu vào module riêng ⬜ Chưa làm (cả nhóm)
 
-**Mục tiêu:** Author tạo được công thức (ở trạng thái nháp), sửa được an toàn dưới tranh chấp đồng thời (concurrency), và publish đúng điều kiện; ảnh upload tự sinh thumbnail.
+> ⚠️ **Đã cập nhật:** nội dung "Module Công thức (phần lõi) + Background Job" chia round-robin cho cả 4 người (bản cũ) không còn đúng — mỗi người tiếp tục module riêng đã nhận từ Buổi 3. Bảng chi tiết đầy đủ nằm ở [`spec/phan_cong_chi_tiet_theo_buoi.md`](spec/phan_cong_chi_tiet_theo_buoi.md) mục "Tuần 4".
 
-**Tiến trình trong buổi:**
-1. Commit nền do Thiện Ý dẫn: áp **MT-10** (migration `Instructions` → nullable) trước khi ai tạo recipe test, tránh lỗi DB do field NOT NULL cũ.
-2. Thiện Ý làm FR-RCP-003 (tạo) trước để có dữ liệu cho Bảo Thịnh/Quang test FR-RCP-001/002.
-3. Quốc Tiến làm FR-RCP-004 (áp **MT-05** — 409 Conflict) song song.
-4. Thiện Ý làm tiếp FR-RCP-005 (publish, áp **MT-07**) sau khi RCP-003 merge.
-5. Quốc Tiến làm JOB-002 cuối buổi (cần ảnh upload thật để test resize).
+#### Yêu cầu tối thiểu Tuần 4 (giáo viên) — cho mỗi thành viên
 
-**Commit nền — Chung Thiện Ý dẫn · MT-10 (`Instructions` → nullable)**
+| # | Yêu cầu (giáo viên) | Áp dụng ra sao |
+| :-: | :--- | :--- |
+| 1 | Hoàn thành cài đặt **tất cả** API endpoint thuộc phạm vi việc được giao tuần này | Không để endpoint nào dở dang (vd làm Add mà bỏ Update/Delete) — xem cột "Endpoint cần hoàn thành đủ" bên dưới |
 
-- **Cách làm:** migration `AlterColumn` đổi `Recipes.Instructions` từ NOT NULL sang nullable; cập nhật `RecipeConfiguration` (`IsRequired(false)`); `CreateRecipeCommand` không còn bắt buộc field này trong request.
+3 yêu cầu tối thiểu của Tuần 3 (domain exceptions, repository & UnitOfWork, middleware bắt lỗi toàn cục) vẫn tiếp tục áp dụng cho mọi endpoint mới tuần này.
 
-- **Vì sao:** `Instructions` là field legacy — nội dung thật của công thức nằm ở `RecipeStep` (Buổi 5); giữ NOT NULL sẽ chặn nhầm mọi request hợp lệ không còn dùng field cũ này.
+**Mai Văn Quang · Output Cache + Redis (hạ tầng); CI/CD** — ⬜ Chưa làm
 
-- **Xong khi:** `dotnet ef database update` chạy sạch; tạo recipe không gửi `instructions` vẫn thành công.
+- **Cần làm:** viết `RedisOutputCacheStore : IOutputCacheStore`; cấu hình `AddOutputCache` với policy riêng cho từng module (Category/Recipe); bỏ hẳn `IMemoryCache`/`CachingBehavior`/`CacheInvalidationBehavior` cũ (mâu thuẫn #3); TTL theo NFR-PERF-003 (mâu thuẫn #4); GitHub Actions build→test→docker push.
 
-- **Commit:** `fix(recipes): make instructions column nullable per SRS v1.1.0 MT-10`
+- **Lưu ý:** đây là việc hạ tầng/CI, **không phát sinh endpoint mới** — không tính vào yêu cầu "đủ endpoint" của tuần này; 4 endpoint Auth nâng cao của Tuần 3 vẫn giữ nguyên, không có cái nào dở dang.
 
-**Mai Văn Quang · FR-RCP-001 Danh sách công thức**
+**Chung Thiện Ý · Recipe Update + concurrency; slug** — ✅ Đã hoàn thành
 
-- **Cách làm:** `GetRecipesQuery` hỗ trợ `page`/`pageSize`, lọc `categoryId`/`difficulty`, `sort`; chỉ trả recipe `Status = Published` cho người dùng ẩn danh, Author xem thêm được recipe Draft của chính mình; gắn `[OutputCache(PolicyName = "recipes-list", Duration = 300)]`.
+- **Cần làm:** `UpdateRecipeCommand` [Author-Owner/Admin] dùng `RowVersion` (concurrency token); bắt `DbUpdateConcurrencyException` khi `SaveChanges` → map sang **409 Conflict** (mâu thuẫn #5); slug trùng thì tự thêm hậu tố (mâu thuẫn #6).
 
-- **Vì sao:** nếu không tách rule hiển thị theo vai trò ngay từ query gốc, Search (Buổi 6) tái sử dụng lại chung logic sẽ lặp đúng lỗi lộ bản nháp.
+- **Endpoint cần hoàn thành đủ:** `PUT /api/v1/recipes/{id}` — endpoint duy nhất tuần này, "tất cả" nghĩa là phải xong endpoint này trọn vẹn kèm đúng 409 khi có tranh chấp.
 
-- **Xong khi:** `GET /recipes` trả đúng danh sách theo bộ lọc; ẩn danh không thấy recipe Draft của người khác.
+**Nguyễn Ngọc Bảo Thịnh · Full-text Search** — ⬜ Chưa làm
 
-- **Commit:** `feat(recipes): implement FR-RCP-001 paginated list with cache`
+- **Cần làm:** PostgreSQL `tsvector`/`tsquery` + extension `unaccent`; xếp hạng theo `ts_rank`.
 
-**Nguyễn Ngọc Bảo Thịnh · FR-RCP-002 Chi tiết công thức**
+- **Endpoint cần hoàn thành đủ:** `GET /api/v1/recipes/search?q=...` — endpoint duy nhất tuần này, phải tìm đúng dù gõ có dấu hay không dấu (vd "pho bo" ra "Phở bò").
 
-- **Cách làm:** `GetRecipeByIdQuery` trả đầy đủ `steps`, `ingredients`, ảnh, thông tin `Category`/tác giả; tăng `ViewCount` bằng một lệnh `UPDATE` riêng (không qua EF change tracking) để không tranh chấp `RowVersion` với `UpdateRecipeCommand` của FR-RCP-004.
+**Hồ Quốc Tiến · Recipe: ảnh, nguyên liệu, các bước (FR-RCP-008,009,010)** — ⬜ Chưa làm
 
-- **Vì sao:** nếu tăng view count qua cùng entity đang được lệnh update sửa, hai thao tác đọc/ghi có thể tranh chấp concurrency token giả — tách thành lệnh SQL riêng để không ảnh hưởng token thật.
+- **Cần làm:** `RecipeIngredient`/`RecipeStep` CRUD (DB+API), gắn ảnh qua presigned URL đã setup Tuần 3.
 
-- **Xong khi:** `GET /recipes/{id}` trả đủ dữ liệu cho trang chi tiết; `ViewCount` tăng đúng mỗi lượt xem, không làm hỏng cơ chế 409 của FR-RCP-004.
+- **Endpoint cần hoàn thành đủ (6 endpoint, không được chỉ làm Add mà bỏ dở Update/Delete):** `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/ingredients` và `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/steps`.
 
-- **Commit:** `feat(recipes): implement FR-RCP-002 detail view with safe view-count increment`
-
-**Chung Thiện Ý · FR-RCP-003 Tạo công thức mới**
-
-- **Cách làm:** `CreateRecipeCommand` [Author/Admin] + Validator (`title` 5–200, `description` 20–2000, `prepTime`/`cookTime` > 0, `categoryId` phải tồn tại); recipe luôn tạo ở trạng thái `Draft`; slug qua `ISlugGenerator.GenerateUniqueAsync` (tái sử dụng từ Buổi 3) — trùng thì tự thêm hậu tố (MT-06), không trả 409.
-
-- **Vì sao:** luôn tạo Draft để có một điểm chặn publish duy nhất ở FR-RCP-005, thay vì kiểm tra điều kiện rải rác nhiều nơi.
-
-- **Xong khi:** `POST /recipes` tạo recipe Draft thành công; đặt tên trùng recipe khác vẫn tạo được (slug tự đổi).
-
-- **Commit:** `feat(recipes): implement FR-RCP-003 create draft recipe with slug auto-suffix per MT-06`
-
-**Hồ Quốc Tiến · FR-RCP-004 Cập nhật thông tin cơ bản**
-
-- **Cách làm:** `UpdateRecipeCommand` [Author-Owner/Admin] dùng `RecipeAuthorizationHandler` kiểm tra quyền sở hữu; gửi kèm `RowVersion` nhận từ lần đọc trước; bắt `DbUpdateConcurrencyException` khi `SaveChanges` → map sang **409 Conflict** (áp MT-05, không dùng 422 như Phụ lục cũ).
-
-- **Vì sao:** 409 đúng ngữ nghĩa HTTP cho xung đột trạng thái tài nguyên; nếu vẫn dùng 422, frontend sẽ nhầm đây là lỗi validate dữ liệu và hiển thị sai thông báo.
-
-- **Xong khi:** hai tab cùng sửa một recipe, tab lưu sau nhận đúng 409 kèm thông báo "dữ liệu đã bị người khác thay đổi".
-
-- **Commit:** `feat(recipes): implement FR-RCP-004 update with optimistic concurrency returning 409 per MT-05`
-
-**Chung Thiện Ý · FR-RCP-005 Publish công thức**
-
-- **Cách làm:** `PublishRecipeCommand` kiểm tra `Steps.Count >= 1 && Ingredients.Count >= 1` (áp MT-07, hợp nhất yêu cầu cũ) trước khi đổi `Status = Published`; thiếu điều kiện thì trả lỗi `RECIPE_PUBLISH_INCOMPLETE`.
-
-- **Vì sao:** một công thức không có nguyên liệu thì không thể coi là hoàn chỉnh — khớp đúng mã lỗi đã định nghĩa sẵn ở Phụ lục B của SRS.
-
-- **Xong khi:** publish recipe đủ điều kiện thành công; thiếu step hoặc ingredient bị chặn với thông báo rõ ràng, không phải lỗi 500.
-
-- **Commit:** `feat(recipes): implement FR-RCP-005 publish with step+ingredient validation per MT-07`
-
-**Hồ Quốc Tiến · FR-JOB-002 Sinh Thumbnail**
-
-- **Cách làm:** sau khi ảnh được upload (endpoint của Buổi 5), enqueue `BackgroundJob.Enqueue<GenerateThumbnailJob>` qua Hangfire; job dùng `IImageProcessor.Resize` sinh 3 kích thước (small/medium/large), lưu lại MinIO cạnh ảnh gốc.
-
-- **Vì sao:** resize ảnh tốn CPU và không cần chặn response của request upload — đẩy vào job nền để API trả về nhanh.
-
-- **Xong khi:** upload một ảnh xong, sau vài giây thấy thêm các file thumbnail trong bucket MinIO mà không cần gọi API riêng.
-
-- **Commit:** `feat(jobs): implement FR-JOB-002 thumbnail generation triggered after image upload`
-
-**Kiểm chứng cuối Buổi 4:** tạo → sửa (2 tab cùng lúc ra đúng 409) → publish (thiếu ingredient bị chặn) chạy trơn tru; ảnh test upload thủ công sinh đúng thumbnail.
+**Kiểm chứng cuối Buổi 4 (mục tiêu):** sửa recipe (2 tab cùng lúc ra đúng 409) chạy trơn tru; tìm kiếm có dấu/không dấu ra đúng kết quả; đủ cả 6 endpoint ảnh/nguyên liệu/bước, không endpoint nào dở dang.
 
 ---
 

@@ -382,30 +382,22 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 ---
 
-### Buổi 5 — Module Công thức (ảnh/nguyên liệu/xóa) + Job + Observability (8 FR)
+### Buổi 5 (Tuần 5) — Hoàn tất vòng đời Công thức + Job nền + bổ sung Observability ⬜ Chưa làm (cả nhóm)
 
-**Mục tiêu:** công thức có đầy đủ vòng đời (archive/xóa mềm), quản lý được ảnh/nguyên liệu/bước, sitemap tự sinh, và hệ thống có health check + log có cấu trúc để debug từ đây trở đi.
+> ⚠️ **Đã cập nhật:** bảng Buổi 5 gốc (8 FR) không còn đúng. 5 chức năng của bảng cũ đã làm xong từ Tuần 3–4 nên **không giao lại**: FR-RCP-008 ảnh, FR-RCP-009 nguyên liệu, FR-RCP-010 các bước (Tiến, Tuần 4); FR-OBS-001 health check, FR-OBS-002 structured logging (Quang, Tuần 3). Buổi này chia lại các chức năng **chưa có trên `main`**. Bảng đầy đủ ở [`spec/phan_cong_chi_tiet_theo_buoi.md`](spec/phan_cong_chi_tiet_theo_buoi.md) mục "Tuần 5".
+
+**Mục tiêu:** công thức có đầy đủ vòng đời (publish → archive / xóa mềm), sitemap tự sinh, job dọn dữ liệu chạy định kỳ.
 
 **Tiến trình trong buổi:**
-1. Bảo Thịnh dẫn commit nền **MT-01** (soft delete Recipe + job purge) trước khi làm FR-RCP-007.
-2. Thiện Ý (nguyên liệu) và Quốc Tiến (bước) làm song song vì hai entity độc lập nhau.
-3. Bảo Thịnh làm ảnh (RCP-008) sau khi dùng lại `IFileStorageService` đã có từ Buổi 4.
-4. Quốc Tiến làm JOB-003 (sitemap) cuối buổi khi đã có đủ recipe Published để test.
-5. Thiện Ý/Bảo Thịnh làm Observability (OBS-001/002) song song, độc lập với phần Recipe.
+1. Thiện Ý làm FR-RCP-005 (publish) trước — Quang và Tiến cần có recipe `Published` để test.
+2. Bảo Thịnh cài Hangfire + làm FR-RCP-007 (soft delete) và job purge; Tiến dùng lại cấu hình Hangfire đó.
+3. Quang làm FR-RCP-006 (archive) song song với Thịnh vì hai lệnh độc lập nhau.
+4. Quốc Tiến làm FR-JOB-003 (sitemap) cuối buổi khi đã có recipe Published.
+5. Các việc bổ sung nhỏ (health check MinIO, log ra file, migration `UploadedFiles`) làm xen kẽ.
 
-**Commit nền — Nguyễn Ngọc Bảo Thịnh dẫn · MT-01 (soft delete Recipe + FR-JOB-004 purge)**
+**Mai Văn Quang · FR-RCP-006 Hủy publish / Lưu trữ** — ⬜ Chưa làm
 
-- **Cách làm:** `DeleteRecipeCommand` chỉ set `IsDeleted = true` (không xóa vật lý); thêm Global Query Filter cho `Recipe` (giống Category ở Buổi 3); định nghĩa job mới `PurgeDeletedRecipesJob` (FR-JOB-004, Hangfire Recurring Job chạy hàng ngày) xóa cứng + gọi `IFileStorageService.DeleteAsync` cho ảnh liên quan của các recipe đã `IsDeleted = true` quá 30 ngày.
-
-- **Vì sao:** NFR-REL-003 yêu cầu khôi phục được khi xóa nhầm, nhưng giữ mãi mãi sẽ phình database — xóa mềm + purge định kỳ giải quyết cả hai vấn đề cùng lúc.
-
-- **Xong khi:** xóa recipe xong thì nó biến mất khỏi mọi danh sách nhưng còn trong DB; trigger thủ công `PurgeDeletedRecipesJob` qua Hangfire dashboard xóa đúng các recipe quá hạn và ảnh MinIO tương ứng.
-
-- **Commit:** `feat(recipes): implement FR-RCP-007 soft delete and FR-JOB-004 purge job per MT-01`
-
-**Mai Văn Quang · FR-RCP-006 Hủy publish / Lưu trữ**
-
-- **Cách làm:** `ArchiveRecipeCommand` [Author-Owner/Admin] chuyển `Status` sang `Archived`; recipe archived bị loại khỏi `GetRecipesQuery`/Search công khai nhưng vẫn hiện trong "công thức của tôi" của tác giả.
+- **Cách làm:** `ArchiveRecipeCommand` [Author-Owner/Admin] chuyển `Status` sang `Archived`; recipe archived bị loại khỏi `GetRecipesQuery`/Search công khai nhưng vẫn hiện trong "công thức của tôi" của tác giả; xoá cache tag liên quan sau khi đổi trạng thái.
 
 - **Vì sao:** tách rõ "archive" (tác giả chủ động ẩn tạm) khỏi "xóa mềm" (MT-01) — hai trạng thái có ý nghĩa nghiệp vụ khác nhau, không nên dùng chung một cờ `IsDeleted`.
 
@@ -413,57 +405,41 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(recipes): implement FR-RCP-006 archive/unpublish`
 
-**Nguyễn Ngọc Bảo Thịnh · FR-RCP-008 Quản lý ảnh công thức**
+**Chung Thiện Ý · FR-RCP-005 Publish công thức + bổ sung health check MinIO** — ⬜ Chưa làm
 
-- **Cách làm:** `AddRecipeImageCommand` dùng `IFileStorageService.GeneratePresignedUploadUrlAsync`, ảnh đầu tiên tự động là ảnh chính; `SetPrimaryImageCommand` đổi ảnh chính bằng 1 transaction 2 bước (bỏ cờ chính ảnh cũ → gán cờ chính ảnh mới) vì DB có unique index "chỉ 1 ảnh chính mỗi recipe"; `DeleteRecipeImageCommand` xóa ảnh — nếu xóa đúng ảnh chính thì ảnh có `OrderIndex` nhỏ nhất tự lên thay.
+- **Cách làm (RCP-005):** `PublishRecipeCommand` [Author-Owner/Admin] gọi `Recipe.Publish()`; domain method kiểm tra `Steps.Count > 0 && Ingredients.Count > 0` (mâu thuẫn #7), thiếu thì ném exception map sang `RECIPE_PUBLISH_INCOMPLETE` (400) kèm thông báo rõ thiếu gì; set `PublishedAt`.
 
-- **Vì sao:** đổi ảnh chính bằng một lệnh `UPDATE` duy nhất dễ vi phạm unique index nếu thứ tự ghi không đảm bảo — tách hai bước trong cùng transaction để luôn có đúng một ảnh chính tại mọi thời điểm.
+- **Cách làm (OBS-001 bổ sung):** thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready`.
 
-- **Xong khi:** thêm/xóa/đổi ảnh chính hoạt động đúng qua nhiều lần liên tiếp mà không vi phạm unique index.
+- **Vì sao:** recipe published được index SEO với JSON-LD (`recipeIngredient[]` bắt buộc) — thiếu nguyên liệu thì structured data sai.
 
-- **Commit:** `feat(recipes): implement FR-RCP-008 image management with safe primary-image swap`
+- **Xong khi:** `PATCH /recipes/{id}/publish` chuyển `Draft` → `Published`; recipe thiếu bước hoặc nguyên liệu bị chặn; tắt MinIO thì `/health/ready` trả 503.
 
-**Chung Thiện Ý · FR-RCP-009 Quản lý nguyên liệu**
+- **Commit:** `feat(recipes): implement FR-RCP-005 publish with step and ingredient check`
 
-- **Cách làm:** `AddRecipeIngredientCommand`/`UpdateRecipeIngredientCommand`/`DeleteRecipeIngredientCommand`, mỗi `RecipeIngredient` có `SortOrder`; xóa/thêm xong tính lại `SortOrder` liên tục để FR-RCP-005 (đếm `Count >= 1`) luôn đúng và UI hiển thị đúng thứ tự.
+**Nguyễn Ngọc Bảo Thịnh · FR-RCP-007 Xóa công thức (MT-01) + FR-JOB-004 purge + bổ sung log ra file** — ⬜ Chưa làm
 
-- **Vì sao:** publish (MT-07) phụ thuộc trực tiếp vào số lượng ingredient — CRUD nguyên liệu phải giữ dữ liệu nhất quán để điều kiện publish không bị sai lệch.
+- **Cách làm:** `DeleteRecipeCommand` chỉ set `IsDeleted = true` (không xóa vật lý); cài Hangfire; `PurgeDeletedRecipesJob` (Recurring Job chạy hàng ngày) xóa cứng + gọi `IFileStorageService` xóa ảnh của các recipe đã `IsDeleted = true` quá 30 ngày. Bổ sung Serilog sink File (rolling theo ngày).
 
-- **Xong khi:** thêm/sửa/xóa nguyên liệu phản ánh đúng thứ tự hiển thị; recipe đủ ≥ 1 ingredient publish được, xóa hết thì publish bị chặn lại.
+- **Vì sao:** NFR-REL-003 yêu cầu khôi phục được khi xóa nhầm, nhưng giữ mãi mãi sẽ phình database — xóa mềm + purge định kỳ giải quyết cả hai.
 
-- **Commit:** `feat(recipes): implement FR-RCP-009 ingredient management`
+- **Xong khi:** xóa recipe xong thì nó biến mất khỏi mọi danh sách và tìm kiếm nhưng còn trong DB; chạy tay `PurgeDeletedRecipesJob` qua Hangfire dashboard xóa đúng các recipe quá hạn.
 
-**Hồ Quốc Tiến · FR-RCP-010 Quản lý các bước + FR-JOB-003 Sinh Sitemap**
-- **Cách làm (RCP-010):** tương tự nguyên liệu — CRUD `RecipeStep` có `SortOrder`, mỗi bước có thể đính một ảnh minh họa riêng (dùng lại `IFileStorageService`).
-- **Cách làm (JOB-003):** `GenerateSitemapJob` (Hangfire Recurring Job, 02:00 AM hàng ngày) build `sitemap.xml` từ toàn bộ recipe/category `Published`, ping Google Search Console qua HTTP GET.
+- **Commit:** `feat(recipes): implement FR-RCP-007 soft delete and FR-JOB-004 purge job per MT-01`
 
-- **Vì sao:** gộp hai việc trong cùng buổi vì cả hai đều cần dữ liệu recipe Published thật để test — làm RCP-010 trước để có bước thực hiện đầy đủ, rồi publish thử vài recipe để JOB-003 có dữ liệu sinh sitemap.
+**Hồ Quốc Tiến · FR-JOB-003 Sinh Sitemap + migration bảng `UploadedFiles`** — ⬜ Chưa làm
 
-- **Xong khi:** CRUD bước hoạt động đúng thứ tự; truy cập `/sitemap.xml` thấy đủ URL các trang đã publish.
+- **Cách làm (JOB-003):** `GenerateSitemapJob` (Hangfire Recurring Job, 02:00 AM hàng ngày) build `sitemap.xml` từ toàn bộ recipe/category `Published`.
 
-- **Commit:** `feat(recipes): implement FR-RCP-010 step management; feat(jobs): implement FR-JOB-003 sitemap generation`
+- **Cách làm (FILE-001 bổ sung):** thay khối `CREATE TABLE IF NOT EXISTS "UploadedFiles"` lúc khởi động trong `Program.cs` bằng EF migration `AddUploadedFiles`.
 
-**Chung Thiện Ý · FR-OBS-001 Health Check Endpoints**
+- **Vì sao:** sitemap cần dữ liệu recipe Published thật để test nên làm sau FR-RCP-005; bảng tạo bằng SQL lúc khởi động chỉ là giải pháp tạm khi gộp nhánh Tuần 4.
 
-- **Cách làm:** `AddHealthChecks()` đăng ký `AspNetCore.HealthChecks.NpgSql`, `.Redis`, `.Minio`; `/health` tổng hợp cả 3; `/health/live` chỉ trả `Healthy` nếu process còn sống; `/health/ready` fail (503) khi DB hoặc Redis down.
+- **Xong khi:** truy cập `/sitemap.xml` thấy đủ URL các trang đã publish; `dotnet ef database update` tạo đúng bảng `UploadedFiles`.
 
-- **Vì sao:** tách liveness/readiness theo đúng chuẩn Kubernetes-style health check — `/health/live` dùng để quyết định có nên khởi động lại container, `/health/ready` dùng để quyết định có nên route traffic vào hay không, hai mục đích khác nhau không nên gộp chung.
+- **Commit:** `feat(jobs): implement FR-JOB-003 sitemap generation`
 
-- **Xong khi:** tắt thử Postgres, `/health/ready` trả 503; `/health/live` vẫn 200 vì process vẫn sống.
-
-- **Commit:** `feat(observability): implement FR-OBS-001 health check endpoints`
-
-**Nguyễn Ngọc Bảo Thịnh · FR-OBS-002 Structured Logging**
-
-- **Cách làm:** `CorrelationIdMiddleware` gắn `X-Correlation-ID` vào mỗi request (tạo mới nếu client chưa gửi); `LoggingBehavior<TRequest,TResponse>` trong pipeline MediatR log mọi Command/Query kèm thời gian xử lý; Serilog sink ra Console (JSON) + File (rolling daily) + Seq.
-
-- **Vì sao:** gắn logging ở tầng MediatR pipeline (thay vì rải log khắp handler) để không ai quên log khi viết handler mới — mọi Command/Query tự động được log mà không cần code thêm.
-
-- **Xong khi:** mở Seq thấy log có `CorrelationId`, method/path/status, thời gian xử lý cho mọi request; request > 500ms tự có cảnh báo mức Warning.
-
-- **Commit:** `feat(observability): implement FR-OBS-002 structured logging via correlation id and mediatr pipeline`
-
-**Kiểm chứng cuối Buổi 5:** đủ vòng đời Recipe: tạo → publish → archive/xóa mềm; sitemap phản ánh đúng recipe đã publish; `/health/*` và log Seq hoạt động.
+**Kiểm chứng cuối Buổi 5:** đủ vòng đời Recipe: tạo → publish → archive / xóa mềm; sitemap phản ánh đúng recipe đã publish; `/health/ready` báo đúng khi tắt MinIO.
 
 ---
 

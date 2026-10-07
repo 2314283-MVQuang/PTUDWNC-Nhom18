@@ -61,18 +61,23 @@
 | Nguyễn Ngọc Bảo Thịnh | Full-text Search | PostgreSQL `tsvector`, extension `unaccent` + `pg_trgm`; xếp hạng `ts_rank` | `GET /api/v1/recipes/search?q=...` — endpoint duy nhất tuần này, phải chạy đúng cho cả tiếng Việt có dấu và không dấu | ✅ Xong |
 | Hồ Quốc Tiến | Recipe: ảnh, nguyên liệu, các bước (FR-RCP-008,009,010) | `RecipeIngredient`/`RecipeStep` CRUD (DB+API), gắn ảnh qua presigned URL đã setup Tuần 3 | **6 endpoint phải xong đủ**, không được chỉ làm Add mà bỏ dở Update/Delete: `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/ingredients` và `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/steps` | ✅ Xong |
 
-## 📅 Tuần 5 — Module Công thức (ảnh/nguyên liệu/xóa), Job Sitemap & Observability
+## 📅 Tuần 5 — Hoàn tất vòng đời Công thức, Job nền & bổ sung Observability
 
-| Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành |
-| :--- | :--- | :--- | :--- |
-| Mai Văn Quang | **FR-RCP-006** Hủy publish / Lưu trữ (Archive) | `ArchiveRecipeCommand` chuyển status sang `Archived`, không hiển thị công khai nhưng dữ liệu vẫn giữ nguyên | `PATCH /recipes/{id}/archive` thành công; công thức biến mất khỏi trang public nhưng tác giả vẫn xem được trong "công thức của tôi" |
-| Nguyễn Ngọc Bảo Thịnh | **FR-RCP-007** Xóa công thức | `DeleteRecipeCommand` chỉ set `IsDeleted = true` (**soft delete**, đã sửa theo NFR-REL-003 — không hard delete như bản gốc) | `DELETE /recipes/{id}` xong thì công thức biến mất khỏi danh sách/tìm kiếm, nhưng vẫn còn trong DB (chờ purge sau 30 ngày) |
-| Nguyễn Ngọc Bảo Thịnh | **FR-RCP-008** Quản lý ảnh công thức | `AddRecipeImageCommand`/`SetPrimaryImageCommand`/`DeleteRecipeImageCommand`, upload qua presigned URL MinIO | Thêm/xóa/đặt ảnh đại diện cho công thức hoạt động đúng; ảnh hiển thị được ở trang chi tiết |
-| Chung Thiện Ý | **FR-RCP-009** Quản lý nguyên liệu | CRUD `RecipeIngredient` (thêm/sửa/xóa, có thứ tự `sortOrder`) | Thêm/sửa/xóa nguyên liệu cho công thức, hiển thị đúng thứ tự đã sắp xếp |
-| Hồ Quốc Tiến | **FR-RCP-010** Quản lý các bước thực hiện | CRUD `RecipeStep` (thêm/sửa/xóa, `sortOrder`, có thể đính ảnh minh họa từng bước) | Thêm/sửa/xóa bước thực hiện, hiển thị đúng thứ tự, mỗi bước có thể có ảnh riêng |
-| Hồ Quốc Tiến | **FR-JOB-003** Sinh Sitemap | Hangfire Recurring Job chạy 02:00 AM hàng ngày, sinh `sitemap.xml` cho recipe/category đã publish, gọi ping Google Search Console | Truy cập `/sitemap.xml` thấy đủ URL các trang đã publish, cập nhật tự động mỗi ngày không cần thao tác tay |
-| Chung Thiện Ý | **FR-OBS-001** Health Check Endpoints | Cấu hình `AspNetCore.HealthChecks.*` cho 3 endpoint: `/health` (tổng hợp), `/health/live`, `/health/ready` | Tắt thử Postgres/Redis → `/health/ready` trả 503; bật lại → trả 200. `/health/live` luôn trả 200 khi app còn chạy |
-| Nguyễn Ngọc Bảo Thịnh | **FR-OBS-002** Structured Logging (Serilog) | Serilog + `CorrelationIdMiddleware`; `LoggingBehavior` trong MediatR log mọi Command/Query; sink Console (JSON) + File + Seq | Mở Seq (dev) thấy log có `CorrelationId`, method/path/status, thời gian xử lý cho mọi request gọi vào hệ thống |
+> ⚠️ **Cập nhật so với bảng Tuần 5 gốc (đã lỗi thời):** 5 chức năng của bảng cũ đã làm xong từ Tuần 3–4 nên **không giao lại**: FR-RCP-008 ảnh, FR-RCP-009 nguyên liệu, FR-RCP-010 các bước (Tiến, Tuần 4); FR-OBS-001 health check, FR-OBS-002 structured logging (Quang, Tuần 3). Tuần này chia lại các chức năng **chưa có trên `main`** để ai cũng có việc và không ai làm trùng.
+
+| Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành | Trạng thái |
+| :--- | :--- | :--- | :--- | :-: |
+| Mai Văn Quang | **FR-RCP-006** Hủy publish / Lưu trữ (Archive) | `ArchiveRecipeCommand` [Author-Owner/Admin] chuyển status sang `Archived`, không hiển thị công khai nhưng dữ liệu vẫn giữ nguyên; xoá cache tag liên quan | `PATCH /recipes/{id}/archive` thành công; công thức biến mất khỏi trang public và tìm kiếm nhưng tác giả vẫn xem được trong "công thức của tôi" | ⬜ Chưa làm |
+| Chung Thiện Ý | **FR-RCP-005** Publish công thức | `PublishRecipeCommand` [Author-Owner/Admin]; `Recipe.Publish()` kiểm tra **≥ 1 bước VÀ ≥ 1 nguyên liệu** (mâu thuẫn #7), thiếu thì trả `RECIPE_PUBLISH_INCOMPLETE` (400); set `PublishedAt` | `PATCH /recipes/{id}/publish` chuyển `Draft` → `Published`; công thức thiếu bước hoặc nguyên liệu bị chặn với thông báo rõ thiếu gì | ⬜ Chưa làm |
+| Chung Thiện Ý | **FR-OBS-001** (bổ sung) Health check MinIO | Thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready` | Tắt MinIO → `/health/ready` trả 503; bật lại → 200 | ⬜ Chưa làm |
+| Nguyễn Ngọc Bảo Thịnh | **FR-RCP-007** Xóa công thức + **FR-JOB-004** Purge | `DeleteRecipeCommand` chỉ set `IsDeleted = true` (**soft delete**, mâu thuẫn #1); cài Hangfire và `PurgeDeletedRecipesJob` chạy hàng ngày xóa cứng recipe đã xóa mềm quá 30 ngày kèm ảnh trên MinIO | `DELETE /recipes/{id}` xong thì công thức biến mất khỏi danh sách/tìm kiếm nhưng vẫn còn trong DB; chạy tay job purge xóa đúng các recipe quá hạn | ⬜ Chưa làm |
+| Nguyễn Ngọc Bảo Thịnh | **FR-OBS-002** (bổ sung) Ghi log ra file | Thêm Serilog sink File (rolling theo ngày) bên cạnh Console + Seq đã có | Thư mục log có file theo ngày, nội dung có `CorrelationId` | ⬜ Chưa làm |
+| Hồ Quốc Tiến | **FR-JOB-003** Sinh Sitemap | Hangfire Recurring Job chạy 02:00 AM hàng ngày, sinh `sitemap.xml` cho recipe/category đã publish (dùng chung cấu hình Hangfire với Thịnh — thống nhất ai cài trước) | Truy cập `/sitemap.xml` thấy đủ URL các trang đã publish, cập nhật tự động mỗi ngày | ⬜ Chưa làm |
+| Hồ Quốc Tiến | **FR-FILE-001** (bổ sung) Migration bảng `UploadedFiles` | Thay khối `CREATE TABLE IF NOT EXISTS` lúc khởi động trong `Program.cs` bằng EF migration `AddUploadedFiles` | `dotnet ef database update` tạo đúng bảng; `Program.cs` không còn SQL tạo bảng | ⬜ Chưa làm |
+
+**Thứ tự nên làm:** Ý làm FR-RCP-005 trước (Quang và Tiến cần có recipe `Published` để test archive và sitemap); Thịnh cài Hangfire trước để Tiến dùng lại cho sitemap.
+
+**Kiểm chứng cuối Tuần 5:** đủ vòng đời Recipe: tạo → publish → archive / xóa mềm; `/sitemap.xml` phản ánh đúng recipe đã publish; `/health/ready` báo đúng khi tắt MinIO.
 
 ## 📅 Tuần 6 — Module Tìm kiếm & Phân trang, Distributed Tracing
 

@@ -14,9 +14,9 @@ public class UpdateRecipeIngredientCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     ICacheInvalidator? cacheInvalidator = null)
-    : IRequestHandler<UpdateRecipeIngredientCommand, RecipeIngredientDto>
+    : IRequestHandler<UpdateRecipeIngredientCommand, RecipeIngredientItemDto>
 {
-    public async Task<RecipeIngredientDto> Handle(UpdateRecipeIngredientCommand request, CancellationToken ct)
+    public async Task<RecipeIngredientItemDto> Handle(UpdateRecipeIngredientCommand request, CancellationToken ct)
     {
         var recipe = await recipes.Query()
             .FirstOrDefaultAsync(r => r.Id == request.RecipeId, ct);
@@ -57,7 +57,7 @@ public class UpdateRecipeIngredientCommandHandler(
             await cacheInvalidator.EvictByTagAsync("recipes", ct);
         }
 
-        return new RecipeIngredientDto(
+        return new RecipeIngredientItemDto(
             ingredient.Id,
             ingredient.RecipeId,
             ingredient.Name,

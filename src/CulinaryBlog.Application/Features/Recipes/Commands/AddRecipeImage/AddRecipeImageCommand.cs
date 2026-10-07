@@ -8,4 +8,4 @@ public record AddRecipeImageCommand(
     string ImageUrl,
     string? AltText = null,
     bool IsPrimary = false,
-    int? OrderIndex = null) : IRequest<RecipeImageDto>;
+    int? OrderIndex = null) : IRequest<RecipeImageItemDto>;

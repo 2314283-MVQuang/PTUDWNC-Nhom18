@@ -14,9 +14,9 @@ public class AddRecipeStepCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     ICacheInvalidator? cacheInvalidator = null)
-    : IRequestHandler<AddRecipeStepCommand, RecipeStepDto>
+    : IRequestHandler<AddRecipeStepCommand, RecipeStepItemDto>
 {
-    public async Task<RecipeStepDto> Handle(AddRecipeStepCommand request, CancellationToken ct)
+    public async Task<RecipeStepItemDto> Handle(AddRecipeStepCommand request, CancellationToken ct)
     {
         var recipe = await recipes.Query()
             .FirstOrDefaultAsync(r => r.Id == request.RecipeId, ct);
@@ -91,7 +91,7 @@ public class AddRecipeStepCommandHandler(
             await cacheInvalidator.EvictByTagAsync("recipes", ct);
         }
 
-        return new RecipeStepDto(
+        return new RecipeStepItemDto(
             newStep.Id,
             newStep.RecipeId,
             newStep.StepNumber,

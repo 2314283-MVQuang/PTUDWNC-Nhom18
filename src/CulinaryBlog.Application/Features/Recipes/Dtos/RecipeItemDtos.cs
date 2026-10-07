@@ -1,6 +1,6 @@
 namespace CulinaryBlog.Application.Features.Recipes.Dtos;
 
-public record RecipeIngredientDto(
+public record RecipeIngredientItemDto(
     Guid Id,
     Guid RecipeId,
     string Name,
@@ -9,7 +9,7 @@ public record RecipeIngredientDto(
     string? Notes,
     int OrderIndex);
 
-public record RecipeStepDto(
+public record RecipeStepItemDto(
     Guid Id,
     Guid RecipeId,
     int StepNumber,
@@ -18,7 +18,7 @@ public record RecipeStepDto(
     int? TimerMinutes,
     string? ImageUrl);
 
-public record RecipeImageDto(
+public record RecipeImageItemDto(
     Guid Id,
     Guid RecipeId,
     string OriginalUrl,

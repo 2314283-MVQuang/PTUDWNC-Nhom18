@@ -9,4 +9,4 @@ public record AddRecipeStepCommand(
     string Description,
     int? StepNumber = null,
     int? TimerMinutes = null,
-    string? ImageUrl = null) : IRequest<RecipeStepDto>;
+    string? ImageUrl = null) : IRequest<RecipeStepItemDto>;

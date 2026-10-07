@@ -340,7 +340,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 ---
 
-### Buổi 4 (Tuần 4) — Tiếp tục sâu vào module riêng ⬜ Chưa làm (cả nhóm)
+### Buổi 4 (Tuần 4) — Tiếp tục sâu vào module riêng ✅ Xong (cả nhóm)
 
 > ⚠️ **Đã cập nhật:** nội dung "Module Công thức (phần lõi) + Background Job" chia round-robin cho cả 4 người (bản cũ) không còn đúng — mỗi người tiếp tục module riêng đã nhận từ Buổi 3. Bảng chi tiết đầy đủ nằm ở [`spec/phan_cong_chi_tiet_theo_buoi.md`](spec/phan_cong_chi_tiet_theo_buoi.md) mục "Tuần 4".
 
@@ -352,9 +352,11 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 3 yêu cầu tối thiểu của Tuần 3 (domain exceptions, repository & UnitOfWork, middleware bắt lỗi toàn cục) vẫn tiếp tục áp dụng cho mọi endpoint mới tuần này.
 
-**Mai Văn Quang · Output Cache + Redis (hạ tầng); CI/CD** — ⬜ Chưa làm
+**Mai Văn Quang · Output Cache + Redis (hạ tầng); CI/CD** — ✅ Đã hoàn thành
 
 - **Cần làm:** viết `RedisOutputCacheStore : IOutputCacheStore`; cấu hình `AddOutputCache` với policy riêng cho từng module (Category/Recipe); bỏ hẳn `IMemoryCache`/`CachingBehavior`/`CacheInvalidationBehavior` cũ (mâu thuẫn #3); TTL theo NFR-PERF-003 (mâu thuẫn #4); GitHub Actions build→test→docker push.
+
+- **Đã làm:** Output Cache dùng Redis qua gói chính thức `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis` (`AddStackExchangeRedisOutputCache`, thay cho việc tự viết `RedisOutputCacheStore` — mâu thuẫn #3 cho phép dùng thư viện có sẵn); 3 policy `categories` (30 phút) / `RecipeDetail` (5 phút) / `Search` (1 phút) trong `Program.cs`; xoá cache theo tag khi tạo/sửa/xoá; không còn `IMemoryCache`. CI/CD ở `.github/workflows/ci.yml`: build → test với mọi push/PR vào `main`, sau khi merge vào `main` thì build Docker image API và đẩy lên `ghcr.io`.
 
 - **Lưu ý:** đây là việc hạ tầng/CI, **không phát sinh endpoint mới** — không tính vào yêu cầu "đủ endpoint" của tuần này; 4 endpoint Auth nâng cao của Tuần 3 vẫn giữ nguyên, không có cái nào dở dang.
 
@@ -364,13 +366,13 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Endpoint cần hoàn thành đủ:** `PUT /api/v1/recipes/{id}` — endpoint duy nhất tuần này, "tất cả" nghĩa là phải xong endpoint này trọn vẹn kèm đúng 409 khi có tranh chấp.
 
-**Nguyễn Ngọc Bảo Thịnh · Full-text Search** — ⬜ Chưa làm
+**Nguyễn Ngọc Bảo Thịnh · Full-text Search** — ✅ Đã hoàn thành
 
 - **Cần làm:** PostgreSQL `tsvector`/`tsquery` + extension `unaccent`; xếp hạng theo `ts_rank`.
 
 - **Endpoint cần hoàn thành đủ:** `GET /api/v1/recipes/search?q=...` — endpoint duy nhất tuần này, phải tìm đúng dù gõ có dấu hay không dấu (vd "pho bo" ra "Phở bò").
 
-**Hồ Quốc Tiến · Recipe: ảnh, nguyên liệu, các bước (FR-RCP-008,009,010)** — ⬜ Chưa làm
+**Hồ Quốc Tiến · Recipe: ảnh, nguyên liệu, các bước (FR-RCP-008,009,010)** — ✅ Đã hoàn thành
 
 - **Cần làm:** `RecipeIngredient`/`RecipeStep` CRUD (DB+API), gắn ảnh qua presigned URL đã setup Tuần 3.
 

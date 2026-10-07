@@ -48,7 +48,7 @@
 | Hồ Quốc Tiến | **Setup File Upload (MinIO)** | Tích hợp MinIO SDK .NET, sinh presigned URL cho client upload ảnh trực tiếp; validate loại/kích thước file — chuẩn bị hạ tầng cho ảnh Recipe | (1) **cần thêm** `InvalidFileException` (ném khi sai loại/kích thước, thay vì chỉ lỗi FluentValidation); (2) **cần thêm** entity `UploadedFile` + `IUploadedFileRepository`/`UploadedFileRepository` để lưu metadata mỗi lần cấp presigned URL — module này vốn không tự nhiên có repository (chỉ là service hạ tầng) nên phải chủ động thêm entity lưu vết; (3) **cần thêm cho đủ 2** — hiện kế hoạch chỉ có 1 endpoint (`POST /api/v1/files/presigned-url`), thêm `GET /api/v1/files/{id}` để xem lại metadata file đã upload; (4) tự động đủ nếu dùng chung middleware | ⬜ Đang làm |
 | Cả nhóm | Kiểm thử nhanh module riêng của từng người | Mỗi người tự test module mình qua Scalar/Postman trước khi báo cáo | Không còn lỗi 500 thô (mọi lỗi qua `GlobalExceptionMiddleware` → `ProblemDetails`) | — |
 
-## 📅 Tuần 4 — Tiếp tục sâu vào module riêng
+## 📅 Tuần 4 — Tiếp tục sâu vào module riêng ✅ Xong
 
 > ⚠️ **Cập nhật so với bản round-robin FR-RCP gốc phía trên (đã lỗi thời):** tiếp tục mô hình mỗi người ôm trọn module của mình từ Tuần 3.
 >
@@ -56,10 +56,10 @@
 
 | Thành viên | Chức năng | Hướng đi | Endpoint cần hoàn thành đủ | Trạng thái |
 | :--- | :--- | :--- | :--- | :-: |
-| Mai Văn Quang | Output Cache + Redis (hạ tầng); CI/CD | Custom `IOutputCacheStore` backed Redis; bỏ `IMemoryCache`/`CachingBehavior`/`CacheInvalidationBehavior` cũ (mâu thuẫn #3); TTL theo NFR-PERF-003 (mâu thuẫn #4); GitHub Actions build→test→docker push | *(Không phát sinh endpoint mới tuần này — việc hạ tầng/CI không tính vào yêu cầu "đủ endpoint"; 4 endpoint Auth nâng cao của Tuần 3 vẫn giữ nguyên, không có endpoint nào dở dang)* | ⬜ Chưa làm |
-| Chung Thiện Ý | Recipe Update + concurrency; slug | `UpdateRecipeCommand` dùng `RowVersion` (concurrency token); `DbUpdateConcurrencyException` → **409** (mâu thuẫn #5); slug tự thêm hậu tố khi trùng (mâu thuẫn #6) | `PUT /api/v1/recipes/{id}` — endpoint duy nhất tuần này, phải xong đầy đủ kèm đúng 409 khi có tranh chấp | ⬜ Chưa làm |
-| Nguyễn Ngọc Bảo Thịnh | Full-text Search | PostgreSQL `tsvector`, extension `unaccent` + `pg_trgm`; xếp hạng `ts_rank` | `GET /api/v1/recipes/search?q=...` — endpoint duy nhất tuần này, phải chạy đúng cho cả tiếng Việt có dấu và không dấu | ⬜ Chưa làm |
-| Hồ Quốc Tiến | Recipe: ảnh, nguyên liệu, các bước (FR-RCP-008,009,010) | `RecipeIngredient`/`RecipeStep` CRUD (DB+API), gắn ảnh qua presigned URL đã setup Tuần 3 | **6 endpoint phải xong đủ**, không được chỉ làm Add mà bỏ dở Update/Delete: `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/ingredients` và `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/steps` | ⬜ Chưa làm |
+| Mai Văn Quang | Output Cache + Redis (hạ tầng); CI/CD | Custom `IOutputCacheStore` backed Redis; bỏ `IMemoryCache`/`CachingBehavior`/`CacheInvalidationBehavior` cũ (mâu thuẫn #3); TTL theo NFR-PERF-003 (mâu thuẫn #4); GitHub Actions build→test→docker push | *(Không phát sinh endpoint mới tuần này — việc hạ tầng/CI không tính vào yêu cầu "đủ endpoint"; 4 endpoint Auth nâng cao của Tuần 3 vẫn giữ nguyên, không có endpoint nào dở dang)* | ✅ Xong |
+| Chung Thiện Ý | Recipe Update + concurrency; slug | `UpdateRecipeCommand` dùng `RowVersion` (concurrency token); `DbUpdateConcurrencyException` → **409** (mâu thuẫn #5); slug tự thêm hậu tố khi trùng (mâu thuẫn #6) | `PUT /api/v1/recipes/{id}` — endpoint duy nhất tuần này, phải xong đầy đủ kèm đúng 409 khi có tranh chấp | ✅ Xong |
+| Nguyễn Ngọc Bảo Thịnh | Full-text Search | PostgreSQL `tsvector`, extension `unaccent` + `pg_trgm`; xếp hạng `ts_rank` | `GET /api/v1/recipes/search?q=...` — endpoint duy nhất tuần này, phải chạy đúng cho cả tiếng Việt có dấu và không dấu | ✅ Xong |
+| Hồ Quốc Tiến | Recipe: ảnh, nguyên liệu, các bước (FR-RCP-008,009,010) | `RecipeIngredient`/`RecipeStep` CRUD (DB+API), gắn ảnh qua presigned URL đã setup Tuần 3 | **6 endpoint phải xong đủ**, không được chỉ làm Add mà bỏ dở Update/Delete: `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/ingredients` và `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/steps` | ✅ Xong |
 
 ## 📅 Tuần 5 — Module Công thức (ảnh/nguyên liệu/xóa), Job Sitemap & Observability
 

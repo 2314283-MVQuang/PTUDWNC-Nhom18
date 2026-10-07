@@ -52,6 +52,13 @@ public class GlobalExceptionMiddleware(
                         "RECIPE_NOT_FOUND"
                     ),
 
+                RecipeConcurrencyConflictException =>
+                    (
+                        (int)HttpStatusCode.Conflict,
+                        "Dữ liệu Recipe đã bị thay đổi",
+                        "RECIPE_CONCURRENCY_CONFLICT"
+                    ),
+
                 ValidationException =>
                     (
                         422,

@@ -9,6 +9,7 @@ import { z } from "zod";
 export const registerSchema = z
   .object({
     account: z.string().min(1, "Vui lòng nhập tên tài khoản"),
+    email: z.string().optional(),
     password: z.string().min(1, "Vui lòng nhập mật khẩu"),
     confirmPassword: z.string().min(1, "Vui lòng xác minh lại mật khẩu"),
   })

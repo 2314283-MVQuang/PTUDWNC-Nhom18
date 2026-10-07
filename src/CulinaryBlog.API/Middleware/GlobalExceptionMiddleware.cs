@@ -59,6 +59,13 @@ public class GlobalExceptionMiddleware(
                         "RECIPE_CONCURRENCY_CONFLICT"
                     ),
 
+                InvalidFileException =>
+                    (
+                        (int)HttpStatusCode.BadRequest,
+                        "Tệp tin không hợp lệ",
+                        "FILE_INVALID"
+                    ),
+
                 ValidationException =>
                     (
                         422,

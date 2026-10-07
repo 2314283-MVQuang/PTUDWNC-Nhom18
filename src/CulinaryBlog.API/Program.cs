@@ -1,9 +1,12 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.API.Middleware;
+using CulinaryBlog.API.Services;
 using CulinaryBlog.Application;
+using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure;
 using CulinaryBlog.Infrastructure.Persistence;
@@ -11,6 +14,7 @@ using CulinaryBlog.Infrastructure.Persistence.Seed;
 using CulinaryBlog.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -65,6 +69,10 @@ builder.Services.AddStackExchangeRedisOutputCache(options =>
     options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "culinaryblog:";
 });
 
+// FR-CAT-003/004 (Tiến): Handler ở Application layer xoá cache theo tag qua interface này
+// (cài đặt bằng IOutputCacheStore.EvictByTagAsync — mâu thuẫn #3/#4: evict tag khi Create/Update).
+builder.Services.AddScoped<ICacheInvalidator, OutputCacheInvalidator>();
+
 builder.Services.AddOutputCache(options =>
 {
     // Category list: TTL 30 phút (NFR-PERF-003, "ít thay đổi"). Tên policy "categories" (chữ
@@ -111,6 +119,7 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = ClaimTypes.Role,
         };
     });
 
@@ -176,6 +185,29 @@ var app = builder.Build();
 // ---------------------------------------------------------------------------
 using (var roleSeedScope = app.Services.CreateScope())
 {
+    // FR-FILE-001 (Tiến): bảng metadata file upload. Database của nhóm có máy tạo bằng script SQL,
+    // có máy tạo bằng migration, nên tạo bảng bằng lệnh idempotent (IF NOT EXISTS) lúc khởi động để
+    // máy nào cũng chạy được module Files. Khi nhóm chốt dùng EF Migrations thì thay bằng
+    // "dotnet ef migrations add AddUploadedFiles" rồi xoá khối này.
+    var filesDb = roleSeedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
+    await filesDb.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "UploadedFiles" (
+            "Id" uuid NOT NULL,
+            "FileName" character varying(255) NOT NULL,
+            "ContentType" character varying(100) NOT NULL,
+            "Size" bigint NOT NULL,
+            "StorageKey" character varying(500) NOT NULL,
+            "Url" character varying(1000) NOT NULL,
+            "BucketName" character varying(100) NOT NULL,
+            "UploadedBy" character varying(256) NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "UpdatedAt" timestamp with time zone NULL,
+            "IsDeleted" boolean NOT NULL DEFAULT FALSE,
+            "RowVersion" bytea NOT NULL DEFAULT '\x'::bytea,
+            CONSTRAINT "PK_UploadedFiles" PRIMARY KEY ("Id")
+        );
+        """);
+
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
 }
@@ -222,7 +254,9 @@ app.UseOutputCache();
 
 app.MapAuthEndpoints();
 app.MapRecipeEndpoints();
+app.MapRecipeItemEndpoints(); // FR-RCP-008/009/010 (Tiến): nguyên liệu, bước, ảnh
 app.MapCategoryEndpoints();
+app.MapFileEndpoints();       // FR-FILE-001 (Tiến): presigned URL MinIO
 app.MapHealthEndpoints();
 
 app.Run();

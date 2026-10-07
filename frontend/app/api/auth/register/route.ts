@@ -13,6 +13,7 @@ export async function POST(req: Request) {
 
     const validated = registerSchema.safeParse({
       account: rawAccount,
+      email: body.email,
       password: rawPassword,
       confirmPassword: rawConfirm,
     });
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
 
     const user = registerLocalUser({
       account: validated.data.account,
+      email: body.email?.trim(),
       password: validated.data.password,
       fullName: body.fullName || validated.data.account,
     });

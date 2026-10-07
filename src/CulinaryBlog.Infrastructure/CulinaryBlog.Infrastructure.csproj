@@ -22,6 +22,8 @@
     <!-- Dùng để sinh dữ liệu mẫu ngẫu nhiên cho môi trường dev (xem Persistence/Seed/DbSeeder.cs) —
          theo đúng mục 4.4 tài liệu hướng dẫn ("Dữ liệu test/seed: dùng thư viện Bogus"). -->
     <PackageReference Include="Bogus" Version="35.6.1" />
+    <!-- FR-FILE-001 (Tiến): MinIO SDK để sinh presigned URL upload ảnh công thức. -->
+    <PackageReference Include="Minio" Version="7.0.0" />
     <!-- Tuần 3 (FR-OBS-001): health check PostgreSQL cho /health, /health/ready. -->
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <!-- Tuần 4: health check Redis — /health tổng hợp giờ phản ánh đúng cả 2 dependency ngoài

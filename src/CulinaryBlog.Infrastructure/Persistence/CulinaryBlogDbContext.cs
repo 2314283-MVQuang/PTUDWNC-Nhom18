@@ -32,6 +32,8 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<UploadedFile> UploadedFiles => Set<UploadedFile>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // Bắt buộc gọi trước — cấu hình các bảng AspNet* chuẩn.
@@ -51,6 +53,13 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
     /// <inheritdoc />
     public async Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken ct = default)
     {
+        // Provider InMemory (chỉ dùng trong unit test) không hỗ trợ transaction — chạy thẳng action.
+        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+        {
+            await action();
+            return;
+        }
+
         await using var transaction = await Database.BeginTransactionAsync(ct);
 
         await action();

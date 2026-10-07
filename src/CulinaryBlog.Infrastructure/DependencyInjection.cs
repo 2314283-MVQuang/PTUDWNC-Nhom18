@@ -28,6 +28,8 @@ public static class DependencyInjection
         // Category/Recipe (xem ghi chú trong Program.cs) — sẽ đăng ký lại khi nhóm triển khai tiếp.
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IRecipeRepository, RecipeRepository>();
+        // FR-CAT-003/004 (Tiến): sinh slug duy nhất cho Category (tự thêm hậu tố -2, -3...).
+        services.AddScoped<ISlugGenerator, SlugGenerator>();
 
         // Repository generic cho các entity con (RecipeStep/RecipeIngredient/RecipeImage): Handler
         // chỉ cần Remove()/AddAsync() một dòng con nên không đáng viết repository chuyên biệt cho
@@ -73,6 +75,11 @@ public static class DependencyInjection
         // reset mật khẩu + xác nhận email (cùng interface IEmailService) ---
         // IFileStorageService đã gỡ cùng module Recipe (upload ảnh công thức, không thuộc FR-AUTH).
         services.AddScoped<IEmailService, ConsoleEmailService>();
+
+        // --- UploadedFile Repository & MinIO Storage (FR-FILE-001, Tiến) ---
+        services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
+        services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
+        services.AddScoped<IFileStorageService, MinioFileStorageService>();
 
         // --- Redis (Tuần 4) ---
         // Mâu thuẫn #3 (xem phan-tich-mau-thuan-SRS): chỉ dùng 1 tầng cache duy nhất — ASP.NET Core

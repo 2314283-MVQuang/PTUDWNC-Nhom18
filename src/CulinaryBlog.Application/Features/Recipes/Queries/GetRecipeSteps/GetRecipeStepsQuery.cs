@@ -7,14 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeSteps;
 
-public record GetRecipeStepsQuery(Guid RecipeId) : IRequest<List<RecipeStepDto>>;
+public record GetRecipeStepsQuery(Guid RecipeId) : IRequest<List<RecipeStepItemDto>>;
 
 public class GetRecipeStepsQueryHandler(
     IRepository<Recipe> recipes,
     IRepository<RecipeStep> steps)
-    : IRequestHandler<GetRecipeStepsQuery, List<RecipeStepDto>>
+    : IRequestHandler<GetRecipeStepsQuery, List<RecipeStepItemDto>>
 {
-    public async Task<List<RecipeStepDto>> Handle(GetRecipeStepsQuery request, CancellationToken ct)
+    public async Task<List<RecipeStepItemDto>> Handle(GetRecipeStepsQuery request, CancellationToken ct)
     {
         var recipeExists = await recipes.Query()
             .AnyAsync(r => r.Id == request.RecipeId, ct);
@@ -27,7 +27,7 @@ public class GetRecipeStepsQueryHandler(
         var list = await steps.Query()
             .Where(s => s.RecipeId == request.RecipeId)
             .OrderBy(s => s.StepNumber)
-            .Select(s => new RecipeStepDto(
+            .Select(s => new RecipeStepItemDto(
                 s.Id,
                 s.RecipeId,
                 s.StepNumber,

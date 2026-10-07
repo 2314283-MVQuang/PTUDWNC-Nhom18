@@ -10,4 +10,4 @@ public record UpdateRecipeIngredientCommand(
     decimal? Quantity = null,
     string? Unit = null,
     string? Notes = null,
-    int? OrderIndex = null) : IRequest<RecipeIngredientDto>;
+    int? OrderIndex = null) : IRequest<RecipeIngredientItemDto>;

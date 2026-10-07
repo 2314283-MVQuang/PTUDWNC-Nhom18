@@ -5,4 +5,4 @@ namespace CulinaryBlog.Application.Features.Recipes.Commands.SetPrimaryRecipeIma
 
 public record SetPrimaryRecipeImageCommand(
     Guid RecipeId,
-    Guid ImageId) : IRequest<RecipeImageDto>;
+    Guid ImageId) : IRequest<RecipeImageItemDto>;

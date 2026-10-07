@@ -14,9 +14,9 @@ public class AddRecipeImageCommandHandler(
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     ICacheInvalidator? cacheInvalidator = null)
-    : IRequestHandler<AddRecipeImageCommand, RecipeImageDto>
+    : IRequestHandler<AddRecipeImageCommand, RecipeImageItemDto>
 {
-    public async Task<RecipeImageDto> Handle(AddRecipeImageCommand request, CancellationToken ct)
+    public async Task<RecipeImageItemDto> Handle(AddRecipeImageCommand request, CancellationToken ct)
     {
         var recipe = await recipes.Query()
             .FirstOrDefaultAsync(r => r.Id == request.RecipeId, ct);
@@ -77,7 +77,7 @@ public class AddRecipeImageCommandHandler(
             await cacheInvalidator.EvictByTagAsync("recipes", ct);
         }
 
-        return new RecipeImageDto(
+        return new RecipeImageItemDto(
             newImage.Id,
             newImage.RecipeId,
             newImage.OriginalUrl,

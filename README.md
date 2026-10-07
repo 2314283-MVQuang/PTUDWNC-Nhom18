@@ -382,9 +382,9 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 ---
 
-### Buổi 5 (Tuần 5) — Hoàn tất vòng đời Công thức + Job nền + bổ sung Observability ⬜ Chưa làm (cả nhóm)
+### Buổi 5 (Tuần 5) — Hoàn tất vòng đời Công thức + Job nền ⬜ Chưa làm (cả nhóm)
 
-> ⚠️ **Đã cập nhật:** bảng Buổi 5 gốc (8 FR) không còn đúng. 5 chức năng của bảng cũ đã làm xong từ Tuần 3–4 nên **không giao lại**: FR-RCP-008 ảnh, FR-RCP-009 nguyên liệu, FR-RCP-010 các bước (Tiến, Tuần 4); FR-OBS-001 health check, FR-OBS-002 structured logging (Quang, Tuần 3). Buổi này chia lại các chức năng **chưa có trên `main`**. Bảng đầy đủ ở [`spec/phan_cong_chi_tiet_theo_buoi.md`](spec/phan_cong_chi_tiet_theo_buoi.md) mục "Tuần 5".
+> ⚠️ **Đã cập nhật:** bảng Buổi 5 gốc (8 FR) không còn đúng. 5 chức năng của bảng cũ đã làm xong từ Tuần 3–4 nên **không giao lại**: FR-RCP-008 ảnh, FR-RCP-009 nguyên liệu, FR-RCP-010 các bước (Tiến, Tuần 4); FR-OBS-001 health check, FR-OBS-002 structured logging (Quang, Tuần 3). Các chức năng **chưa có trên `main`** được chia lại đều cho Buổi 5–6–7 để buổi nào mỗi người cũng có đúng 1 chức năng chính. Bảng đầy đủ ở [`spec/phan_cong_chi_tiet_theo_buoi.md`](spec/phan_cong_chi_tiet_theo_buoi.md) mục "Tuần 5".
 
 **Mục tiêu:** công thức có đầy đủ vòng đời (publish → archive / xóa mềm), sitemap tự sinh, job dọn dữ liệu chạy định kỳ.
 
@@ -393,7 +393,6 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 2. Bảo Thịnh cài Hangfire + làm FR-RCP-007 (soft delete) và job purge; Tiến dùng lại cấu hình Hangfire đó.
 3. Quang làm FR-RCP-006 (archive) song song với Thịnh vì hai lệnh độc lập nhau.
 4. Quốc Tiến làm FR-JOB-003 (sitemap) cuối buổi khi đã có recipe Published.
-5. Các việc bổ sung nhỏ (health check MinIO, log ra file, migration `UploadedFiles`) làm xen kẽ.
 
 **Mai Văn Quang · FR-RCP-006 Hủy publish / Lưu trữ** — ⬜ Chưa làm
 
@@ -405,21 +404,19 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(recipes): implement FR-RCP-006 archive/unpublish`
 
-**Chung Thiện Ý · FR-RCP-005 Publish công thức + bổ sung health check MinIO** — ⬜ Chưa làm
+**Chung Thiện Ý · FR-RCP-005 Publish công thức** — ⬜ Chưa làm
 
-- **Cách làm (RCP-005):** `PublishRecipeCommand` [Author-Owner/Admin] gọi `Recipe.Publish()`; domain method kiểm tra `Steps.Count > 0 && Ingredients.Count > 0` (mâu thuẫn #7), thiếu thì ném exception map sang `RECIPE_PUBLISH_INCOMPLETE` (400) kèm thông báo rõ thiếu gì; set `PublishedAt`.
-
-- **Cách làm (OBS-001 bổ sung):** thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready`.
+- **Cách làm:** `PublishRecipeCommand` [Author-Owner/Admin] gọi `Recipe.Publish()`; domain method kiểm tra `Steps.Count > 0 && Ingredients.Count > 0` (mâu thuẫn #7), thiếu thì ném exception map sang `RECIPE_PUBLISH_INCOMPLETE` (400) kèm thông báo rõ thiếu gì; set `PublishedAt`.
 
 - **Vì sao:** recipe published được index SEO với JSON-LD (`recipeIngredient[]` bắt buộc) — thiếu nguyên liệu thì structured data sai.
 
-- **Xong khi:** `PATCH /recipes/{id}/publish` chuyển `Draft` → `Published`; recipe thiếu bước hoặc nguyên liệu bị chặn; tắt MinIO thì `/health/ready` trả 503.
+- **Xong khi:** `PATCH /recipes/{id}/publish` chuyển `Draft` → `Published`; recipe thiếu bước hoặc nguyên liệu bị chặn.
 
 - **Commit:** `feat(recipes): implement FR-RCP-005 publish with step and ingredient check`
 
-**Nguyễn Ngọc Bảo Thịnh · FR-RCP-007 Xóa công thức (MT-01) + FR-JOB-004 purge + bổ sung log ra file** — ⬜ Chưa làm
+**Nguyễn Ngọc Bảo Thịnh · FR-RCP-007 Xóa công thức (MT-01) + FR-JOB-004 purge** — ⬜ Chưa làm
 
-- **Cách làm:** `DeleteRecipeCommand` chỉ set `IsDeleted = true` (không xóa vật lý); cài Hangfire; `PurgeDeletedRecipesJob` (Recurring Job chạy hàng ngày) xóa cứng + gọi `IFileStorageService` xóa ảnh của các recipe đã `IsDeleted = true` quá 30 ngày. Bổ sung Serilog sink File (rolling theo ngày).
+- **Cách làm:** `DeleteRecipeCommand` chỉ set `IsDeleted = true` (không xóa vật lý); cài Hangfire; `PurgeDeletedRecipesJob` (Recurring Job chạy hàng ngày) xóa cứng + gọi `IFileStorageService` xóa ảnh của các recipe đã `IsDeleted = true` quá 30 ngày.
 
 - **Vì sao:** NFR-REL-003 yêu cầu khôi phục được khi xóa nhầm, nhưng giữ mãi mãi sẽ phình database — xóa mềm + purge định kỳ giải quyết cả hai.
 
@@ -427,43 +424,42 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(recipes): implement FR-RCP-007 soft delete and FR-JOB-004 purge job per MT-01`
 
-**Hồ Quốc Tiến · FR-JOB-003 Sinh Sitemap + migration bảng `UploadedFiles`** — ⬜ Chưa làm
+**Hồ Quốc Tiến · FR-JOB-003 Sinh Sitemap** — ⬜ Chưa làm
 
-- **Cách làm (JOB-003):** `GenerateSitemapJob` (Hangfire Recurring Job, 02:00 AM hàng ngày) build `sitemap.xml` từ toàn bộ recipe/category `Published`.
+- **Cách làm:** `GenerateSitemapJob` (Hangfire Recurring Job, 02:00 AM hàng ngày) build `sitemap.xml` từ toàn bộ recipe/category `Published`.
 
-- **Cách làm (FILE-001 bổ sung):** thay khối `CREATE TABLE IF NOT EXISTS "UploadedFiles"` lúc khởi động trong `Program.cs` bằng EF migration `AddUploadedFiles`.
+- **Vì sao:** sitemap cần dữ liệu recipe Published thật để test nên làm sau FR-RCP-005.
 
-- **Vì sao:** sitemap cần dữ liệu recipe Published thật để test nên làm sau FR-RCP-005; bảng tạo bằng SQL lúc khởi động chỉ là giải pháp tạm khi gộp nhánh Tuần 4.
-
-- **Xong khi:** truy cập `/sitemap.xml` thấy đủ URL các trang đã publish; `dotnet ef database update` tạo đúng bảng `UploadedFiles`.
+- **Xong khi:** truy cập `/sitemap.xml` thấy đủ URL các trang đã publish.
 
 - **Commit:** `feat(jobs): implement FR-JOB-003 sitemap generation`
 
-**Kiểm chứng cuối Buổi 5:** đủ vòng đời Recipe: tạo → publish → archive / xóa mềm; sitemap phản ánh đúng recipe đã publish; `/health/ready` báo đúng khi tắt MinIO.
+**Kiểm chứng cuối Buổi 5:** đủ vòng đời Recipe: tạo → publish → archive / xóa mềm; sitemap phản ánh đúng recipe đã publish.
 
 ---
 
-### Buổi 6 — Module Tìm kiếm & Phân trang + Tracing (5 FR)
+### Buổi 6 (Tuần 6) — Hoàn thiện Tìm kiếm (lọc, sắp xếp, phân trang) + Chi tiết Danh mục ⬜ Chưa làm (cả nhóm)
 
-**Mục tiêu:** tìm được công thức bằng tiếng Việt có dấu lẫn không dấu, lọc/sắp xếp/phân trang đúng, và có tracing để soi được đường đi của một request qua các layer.
+> ⚠️ **Đã cập nhật:** FR-SRCH-001 (tìm toàn văn bản) Thịnh đã làm ở Tuần 4 và FR-OBS-003 (tracing) Quang đã làm ở Tuần 3 nên **không giao lại**. Quang nhận FR-CAT-002 (đang làm dở: mới có xem theo ID, chưa kèm công thức).
+
+**Mục tiêu:** kết quả tìm kiếm lọc/sắp xếp/phân trang được, và trang danh mục hiển thị được công thức thuộc danh mục đó.
 
 **Tiến trình trong buổi:**
-1. Quang làm FR-SRCH-001 trước (dựng `tsvector`/`tsquery`) vì FR-SRCH-002/003/004 đều gắn tham số vào chung một query gốc.
-2. Thiện Ý và Bảo Thịnh làm song song (lọc, sắp xếp) trên nhánh của Quang.
-3. Quốc Tiến làm FR-SRCH-004 (phân trang, tái sử dụng `PaginatedList<T>` từ Buổi 3) sau cùng để gộp cả 3 tham số vào một response nhất quán.
-4. Quốc Tiến làm OBS-003 song song, độc lập (instrumentation toàn cục, không đụng code Search).
+1. Ý, Thịnh, Tiến cùng sửa `SearchRecipesQuery` — thống nhất chữ ký tham số trước khi code.
+2. Merge theo thứ tự Ý (lọc) → Thịnh (sắp xếp) → Tiến (phân trang) để tránh xung đột.
+3. Quang làm FR-CAT-002 song song, độc lập với phần Search.
 
-**Mai Văn Quang · FR-SRCH-001 Tìm kiếm toàn văn bản**
+**Mai Văn Quang · FR-CAT-002 Chi tiết danh mục kèm công thức** — ⬜ Chưa làm
 
-- **Cách làm:** thêm cột `SearchVector` (`tsvector`) trên `Recipes`, kết hợp extension `unaccent` để bỏ dấu tiếng Việt trước khi so khớp; `SearchRecipesQuery`/Handler dùng `tsquery` (`websearch_to_tsquery` — chấp nhận cú pháp gõ tự nhiên), xếp hạng bằng `ts_rank`.
+- **Cách làm:** `GetCategoryBySlugQuery` tìm category theo slug, trả `CategoryDetailDto` kèm `PagedResult<RecipeSummaryDto>` chỉ gồm recipe `Published`; gắn Output Cache (tag `categories`); đồng thời gắn policy `RecipeDetail` (đã khai báo trong `Program.cs` nhưng chưa dùng) cho `GET /recipes/{slug}`.
 
-- **Vì sao:** xử lý bỏ dấu ở tầng PostgreSQL (qua `unaccent`) thay vì ở code C# vì DB có index GIN cho `tsvector`, tốc độ tìm kiếm trên hàng trăm nghìn dòng nhanh hơn nhiều so với lọc chuỗi ở application layer.
+- **Vì sao:** hiện `GET /categories/{id}` chỉ trả thông tin danh mục, chưa đúng SRS (tra theo slug, kèm danh sách công thức phân trang) — trang danh mục ở frontend cần đúng dữ liệu này.
 
-- **Xong khi:** gõ "pho bo" (không dấu) vẫn ra kết quả "Phở bò"; kết quả liên quan nhất hiện lên trước.
+- **Xong khi:** `GET /categories/{slug}?page=&pageSize=` trả `{ category, recipes: { items, totalCount, page, pageSize, totalPages } }`; slug sai trả 404 dạng ProblemDetails.
 
-- **Commit:** `feat(search): implement FR-SRCH-001 full-text search with unaccent + ts_rank`
+- **Commit:** `feat(categories): implement FR-CAT-002 category detail with paged recipes`
 
-**Chung Thiện Ý · FR-SRCH-002 Lọc công thức**
+**Chung Thiện Ý · FR-SRCH-002 Lọc kết quả tìm kiếm** — ⬜ Chưa làm
 
 - **Cách làm:** thêm tham số `categoryId`, `difficulty`, khoảng `prepTime`/`cookTime` vào `SearchRecipesQuery`; áp từng điều kiện bằng `Where` động, kết hợp được nhiều điều kiện lọc cùng lúc.
 
@@ -473,7 +469,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(search): implement FR-SRCH-002 combinable filters`
 
-**Nguyễn Ngọc Bảo Thịnh · FR-SRCH-003 Sắp xếp kết quả**
+**Nguyễn Ngọc Bảo Thịnh · FR-SRCH-003 Sắp xếp kết quả tìm kiếm** — ⬜ Chưa làm
 
 - **Cách làm:** `SortParser.Parse("-createdAt")` tách dấu `-` (giảm dần) và tên field, whitelist các field được phép sắp xếp; map sang `OrderBy`/`OrderByDescending` động.
 
@@ -483,51 +479,41 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(search): implement FR-SRCH-003 whitelisted dynamic sorting`
 
-**Hồ Quốc Tiến · FR-SRCH-004 Phân trang + FR-OBS-003 Distributed Tracing & Metrics**
-- **Cách làm (SRCH-004):** chuẩn hóa `page`/`pageSize` (giới hạn `pageSize` tối đa), trả kèm `totalCount`/`totalPages`; gắn `[OutputCache(PolicyName = "search", Duration = 60)]` cho response tìm kiếm (theo MT-04).
-- **Cách làm (OBS-003, bổ sung theo SRS mục 3.7):** cấu hình OpenTelemetry `AddAspNetCoreInstrumentation()` + `AddEntityFrameworkCoreInstrumentation()`, export OTLP đến Seq (dev)/Grafana Tempo (prod); tạo `ActivitySource` riêng, ghi custom metric đếm recipe created/published.
+**Hồ Quốc Tiến · FR-SRCH-004 Phân trang kết quả tìm kiếm** — ⬜ Chưa làm
 
-- **Vì sao:** giới hạn `pageSize` tối đa là chặn một dạng DoS đơn giản; OBS-003 được bổ sung vào buổi này (không có trong bản phân công gốc) vì SRS mục 3.7 quy định module FR-OBS có 3 FR chứ không phải 2.
+- **Cách làm:** thay giới hạn cứng 50 dòng trong `SearchRecipesAsync` bằng `page`/`pageSize` (giới hạn `pageSize` tối đa), trả `PagedResult` kèm `totalCount`/`totalPages`; giữ policy cache `Search` 1 phút (mâu thuẫn #4).
 
-- **Xong khi:** phân trang trả đúng số liệu; mở Seq/Tempo thấy được trace đầy đủ một request search đi qua API → EF Core → DB.
+- **Vì sao:** giới hạn `pageSize` tối đa là chặn một dạng DoS đơn giản; dùng lại `PagedResult<T>` để response tìm kiếm cùng dạng với `GET /recipes`.
 
-- **Commit:** `feat(search): implement FR-SRCH-004 pagination with cache; feat(observability): implement FR-OBS-003 distributed tracing per SRS 3.7`
+- **Xong khi:** kết quả tìm kiếm phân trang đúng số liệu; kết hợp được với lọc và sắp xếp.
 
-**Kiểm chứng cuối Buổi 6:** tìm kiếm không dấu vẫn ra đúng kết quả; kết hợp lọc + sắp xếp + phân trang cho ra response nhất quán; xem được trace của chính request đó trên Seq.
+- **Commit:** `feat(search): implement FR-SRCH-004 pagination for search results`
+
+**Kiểm chứng cuối Buổi 6:** kết hợp `q` + lọc + sắp xếp + phân trang cho ra response nhất quán; trang danh mục hiện đúng công thức đã publish.
 
 ---
 
-### Buổi 7 — Module Tệp tin + Job Welcome Email (3 FR)
+### Buổi 7 (Tuần 7) — Module Tệp tin + Job nền còn lại + nối Frontend Auth ⬜ Chưa làm (cả nhóm)
 
-**Mục tiêu:** upload/xóa ảnh an toàn qua MinIO đúng chuẩn bảo mật NFR-SEC-004, và người dùng mới nhận được email chào mừng.
+> ⚠️ **Đã cập nhật:** FR-FILE-001 (upload MinIO) Tiến đã làm ở Tuần 3–4 nên **không giao lại**; Tiến nhận FR-JOB-002 (chưa ai làm). Quang nhận việc nối frontend đăng ký/đăng nhập với backend thật.
+
+**Mục tiêu:** xóa ảnh sạch khỏi MinIO, có ảnh thu nhỏ và email chào mừng chạy nền, và giao diện đăng ký/đăng nhập dùng tài khoản thật trong database.
 
 **Tiến trình trong buổi:**
-1. Quốc Tiến làm FR-FILE-001 trước (endpoint presigned URL) vì FR-FILE-002 cần biết đúng key đã upload để xóa.
-2. Bảo Thịnh làm FR-FILE-002 song song, kết hợp dọn lại các ảnh test đã tạo ở Buổi 4–5.
-3. Thiện Ý làm FR-JOB-001 độc lập, không phụ thuộc hai FR còn lại.
-4. Cuối buổi: cả nhóm rà lại 34 FR theo cột "Trạng thái", lập danh sách còn thiếu để xử lý đầu Buổi 8.
+1. Bốn việc độc lập nhau, làm song song; Ý và Tiến dùng lại Hangfire đã cài từ Buổi 5.
+2. Cuối buổi: cả nhóm rà lại 34 FR theo cột "Trạng thái", lập danh sách còn thiếu để xử lý đầu Buổi 8.
 
-**Hồ Quốc Tiến · FR-FILE-001 Upload file lên MinIO**
+**Mai Văn Quang · FR-AUTH-001/002 (frontend) Nối đăng ký/đăng nhập với backend** — ⬜ Chưa làm
 
-- **Cách làm:** `GetPresignedUploadUrlQuery` dùng `AWSSDK.S3` (endpoint override trỏ về MinIO) sinh presigned URL có hạn dùng ngắn; client upload thẳng lên bucket bằng URL đó, không đi qua backend; sau khi upload, có bước xác minh magic bytes ở phía xử lý ảnh (không tin Content-Type header client khai báo).
+- **Cách làm:** frontend hiện kiểm tra danh sách user cục bộ (`frontend/data/users.json`, `lib/local-users.ts`) trước rồi mới gọi backend, và cấp token giả `local-token-...`; chuyển `auth.ts` và form đăng ký sang gọi thẳng `POST /auth/register`, `POST /auth/login`; form đăng ký nhập email và mật khẩu theo đúng policy của backend.
 
-- **Vì sao:** presigned URL giúp backend không phải "ôm" luồng dữ liệu file lớn; kiểm tra magic bytes thay vì Content-Type vì client hoàn toàn có thể khai báo sai định dạng để qua mặt validate (NFR-SEC-004).
+- **Vì sao:** token giả không qua được xác thực JWT của backend nên người dùng đăng nhập trên giao diện không gọi được API cần quyền; SRS yêu cầu tài khoản lưu trong PostgreSQL.
 
-- **Xong khi:** client lấy được presigned URL và upload ảnh thành công thẳng lên MinIO; upload file đổi đuôi giả `.jpg` (không phải ảnh thật) bị từ chối ở bước xử lý sau.
+- **Xong khi:** tài khoản đăng ký trên giao diện xuất hiện trong bảng `AspNetUsers`; đăng nhập xong gọi được API cần quyền bằng JWT thật.
 
-- **Commit:** `feat(files): implement FR-FILE-001 presigned upload with magic-byte validation`
+- **Commit:** `feat(auth): wire frontend register/login to backend API`
 
-**Nguyễn Ngọc Bảo Thịnh · FR-FILE-002 Xóa file khỏi MinIO**
-
-- **Cách làm:** `DeleteFileCommand`/`IFileStorageService.DeleteAsync` xóa object theo key; gọi từ 3 nơi: khi ảnh bị gỡ khỏi Recipe/Category (FR-RCP-008), và khi `PurgeDeletedRecipesJob` (MT-01, Buổi 5) chạy dọn recipe quá hạn.
-
-- **Vì sao:** gom logic xóa file vào một service duy nhất (`IFileStorageService`) để không có chỗ nào gọi thẳng SDK MinIO riêng lẻ — dễ audit và dễ đổi provider lưu trữ sau này nếu cần.
-
-- **Xong khi:** gỡ ảnh khỏi recipe thì file cũng biến mất khỏi bucket; chạy thử `PurgeDeletedRecipesJob` xóa đúng ảnh của các recipe đã hết hạn 30 ngày.
-
-- **Commit:** `feat(files): implement FR-FILE-002 delete wired into recipe cleanup and purge job`
-
-**Chung Thiện Ý · FR-JOB-001 Welcome Email**
+**Chung Thiện Ý · FR-JOB-001 Welcome Email + bổ sung health check MinIO** — ⬜ Chưa làm
 
 - **Cách làm:** trong `RegisterCommandHandler` (Buổi 2), sau khi `UserManager.CreateAsync` thành công, `BackgroundJob.Enqueue<WelcomeEmailJob>` (Hangfire); `WelcomeEmailJob.SendAsync` dùng `IEmailSender` (MailKit, SMTP; dev trỏ về MailHog) gửi email chào mừng có tên người dùng.
 
@@ -537,7 +523,33 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(jobs): implement FR-JOB-001 welcome email enqueued after registration`
 
-**Kiểm chứng cuối Buổi 7:** upload/xóa ảnh hoạt động đúng qua MinIO thật; đăng ký tài khoản mới luôn có email chào mừng trong MailHog; toàn bộ 34 FR đã rà lại trạng thái, FR nào còn thiếu được liệt kê để xử lý đầu Buổi 8.
+- **Bổ sung (OBS-001):** thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready` — tắt MinIO thì `/health/ready` trả 503.
+
+**Nguyễn Ngọc Bảo Thịnh · FR-FILE-002 Xóa file khỏi MinIO + bổ sung log ra file** — ⬜ Chưa làm
+
+- **Cách làm:** `DeleteFileCommand`/`IFileStorageService.DeleteAsync` xóa object theo key; gọi từ 3 nơi: khi ảnh bị gỡ khỏi Recipe/Category (FR-RCP-008), và khi `PurgeDeletedRecipesJob` (MT-01, Buổi 5) chạy dọn recipe quá hạn.
+
+- **Vì sao:** gom logic xóa file vào một service duy nhất (`IFileStorageService`) để không có chỗ nào gọi thẳng SDK MinIO riêng lẻ — dễ audit và dễ đổi provider lưu trữ sau này nếu cần.
+
+- **Xong khi:** gỡ ảnh khỏi recipe thì file cũng biến mất khỏi bucket; chạy thử `PurgeDeletedRecipesJob` xóa đúng ảnh của các recipe đã hết hạn 30 ngày.
+
+- **Commit:** `feat(files): implement FR-FILE-002 delete wired into recipe cleanup and purge job`
+
+- **Bổ sung (OBS-002):** thêm Serilog sink File (rolling theo ngày) bên cạnh Console + Seq đã có.
+
+**Hồ Quốc Tiến · FR-JOB-002 Sinh Thumbnail + migration bảng `UploadedFiles`** — ⬜ Chưa làm
+
+- **Cách làm (JOB-002):** `GenerateThumbnailJob` (Hangfire) được enqueue sau khi upload ảnh, dùng `IImageProcessor.Resize` sinh bản medium và thumbnail, lưu lại `MediumUrl`/`ThumbnailUrl`.
+
+- **Cách làm (FILE-001 bổ sung):** thay khối `CREATE TABLE IF NOT EXISTS "UploadedFiles"` lúc khởi động trong `Program.cs` bằng EF migration `AddUploadedFiles`.
+
+- **Vì sao:** resize ảnh tốn CPU nên chạy nền thay vì chặn request upload; bảng tạo bằng SQL lúc khởi động chỉ là giải pháp tạm khi gộp nhánh Tuần 4.
+
+- **Xong khi:** upload ảnh xong vài giây sau có `MediumUrl`/`ThumbnailUrl`; `dotnet ef database update` tạo đúng bảng `UploadedFiles`.
+
+- **Commit:** `feat(jobs): implement FR-JOB-002 thumbnail generation`
+
+**Kiểm chứng cuối Buổi 7:** xóa ảnh hoạt động đúng qua MinIO thật; đăng ký tài khoản mới trên giao diện có email chào mừng trong MailHog và có dòng trong `AspNetUsers`; toàn bộ 34 FR đã rà lại trạng thái.
 
 ---
 

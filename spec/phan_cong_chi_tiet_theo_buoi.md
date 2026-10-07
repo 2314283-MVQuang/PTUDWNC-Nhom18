@@ -61,43 +61,46 @@
 | Nguyễn Ngọc Bảo Thịnh | Full-text Search | PostgreSQL `tsvector`, extension `unaccent` + `pg_trgm`; xếp hạng `ts_rank` | `GET /api/v1/recipes/search?q=...` — endpoint duy nhất tuần này, phải chạy đúng cho cả tiếng Việt có dấu và không dấu | ✅ Xong |
 | Hồ Quốc Tiến | Recipe: ảnh, nguyên liệu, các bước (FR-RCP-008,009,010) | `RecipeIngredient`/`RecipeStep` CRUD (DB+API), gắn ảnh qua presigned URL đã setup Tuần 3 | **6 endpoint phải xong đủ**, không được chỉ làm Add mà bỏ dở Update/Delete: `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/ingredients` và `POST`/`PUT`/`DELETE /api/v1/recipes/{id}/steps` | ✅ Xong |
 
-## 📅 Tuần 5 — Hoàn tất vòng đời Công thức, Job nền & bổ sung Observability
+## 📅 Tuần 5 — Hoàn tất vòng đời Công thức & Job nền
 
-> ⚠️ **Cập nhật so với bảng Tuần 5 gốc (đã lỗi thời):** 5 chức năng của bảng cũ đã làm xong từ Tuần 3–4 nên **không giao lại**: FR-RCP-008 ảnh, FR-RCP-009 nguyên liệu, FR-RCP-010 các bước (Tiến, Tuần 4); FR-OBS-001 health check, FR-OBS-002 structured logging (Quang, Tuần 3). Tuần này chia lại các chức năng **chưa có trên `main`** để ai cũng có việc và không ai làm trùng.
+> ⚠️ **Cập nhật so với bảng Tuần 5 gốc (đã lỗi thời):** 5 chức năng của bảng cũ đã làm xong từ Tuần 3–4 nên **không giao lại**: FR-RCP-008 ảnh, FR-RCP-009 nguyên liệu, FR-RCP-010 các bước (Tiến, Tuần 4); FR-OBS-001 health check, FR-OBS-002 structured logging (Quang, Tuần 3). Các chức năng **chưa có trên `main`** được chia lại đều cho Tuần 5–6–7 để tuần nào mỗi người cũng có đúng 1 chức năng chính, không ai làm trùng.
 
 | Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành | Trạng thái |
 | :--- | :--- | :--- | :--- | :-: |
 | Mai Văn Quang | **FR-RCP-006** Hủy publish / Lưu trữ (Archive) | `ArchiveRecipeCommand` [Author-Owner/Admin] chuyển status sang `Archived`, không hiển thị công khai nhưng dữ liệu vẫn giữ nguyên; xoá cache tag liên quan | `PATCH /recipes/{id}/archive` thành công; công thức biến mất khỏi trang public và tìm kiếm nhưng tác giả vẫn xem được trong "công thức của tôi" | ⬜ Chưa làm |
 | Chung Thiện Ý | **FR-RCP-005** Publish công thức | `PublishRecipeCommand` [Author-Owner/Admin]; `Recipe.Publish()` kiểm tra **≥ 1 bước VÀ ≥ 1 nguyên liệu** (mâu thuẫn #7), thiếu thì trả `RECIPE_PUBLISH_INCOMPLETE` (400); set `PublishedAt` | `PATCH /recipes/{id}/publish` chuyển `Draft` → `Published`; công thức thiếu bước hoặc nguyên liệu bị chặn với thông báo rõ thiếu gì | ⬜ Chưa làm |
-| Chung Thiện Ý | **FR-OBS-001** (bổ sung) Health check MinIO | Thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready` | Tắt MinIO → `/health/ready` trả 503; bật lại → 200 | ⬜ Chưa làm |
-| Nguyễn Ngọc Bảo Thịnh | **FR-RCP-007** Xóa công thức + **FR-JOB-004** Purge | `DeleteRecipeCommand` chỉ set `IsDeleted = true` (**soft delete**, mâu thuẫn #1); cài Hangfire và `PurgeDeletedRecipesJob` chạy hàng ngày xóa cứng recipe đã xóa mềm quá 30 ngày kèm ảnh trên MinIO | `DELETE /recipes/{id}` xong thì công thức biến mất khỏi danh sách/tìm kiếm nhưng vẫn còn trong DB; chạy tay job purge xóa đúng các recipe quá hạn | ⬜ Chưa làm |
-| Nguyễn Ngọc Bảo Thịnh | **FR-OBS-002** (bổ sung) Ghi log ra file | Thêm Serilog sink File (rolling theo ngày) bên cạnh Console + Seq đã có | Thư mục log có file theo ngày, nội dung có `CorrelationId` | ⬜ Chưa làm |
-| Hồ Quốc Tiến | **FR-JOB-003** Sinh Sitemap | Hangfire Recurring Job chạy 02:00 AM hàng ngày, sinh `sitemap.xml` cho recipe/category đã publish (dùng chung cấu hình Hangfire với Thịnh — thống nhất ai cài trước) | Truy cập `/sitemap.xml` thấy đủ URL các trang đã publish, cập nhật tự động mỗi ngày | ⬜ Chưa làm |
-| Hồ Quốc Tiến | **FR-FILE-001** (bổ sung) Migration bảng `UploadedFiles` | Thay khối `CREATE TABLE IF NOT EXISTS` lúc khởi động trong `Program.cs` bằng EF migration `AddUploadedFiles` | `dotnet ef database update` tạo đúng bảng; `Program.cs` không còn SQL tạo bảng | ⬜ Chưa làm |
+| Nguyễn Ngọc Bảo Thịnh | **FR-RCP-007** Xóa công thức + **FR-JOB-004** Purge | `DeleteRecipeCommand` chỉ set `IsDeleted = true` (**soft delete**, mâu thuẫn #1); **cài Hangfire** (người đầu tiên cần) và `PurgeDeletedRecipesJob` chạy hàng ngày xóa cứng recipe đã xóa mềm quá 30 ngày | `DELETE /recipes/{id}` xong thì công thức biến mất khỏi danh sách/tìm kiếm nhưng vẫn còn trong DB; chạy tay job purge xóa đúng các recipe quá hạn | ⬜ Chưa làm |
+| Hồ Quốc Tiến | **FR-JOB-003** Sinh Sitemap | Hangfire Recurring Job chạy 02:00 AM hàng ngày, sinh `sitemap.xml` cho recipe/category đã publish (dùng lại cấu hình Hangfire Thịnh đã cài) | Truy cập `/sitemap.xml` thấy đủ URL các trang đã publish, cập nhật tự động mỗi ngày | ⬜ Chưa làm |
 
-**Thứ tự nên làm:** Ý làm FR-RCP-005 trước (Quang và Tiến cần có recipe `Published` để test archive và sitemap); Thịnh cài Hangfire trước để Tiến dùng lại cho sitemap.
+**Thứ tự nên làm:** Ý làm FR-RCP-005 trước (Quang và Tiến cần có recipe `Published` để test archive và sitemap); Thịnh cài Hangfire trước để Tiến dùng lại.
 
-**Kiểm chứng cuối Tuần 5:** đủ vòng đời Recipe: tạo → publish → archive / xóa mềm; `/sitemap.xml` phản ánh đúng recipe đã publish; `/health/ready` báo đúng khi tắt MinIO.
+**Kiểm chứng cuối Tuần 5:** đủ vòng đời Recipe: tạo → publish → archive / xóa mềm; `/sitemap.xml` phản ánh đúng recipe đã publish.
 
-## 📅 Tuần 6 — Module Tìm kiếm & Phân trang, Distributed Tracing
+## 📅 Tuần 6 — Hoàn thiện Tìm kiếm (lọc, sắp xếp, phân trang) & Chi tiết Danh mục
 
-| Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành |
-| :--- | :--- | :--- | :--- |
-| Mai Văn Quang | **FR-SRCH-001** Tìm kiếm toàn văn bản | PostgreSQL `tsvector`/`tsquery` + extension `unaccent`; xếp hạng theo `ts_rank` | `GET /recipes/search?q=...` tìm được công thức dù gõ **có dấu hoặc không dấu** (vd "pho bo" ra "Phở bò"), kết quả liên quan nhất lên trước |
-| Chung Thiện Ý | **FR-SRCH-002** Lọc công thức | Query filter theo `categoryId`, `difficulty`, khoảng thời gian chuẩn bị/nấu qua query string | Truyền tham số lọc trả đúng tập kết quả thỏa điều kiện, kết hợp được nhiều điều kiện lọc cùng lúc |
-| Nguyễn Ngọc Bảo Thịnh | **FR-SRCH-003** Sắp xếp kết quả (sort=-field) | Parse tham số `sort` (vd `-createdAt`, `title`), map động sang `OrderBy`/`OrderByDescending` | `?sort=-createdAt` trả công thức mới nhất trước; đổi field khác vẫn sắp xếp đúng |
-| Hồ Quốc Tiến | **FR-SRCH-004** Phân trang | Chuẩn hóa `page`/`pageSize`, trả metadata `totalCount`/`totalPages`; Output Cache TTL 1 phút cho kết quả search | Kết quả tìm kiếm/lọc/sắp xếp đều phân trang đúng số liệu; gọi lại trong 1 phút phản hồi từ cache |
-| Hồ Quốc Tiến | **FR-OBS-003** Distributed Tracing & Metrics | OpenTelemetry instrument HTTP request + EF Core traces, export OTLP đến Seq (dev)/Grafana Tempo (prod); custom metric đếm recipe created/published | Mở Seq/Tempo thấy được đường trace đầy đủ của 1 request đi qua API → EF Core → DB; xem được số liệu recipe created/published theo thời gian |
-| Cả nhóm | Kiểm thử module Search & Observability | Test tìm kiếm tiếng Việt không dấu, kết hợp lọc+sắp xếp+phân trang; kiểm tra log/trace/health check đồng bộ | Module Search hoạt động ổn định; có đủ log + trace + health check để debug khi triển khai thật |
+> ⚠️ **Cập nhật so với bảng Tuần 6 gốc:** FR-SRCH-001 (tìm toàn văn bản) Thịnh đã làm ở Tuần 4 và FR-OBS-003 (tracing) Quang đã làm ở Tuần 3 nên **không giao lại**. Quang nhận FR-CAT-002 (đang làm dở: mới có xem theo ID, chưa kèm công thức).
 
-## 📅 Tuần 7 — Module Quản lý Tệp tin & Job Welcome Email
+| Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành | Trạng thái |
+| :--- | :--- | :--- | :--- | :-: |
+| Mai Văn Quang | **FR-CAT-002** Chi tiết danh mục kèm công thức | `GetCategoryBySlugQuery`: tìm category theo slug, trả kèm danh sách recipe `Published` có phân trang; gắn Output Cache; đồng thời gắn policy `RecipeDetail` (đã khai báo, chưa dùng) cho `GET /recipes/{slug}` | `GET /categories/{slug}?page=&pageSize=` trả `{ category, recipes: { items, totalCount, page, pageSize, totalPages } }`; slug sai trả 404 | ⬜ Chưa làm |
+| Chung Thiện Ý | **FR-SRCH-002** Lọc kết quả tìm kiếm | Thêm `categoryId`, `difficulty`, khoảng `prepTime`/`cookTime` vào `SearchRecipesQuery` (hiện bộ lọc mới có ở `GET /recipes`, chưa có ở `/recipes/search`) | Kết hợp `q` + `categoryId` + `difficulty` cùng lúc trả đúng tập kết quả giao nhau | ⬜ Chưa làm |
+| Nguyễn Ngọc Bảo Thịnh | **FR-SRCH-003** Sắp xếp kết quả tìm kiếm | `SortParser` tách dấu `-` và tên field, whitelist field được phép; mặc định vẫn xếp theo `ts_rank` khi không truyền `sort` | `/recipes/search?q=...&sort=-createdAt` trả mới nhất trước; field không hợp lệ trả 400 thay vì 500 | ⬜ Chưa làm |
+| Hồ Quốc Tiến | **FR-SRCH-004** Phân trang kết quả tìm kiếm | Thay giới hạn cứng 50 dòng hiện tại bằng `page`/`pageSize` (giới hạn `pageSize` tối đa), trả `PagedResult` kèm `totalCount`/`totalPages` | Kết quả tìm kiếm/lọc/sắp xếp phân trang đúng số liệu; gọi lại trong 1 phút phản hồi từ cache | ⬜ Chưa làm |
+| Cả nhóm | Kiểm thử module Search | Test tìm kiếm tiếng Việt không dấu, kết hợp lọc + sắp xếp + phân trang | Module Search hoạt động ổn định với mọi tổ hợp tham số | ⬜ Chưa làm |
 
-| Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành |
-| :--- | :--- | :--- | :--- |
-| Hồ Quốc Tiến | **FR-FILE-001** Upload file lên MinIO | AWSSDK.S3 (endpoint override cho MinIO); sinh presigned URL, client upload trực tiếp lên bucket; kiểm tra MIME qua magic bytes (không tin Content-Type header) | Client lấy được presigned URL và upload ảnh thành công thẳng lên MinIO (không qua backend proxy); upload file giả dạng ảnh (sai magic bytes) bị từ chối |
-| Nguyễn Ngọc Bảo Thịnh | **FR-FILE-002** Xóa file khỏi MinIO | Xóa object theo key khi ảnh bị gỡ khỏi Recipe/Category, hoặc khi `PurgeDeletedRecipesJob` chạy | Gỡ ảnh khỏi công thức thì file cũng biến mất khỏi bucket MinIO (không để rác) |
-| Chung Thiện Ý | **FR-JOB-001** Welcome Email (Hangfire) | Enqueue job ngay sau khi `RegisterCommand` thành công, gửi email qua MailKit (SMTP; dev dùng MailHog) | Đăng ký tài khoản mới xong, kiểm tra MailHog thấy email chào mừng được gửi tới đúng địa chỉ |
-| Cả nhóm | Rà soát toàn bộ 34 FR trước khi tích hợp | Mỗi người tự kiểm tra lại các FR mình phụ trách theo cột "Kết quả khi hoàn thành" trong tài liệu này | Có danh sách FR nào còn thiếu/lỗi để xử lý ngay đầu Tuần 8, tránh dồn việc vào buổi tích hợp cuối |
+**Thứ tự nên làm:** cả Ý, Thịnh, Tiến cùng sửa `SearchRecipesQuery` — thống nhất chữ ký tham số trước khi code, merge theo thứ tự Ý → Thịnh → Tiến để tránh xung đột.
+
+## 📅 Tuần 7 — Module Tệp tin, Job nền còn lại & nối Frontend Auth
+
+> ⚠️ **Cập nhật so với bảng Tuần 7 gốc:** FR-FILE-001 (upload MinIO) Tiến đã làm ở Tuần 3–4 nên **không giao lại**; Tiến nhận FR-JOB-002 (chưa ai làm). Quang nhận việc nối frontend đăng ký/đăng nhập với backend thật.
+
+| Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành | Trạng thái |
+| :--- | :--- | :--- | :--- | :-: |
+| Mai Văn Quang | **FR-AUTH-001/002** (frontend) Nối đăng ký/đăng nhập với backend | Frontend hiện dùng danh sách user cục bộ (`frontend/data/users.json`); chuyển `auth.ts` và form đăng ký sang gọi `POST /auth/register`, `POST /auth/login` của backend, bỏ token giả `local-token-...` | Tài khoản đăng ký trên giao diện xuất hiện trong PostgreSQL; đăng nhập xong gọi được API cần quyền bằng JWT thật | ⬜ Chưa làm |
+| Chung Thiện Ý | **FR-JOB-001** Welcome Email (Hangfire) + bổ sung health check MinIO | Enqueue `WelcomeEmailJob` sau khi `RegisterCommand` thành công, gửi qua MailKit (dev dùng MailHog); thêm check MinIO vào `/health/ready` | Đăng ký xong thấy email chào mừng trong MailHog; tắt MinIO thì `/health/ready` trả 503 | ⬜ Chưa làm |
+| Nguyễn Ngọc Bảo Thịnh | **FR-FILE-002** Xóa file khỏi MinIO + bổ sung log ra file | `DeleteFileCommand`/`IFileStorageService.DeleteAsync`; gọi khi ảnh bị gỡ khỏi Recipe và khi `PurgeDeletedRecipesJob` chạy; thêm Serilog sink File (rolling theo ngày) | Gỡ ảnh khỏi công thức thì file cũng biến mất khỏi bucket MinIO; thư mục log có file theo ngày | ⬜ Chưa làm |
+| Hồ Quốc Tiến | **FR-JOB-002** Sinh Thumbnail + migration bảng `UploadedFiles` | `GenerateThumbnailJob` (Hangfire) chạy sau khi upload ảnh, sinh bản medium/thumbnail qua `IImageProcessor.Resize`; thay khối `CREATE TABLE IF NOT EXISTS` trong `Program.cs` bằng EF migration `AddUploadedFiles` | Upload ảnh xong vài giây sau có `MediumUrl`/`ThumbnailUrl`; `dotnet ef database update` tạo đúng bảng | ⬜ Chưa làm |
+| Cả nhóm | Rà soát toàn bộ 34 FR trước khi tích hợp | Mỗi người tự kiểm tra lại các FR mình phụ trách theo cột "Kết quả khi hoàn thành" trong tài liệu này | Có danh sách FR nào còn thiếu/lỗi để xử lý ngay đầu Tuần 8 | ⬜ Chưa làm |
 
 ## 📅 Tuần 8 — Tích hợp, Kiểm thử, Triển khai (cả nhóm)
 

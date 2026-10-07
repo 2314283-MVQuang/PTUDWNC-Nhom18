@@ -382,7 +382,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 ---
 
-### Buổi 5 (Tuần 5) — Hoàn tất vòng đời Công thức + Job nền ⬜ Chưa làm (cả nhóm)
+### Buổi 5 (Tuần 5) — Hoàn tất vòng đời Công thức + Job nền ✅ Quang xong · còn lại chưa làm
 
 > ⚠️ **Đã cập nhật:** bảng Buổi 5 gốc (8 FR) không còn đúng. 5 chức năng của bảng cũ đã làm xong từ Tuần 3–4 nên **không giao lại**: FR-RCP-008 ảnh, FR-RCP-009 nguyên liệu, FR-RCP-010 các bước (Tiến, Tuần 4); FR-OBS-001 health check, FR-OBS-002 structured logging (Quang, Tuần 3). Các chức năng **chưa có trên `main`** được chia lại đều cho Buổi 5–6–7 để buổi nào mỗi người cũng có đúng 1 chức năng chính. Bảng đầy đủ ở [`spec/phan_cong_chi_tiet_theo_buoi.md`](spec/phan_cong_chi_tiet_theo_buoi.md) mục "Tuần 5".
 
@@ -394,13 +394,15 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 3. Quang làm FR-RCP-006 (archive) song song với Thịnh vì hai lệnh độc lập nhau.
 4. Quốc Tiến làm FR-JOB-003 (sitemap) cuối buổi khi đã có recipe Published.
 
-**Mai Văn Quang · FR-RCP-006 Hủy publish / Lưu trữ** — ⬜ Chưa làm
+**Mai Văn Quang · FR-RCP-006 Hủy publish / Lưu trữ** — ✅ Đã hoàn thành
 
 - **Cách làm:** `ArchiveRecipeCommand` [Author-Owner/Admin] chuyển `Status` sang `Archived`; recipe archived bị loại khỏi `GetRecipesQuery`/Search công khai nhưng vẫn hiện trong "công thức của tôi" của tác giả; xoá cache tag liên quan sau khi đổi trạng thái.
 
 - **Vì sao:** tách rõ "archive" (tác giả chủ động ẩn tạm) khỏi "xóa mềm" (MT-01) — hai trạng thái có ý nghĩa nghiệp vụ khác nhau, không nên dùng chung một cờ `IsDeleted`.
 
 - **Xong khi:** `PATCH /recipes/{id}/archive` chuyển trạng thái đúng; recipe archived không xuất hiện ở trang chủ nhưng tác giả vẫn quản lý được.
+
+- **Đã làm:** `PATCH /recipes/{id}/archive` và `PATCH /recipes/{id}/unarchive` (bỏ lưu trữ trả bài về trạng thái trước đó: đã từng publish → `Published`, chưa → `Draft`); domain method `Recipe.Archive()`/`Unarchive()`; idempotent; xoá cache tag `recipes`, `recipe-{id}`, `search`, `categories`; 8 unit test trong `tests/CulinaryBlog.UnitTests/Recipes/ArchiveRecipeTests.cs`.
 
 - **Commit:** `feat(recipes): implement FR-RCP-006 archive/unpublish`
 

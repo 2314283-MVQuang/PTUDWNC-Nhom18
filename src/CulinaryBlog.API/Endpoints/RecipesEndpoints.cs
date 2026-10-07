@@ -1,4 +1,5 @@
 using CulinaryBlog.API.Extensions;
+using CulinaryBlog.Application.Features.Recipes.Commands.ArchiveRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
 using Microsoft.AspNetCore.Mvc;
@@ -84,6 +85,51 @@ public static class RecipesEndpoints
 
                 return result.ToOkResponse();
             })
+            .RequireAuthorization(
+                AuthorizationPolicies.Author);
+
+        // -----------------------------------------------------------
+        // PATCH /api/v1/recipes/{id}/archive     (FR-RCP-006 — Quang)
+        // PATCH /api/v1/recipes/{id}/unarchive
+        // -----------------------------------------------------------
+        // Require Author/Admin ở endpoint; Handler kiểm tra thêm Owner (403) và tồn tại (404).
+        // Lưu trữ = ẩn khỏi danh sách/tìm kiếm công khai, KHÔNG xoá dữ liệu; tác giả vẫn thấy bài
+        // trong danh sách của mình. Bỏ lưu trữ trả bài về trạng thái trước đó (Published/Draft).
+        group.MapPatch(
+            "/{id:guid}/archive",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var result =
+                    await sender.Send(
+                        new ArchiveRecipeCommand(id, Archive: true),
+                        ct);
+
+                return result.ToOkResponse();
+            })
+            .WithName("ArchiveRecipe")
+            .WithSummary("Lưu trữ công thức (ẩn khỏi trang công khai, không xoá)")
+            .RequireAuthorization(
+                AuthorizationPolicies.Author);
+
+        group.MapPatch(
+            "/{id:guid}/unarchive",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var result =
+                    await sender.Send(
+                        new ArchiveRecipeCommand(id, Archive: false),
+                        ct);
+
+                return result.ToOkResponse();
+            })
+            .WithName("UnarchiveRecipe")
+            .WithSummary("Bỏ lưu trữ công thức (trả về trạng thái trước khi lưu trữ)")
             .RequireAuthorization(
                 AuthorizationPolicies.Author);
 

@@ -75,7 +75,7 @@ Mỗi mục dưới đây có `TODO` comment ngay tại vị trí liên quan tro
 - **FR-CAT-002/004/005** Chi tiết danh mục kèm recipe, sửa, xóa (kiểm tra `HasRecipesAsync` → 409) — chưa có. `ICategoryRepository.HasRecipesAsync` đã viết sẵn, chỉ cần dùng.
 - **FR-RCP-004** Update recipe (cần header `If-Match` cho optimistic concurrency) — chưa có. Phần kiểm tra quyền đã có sẵn: gọi `RecipeAuthorization.EnsureCanModify(...)` như các Handler khác.
 - **FR-RCP-007** Delete recipe (hard delete, nhớ xoá luôn file ảnh qua `IFileStorageService`) — chưa có.
-- **FR-SRCH-001** Full-Text Search (`GET /recipes/search`) — chưa có, cột `SearchVector` + trigger đã có sẵn ở DB (`db/init/02-schema.sql`), chỉ cần viết Query dùng `EF.Functions.ToTsQuery` / raw SQL tham số hóa.
+- **FR-SRCH-001** Full-Text Search (`GET /api/v1/recipes/search?q=`) — đã có Query/Handler, repository truy vấn cột `SearchVector` bằng cấu hình `vietnamese` + `unaccent` và API endpoint; cột, GIN index và trigger được khai báo trong `db/init/02-schema.sql`.
 - **Redis** — chưa tích hợp. `CachingBehavior`/`CacheInvalidationBehavior` (mục 6.3) chưa viết, category/recipe đang query thẳng DB mỗi lần.
 - **MinIO** — chưa tích hợp. `IFileStorageService` đã có interface chuẩn, bản hiện tại (`LocalFileStorageService`) lưu vào đĩa cục bộ tạm thời. Viết `MinioFileStorageService` implement cùng interface rồi đổi 1 dòng DI.
 - **Hangfire** — chưa tích hợp. Email chào mừng hiện gọi đồng bộ (`ConsoleEmailService` chỉ log ra console); resize ảnh (FR-JOB-002) và sitemap (FR-JOB-003) chưa có.
@@ -89,7 +89,7 @@ Mỗi mục dưới đây có `TODO` comment ngay tại vị trí liên quan tro
 - **`RowVersion` không bao giờ set tay trong C#.** Trigger `touch_row()` ở PostgreSQL (xem
   `db/init/02-schema.sql`) tự sinh giá trị mới mỗi lần UPDATE — EF Core chỉ đọc lại
   (`IsRowVersion()` trong mỗi `*Configuration.cs`) để dùng làm optimistic concurrency token.
-- **Cột `SearchVector` của Recipe không map vào C#** — trigger DB tự quản lý hoàn toàn.
+- **Cột `SearchVector` của Recipe** được map thành shadow property để truy vấn GIN index; trigger DB vẫn quản lý giá trị.
 - **`ApplicationUser` (Domain) kế thừa `IdentityUser`** — ngoại lệ duy nhất cho quy tắc "Domain
   không phụ thuộc thư viện ngoài" (xem comment trong `CulinaryBlog.Domain.csproj`), cần thiết vì
   tài liệu đặc tả liệt kê `ApplicationUser` là entity của Domain (mục 6.2/7.7).

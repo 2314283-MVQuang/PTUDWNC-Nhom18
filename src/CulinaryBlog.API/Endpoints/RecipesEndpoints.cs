@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeById;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeBySlug;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipes;
+using CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
 using CulinaryBlog.Domain.Enums;
 using MediatR;
 
@@ -115,6 +116,29 @@ public static class RecipesEndpoints
 
                 return result.ToPagedResponse();
             });
+
+        // -----------------------------------------------------------
+        // GET /api/v1/recipes/search?q=   (FR-SRCH-001 — Thịnh)
+        // -----------------------------------------------------------
+        // Full-text search tiếng Việt, bỏ dấu. Cache 1 phút, vary theo query string
+        // (policy "Search" trong Program.cs — NFR-PERF-003 / mâu thuẫn #4).
+        group.MapGet(
+            "/search",
+            async (
+                [FromQuery(Name = "q")] string? q,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                var recipes =
+                    await sender.Send(
+                        new SearchRecipesQuery(q ?? string.Empty),
+                        cancellationToken);
+
+                return recipes.ToOkResponse();
+            })
+            .WithName("SearchRecipes")
+            .WithSummary("Full-text Search Recipes")
+            .CacheOutput("Search");
 
         // -----------------------------------------------------------
         // GET /api/v1/recipes/{id}

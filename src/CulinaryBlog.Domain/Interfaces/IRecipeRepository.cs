@@ -42,4 +42,12 @@ public interface IRecipeRepository : IRepository<Recipe>
     void SetOriginalRowVersion(
         Recipe recipe,
         byte[] expectedRowVersion);
+
+    /// <summary>
+    /// FR-SRCH-001: tìm công thức ĐÃ XUẤT BẢN bằng full-text search tiếng Việt (bỏ dấu), sắp theo
+    /// độ liên quan giảm dần. Từ khóa rỗng trả về danh sách rỗng.
+    /// </summary>
+    Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
+        string keyword,
+        CancellationToken ct = default);
 }

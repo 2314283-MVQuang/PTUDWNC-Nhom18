@@ -1,5 +1,6 @@
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
+using CulinaryBlog.Application.Features.Categories.Commands.DeleteCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
 using CulinaryBlog.Domain.Entities;
@@ -88,6 +89,14 @@ public static class CategoryEndpoints
             };
 
             return Results.Ok(new { data = response });
+        }).RequireAuthorization(AuthorizationPolicies.Admin);
+
+        // FR-CAT-005 (Thịnh): Xoá danh mục (Admin) — soft delete (mâu thuẫn #2), 409 nếu còn công thức.
+        group.MapDelete("/{id:guid}", async (Guid id, ISender sender, IOutputCacheStore cacheStore, CancellationToken ct) =>
+        {
+            await sender.Send(new DeleteCategoryCommand(id), ct);
+            await cacheStore.EvictByTagAsync("categories", ct);
+            return Results.NoContent();
         }).RequireAuthorization(AuthorizationPolicies.Admin);
     }
 }

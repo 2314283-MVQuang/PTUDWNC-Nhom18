@@ -59,6 +59,13 @@ public class GlobalExceptionMiddleware(
                         "RECIPE_CONCURRENCY_CONFLICT"
                     ),
 
+                CategoryNotFoundException =>
+                    (
+                        (int)HttpStatusCode.NotFound,
+                        "Không tìm thấy danh mục",
+                        "CATEGORY_NOT_FOUND"
+                    ),
+
                 InvalidFileException =>
                     (
                         (int)HttpStatusCode.BadRequest,

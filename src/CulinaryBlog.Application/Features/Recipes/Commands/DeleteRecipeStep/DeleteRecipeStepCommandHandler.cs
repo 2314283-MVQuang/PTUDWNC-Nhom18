@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
@@ -38,10 +39,16 @@ public class DeleteRecipeStepCommandHandler(
             throw new NotFoundException(nameof(RecipeStep), request.StepId);
         }
 
-        // Soft delete bước cần xóa: gán số âm duy nhất để không đụng unique index (RecipeId, StepNumber)
+        // Soft delete bước cần xóa. Unique (RecipeId, StepNumber) tính cả dòng đã xoá mềm, còn CHECK
+        // ("StepNumber" > 0) cấm số âm — nên "đỗ" bước đã xoá ở một số dương lớn, duy nhất trong công
+        // thức: lớn hơn mọi số đang có (kể cả các bước đã xoá trước đó) và lớn hơn DeletedBase.
+        var maxStepNumber = await steps.Query()
+            .IgnoreQueryFilters()
+            .Where(s => s.RecipeId == request.RecipeId)
+            .MaxAsync(s => (int?)s.StepNumber, ct) ?? 0;
+
         step.IsDeleted = true;
-        step.StepNumber = -Math.Abs(step.Id.GetHashCode());
-        if (step.StepNumber == 0) step.StepNumber = -10000;
+        step.StepNumber = Math.Max(maxStepNumber, RecipeStepNumbering.DeletedBase) + 1;
         steps.Update(step);
 
         var remainingSteps = await steps.Query()
@@ -53,10 +60,10 @@ public class DeleteRecipeStepCommandHandler(
         {
             await unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                // Bước 1: gán số âm tạm thời
+                // Bước 1: gán số tạm (dương, ngoài dải số thật)
                 for (int i = 0; i < remainingSteps.Count; i++)
                 {
-                    remainingSteps[i].StepNumber = -(i + 1000);
+                    remainingSteps[i].StepNumber = RecipeStepNumbering.TempBase + i;
                 }
                 await unitOfWork.SaveChangesAsync(ct);
 

@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Recipes.Dtos;
 using CulinaryBlog.Domain.Entities;
@@ -59,10 +60,10 @@ public class UpdateRecipeStepCommandHandler(
 
             await unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                // Bước 1: đánh số âm tạm thời
+                // Bước 1: đánh số tạm (dương, ngoài dải số thật — DB có CHECK "StepNumber" > 0)
                 for (int i = 0; i < allSteps.Count; i++)
                 {
-                    allSteps[i].StepNumber = -(i + 1000);
+                    allSteps[i].StepNumber = RecipeStepNumbering.TempBase + i;
                 }
                 await unitOfWork.SaveChangesAsync(ct);
 

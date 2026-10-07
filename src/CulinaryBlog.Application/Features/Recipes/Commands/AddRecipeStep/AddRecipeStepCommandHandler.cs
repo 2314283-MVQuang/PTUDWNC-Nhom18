@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Recipes.Dtos;
 using CulinaryBlog.Domain.Entities;
@@ -63,10 +64,11 @@ public class AddRecipeStepCommandHandler(
         {
             await unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                // Bước 1: gán số âm tạm thời để không đụng unique index (RecipeId, StepNumber)
+                // Bước 1: gán số tạm (dương, ngoài dải số thật) để không đụng unique (RecipeId, StepNumber)
+                // và không vi phạm CHECK ("StepNumber" > 0) của PostgreSQL.
                 for (int i = 0; i < stepsToShift.Count; i++)
                 {
-                    stepsToShift[i].StepNumber = -(i + 1000);
+                    stepsToShift[i].StepNumber = RecipeStepNumbering.TempBase + i;
                 }
                 await unitOfWork.SaveChangesAsync(ct);
 

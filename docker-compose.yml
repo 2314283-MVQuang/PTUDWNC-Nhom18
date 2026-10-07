@@ -11,8 +11,8 @@
 #    docker compose down                 # dừng tất cả, GIỮ LẠI dữ liệu
 #    docker compose down -v              # dừng và XOÁ SẠCH dữ liệu database
 #
-#  Các service khác trong tài liệu đặc tả (redis, minio, nginx, mailhog — mục 6.4) sẽ thêm sau
-#  khi backend cần đến, chưa cần lúc này.
+#  Các service khác trong tài liệu đặc tả (minio, nginx, mailhog — mục 6.4) sẽ thêm sau khi
+#  backend cần đến. Redis đã thêm ở Tuần 4 cho Output Cache (mâu thuẫn #3).
 # =============================================================================
 
 services:
@@ -88,6 +88,26 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # Redis 7 — Output Cache (Tuần 4, mâu thuẫn #3: bỏ IMemoryCache, chỉ 1 tầng cache duy nhất).
+  # Không cần dữ liệu cache sống sót qua lần dựng lại (TTL ngắn nhất 1 phút, dài nhất 30 phút —
+  # mất cache chỉ gây vài request đầu chậm hơn, không mất dữ liệu thật) nên có khai volume để giữ
+  # qua restart bình thường, nhưng `docker compose down -v` xoá sạch cũng không sao.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: culinaryblog-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # Backend .NET — CulinaryBlog.API
   #
   #     docker compose up --build api
@@ -112,6 +132,9 @@ services:
       # Trong container, "localhost" trỏ về chính container này chứ không phải máy
       # thật, nên phải gọi PostgreSQL bằng tên service là "postgres".
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=culinaryblog;Username=culinary;Password=culinary123"
+      # Trong container, "localhost" trỏ về chính container này chứ không phải máy thật, nên phải
+      # gọi Redis bằng tên service "redis" (giống lý do ConnectionStrings__DefaultConnection ở trên).
+      Redis__ConnectionString: "redis:6379,abortConnect=false"
       # Jwt:Secret bình thường nằm trong User Secrets của máy dev, mà User Secrets
       # KHÔNG được copy vào image — không truyền vào đây thì API chết lúc đăng nhập.
       # Giá trị mặc định dưới đây CHỈ để chạy thử trên máy cá nhân; deploy thật thì
@@ -123,6 +146,8 @@ services:
       - uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -172,5 +197,6 @@ services:
 
 volumes:
   pgdata:
+  redisdata:
   uploads:
   miniodata:

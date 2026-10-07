@@ -29,6 +29,18 @@ public class UpdateCategoryCommandHandler(
 
         if (isNameChanged)
         {
+            // Name là duy nhất (SRS FR-CAT-003 + unique index "IX_Categories_Name") — kiểm tra trước để
+            // trả 409 rõ ràng thay vì để PostgreSQL ném lỗi unique constraint (thành 500).
+            var normalizedName = trimmedName.ToUpperInvariant();
+            var nameExists = await categories.Query()
+                .IgnoreQueryFilters()
+                .AnyAsync(c => c.Id != category.Id && c.Name.ToUpper() == normalizedName, ct);
+
+            if (nameExists)
+            {
+                throw new ConflictException($"Danh mục '{trimmedName}' đã tồn tại.");
+            }
+
             category.Name = trimmedName;
 
             // Áp đúng nghị quyết MT-06: nếu đổi tên khiến slug trùng danh mục khác

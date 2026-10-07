@@ -143,8 +143,20 @@ export interface CreateRecipeInput {
   ingredients?: Array<Pick<RecipeIngredient, "name" | "quantity" | "unit" | "notes" | "orderIndex">>;
 }
 
-/** Body cập nhật recipe (FR-RCP-004) — mọi field optional vì có thể chỉ sửa 1 phần. */
-export type UpdateRecipeInput = Partial<CreateRecipeInput>;
+/** Body cập nhật recipe (FR-RCP-004) — mọi field optional.
+ * Tách riêng khỏi CreateRecipeInput vì frontend form dùng prepTimeMinutes/cookTimeMinutes,
+ * còn API dùng prepTime/cookTime; đồng thời Update không cập nhật Steps/Ingredients. */
+export interface UpdateRecipeInput {
+  title?: string;
+  description?: string;
+  categoryId?: string;
+  prepTime?: number;
+  cookTime?: number;
+  servings?: number;
+  difficulty?: RecipeDifficulty;
+  instructions?: string;
+  nutrition?: Partial<RecipeNutrition>;
+}
 
 // ---------------------------------------------------------------------------
 // Body cho các endpoint CRUD từng phần của công thức — phần việc của Quang.

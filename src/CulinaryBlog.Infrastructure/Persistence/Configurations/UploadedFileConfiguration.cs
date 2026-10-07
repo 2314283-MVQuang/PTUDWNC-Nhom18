@@ -35,8 +35,10 @@ public class UploadedFileConfiguration : IEntityTypeConfiguration<UploadedFile>
         builder.Property(x => x.UploadedBy)
             .HasMaxLength(256);
 
-        builder.Property(x => x.RowVersion)
-            .IsRowVersion();
+        // KHÔNG dùng IsRowVersion() cho bảng này: các bảng khác dựa vào trigger "touch_row()" của
+        // PostgreSQL để sinh RowVersion, còn UploadedFiles được tạo bằng migration (không có trigger).
+        // Metadata file chỉ ghi 1 lần, không cần optimistic concurrency — RowVersion giữ giá trị mặc
+        // định (mảng rỗng) của BaseEntity để thoả ràng buộc NOT NULL.
 
         builder.HasQueryFilter(x => !x.IsDeleted);
     }

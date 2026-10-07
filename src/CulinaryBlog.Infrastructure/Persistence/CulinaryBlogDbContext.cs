@@ -48,32 +48,12 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
         builder.Entity<RecipeStep>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RecipeIngredient>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RecipeImage>().HasQueryFilter(x => !x.IsDeleted);
-        builder.Entity<UploadedFile>().HasQueryFilter(x => !x.IsDeleted);
-
-        if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
-        {
-            foreach (var entity in builder.Model.GetEntityTypes())
-            {
-                var rowVersionProp = entity.FindProperty("RowVersion");
-                if (rowVersionProp != null)
-                {
-                    rowVersionProp.IsConcurrencyToken = false;
-                    rowVersionProp.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
-                }
-            }
-        }
-    }
-
-    private class SqliteRowVersionGenerator : Microsoft.EntityFrameworkCore.ValueGeneration.ValueGenerator<byte[]>
-    {
-        public override bool GeneratesTemporaryValues => false;
-        public override byte[] Next(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
-            => System.Text.Encoding.UTF8.GetBytes(Guid.NewGuid().ToString("N"));
     }
 
     /// <inheritdoc />
     public async Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken ct = default)
     {
+        // Provider InMemory (chỉ dùng trong unit test) không hỗ trợ transaction — chạy thẳng action.
         if (Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
         {
             await action();

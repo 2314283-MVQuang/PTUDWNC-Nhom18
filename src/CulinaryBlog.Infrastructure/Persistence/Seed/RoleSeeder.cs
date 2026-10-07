@@ -1,3 +1,4 @@
+using CulinaryBlog.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
@@ -45,33 +46,48 @@ public static class RoleSeeder
         }
     }
 
-    public static async Task SeedDefaultAdminAsync(
-        UserManager<CulinaryBlog.Domain.Entities.ApplicationUser> userManager,
+    /// <summary>
+    /// CHỈ DÙNG Ở DEVELOPMENT (gọi trong khối IsDevelopment() ở Program.cs): tạo sẵn 1 tài khoản
+    /// Admin THẬT trong PostgreSQL để test các API cần quyền Admin (sửa công thức của người khác,
+    /// tạo/sửa Category...) bằng JWT do backend phát hành. Khác tài khoản mẫu của frontend
+    /// (users.json), tài khoản này đăng nhập qua POST /api/v1/auth/login được. Idempotent.
+    /// Mật khẩu thoả policy (>= 8 ký tự, 1 hoa, 1 số, 1 ký tự đặc biệt). TUYỆT ĐỐI không gọi ở production.
+    /// </summary>
+    public static async Task SeedDevAdminAsync(
+        UserManager<ApplicationUser> userManager,
         ILogger logger)
     {
-        var adminEmail = "admin@culinaryblog.local";
-        var existing = await userManager.FindByEmailAsync(adminEmail);
-        if (existing is null)
+        const string email = "admin@culinaryblog.local";
+        const string password = "Admin@123";
+
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
         {
-            var adminUser = new CulinaryBlog.Domain.Entities.ApplicationUser
+            user = new ApplicationUser
             {
-                UserName = "admin",
-                Email = adminEmail,
-                DisplayName = "Quản trị viên",
+                UserName = email,
+                Email = email,
+                DisplayName = "Quản trị viên (Admin)",
                 EmailConfirmed = true,
-                IsActive = true
             };
-            var result = await userManager.CreateAsync(adminUser, "Admin@123");
-            if (result.Succeeded)
+
+            var create = await userManager.CreateAsync(user, password);
+            if (!create.Succeeded)
             {
-                await userManager.AddToRoleAsync(adminUser, "Admin");
-                await userManager.AddToRoleAsync(adminUser, "Author");
-                logger.LogInformation("RoleSeeder: đã tạo tài khoản Admin mặc định {Email}.", adminEmail);
+                logger.LogError(
+                    "RoleSeeder: không tạo được admin dev: {Errors}",
+                    string.Join(", ", create.Errors.Select(e => e.Description)));
+                return;
             }
-            else
+
+            logger.LogInformation("RoleSeeder: đã tạo tài khoản admin dev {Email}.", email);
+        }
+
+        foreach (var role in new[] { "Admin", "Author" })
+        {
+            if (!await userManager.IsInRoleAsync(user, role))
             {
-                logger.LogError("RoleSeeder: không tạo được tài khoản Admin: {Errors}",
-                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                await userManager.AddToRoleAsync(user, role);
             }
         }
     }

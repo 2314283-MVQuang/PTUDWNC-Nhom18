@@ -1,6 +1,7 @@
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
+using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
@@ -20,27 +21,15 @@ public static class CategoryEndpoints
     {
         var group = app.MapGroup("/api/v1/categories").WithTags("Categories");
 
-        // FR-CAT-001: Xem danh sách danh mục (cache tag: categories)
-        group.MapGet("", async (IRepository<Category> categories, CancellationToken ct) =>
+        // FR-CAT-001: public, không yêu cầu đăng nhập. Cache 30 phút (NFR-PERF-003) —
+        // xem policy "categories" (có tag "categories") đăng ký trong Program.cs.
+        group.MapGet("/", async (ISender sender) =>
         {
-            var list = await categories.Query()
-                .OrderBy(c => c.OrderIndex)
-                .ThenBy(c => c.Name)
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Name,
-                    c.Slug,
-                    c.Description,
-                    c.ImageUrl,
-                    c.OrderIndex
-                })
-                .ToListAsync(ct);
+            var result = await sender.Send(new GetCategoriesQuery());
+            return result.ToOkResponse();
+        }).CacheOutput("categories");
 
-            return Results.Ok(new { data = list });
-        }).CacheOutput(p => p.Tag("categories").Expire(TimeSpan.FromMinutes(30)));
-
-        // FR-CAT-002: Xem chi tiết danh mục
+        // Xem 1 danh mục theo ID (phục vụ màn hình sửa danh mục ở dashboard Admin).
         group.MapGet("/{id:guid}", async (Guid id, IRepository<Category> categories, CancellationToken ct) =>
         {
             var category = await categories.Query()
@@ -64,7 +53,7 @@ public static class CategoryEndpoints
             return Results.Ok(new { data = response });
         });
 
-        // FR-CAT-003: Tạo danh mục mới (Admin)
+        // FR-CAT-003: Tạo danh mục mới (Admin). Xoá cache danh sách ngay sau khi tạo (mâu thuẫn #4).
         group.MapPost("", async (CreateCategoryCommand command, ISender sender, IOutputCacheStore cacheStore, CancellationToken ct) =>
         {
             var category = await sender.Send(command, ct);
@@ -79,15 +68,15 @@ public static class CategoryEndpoints
                 category.ImageUrl,
             };
 
-            return Results.Created($"/api/v1/categories/{category.Id}", new { data = response });
+            // SRS FR-CAT-003: Location header trỏ đến /api/v1/categories/{newSlug}.
+            return Results.Created($"/api/v1/categories/{category.Slug}", new { data = response });
         }).RequireAuthorization(AuthorizationPolicies.Admin);
 
-        // FR-CAT-004: Cập nhật danh mục (Admin) - MT-06 slug auto-suffix
-        group.MapPut("/{id:guid}", async (Guid id, UpdateCategoryRequest request, ISender sender, IOutputCacheStore cacheStore, CancellationToken ct) =>
+        // FR-CAT-004: Cập nhật danh mục (Admin). Handler tự xoá cache tag "categories".
+        group.MapPut("/{id:guid}", async (Guid id, UpdateCategoryRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new UpdateCategoryCommand(id, request.Name, request.Description, request.ImageUrl);
             var category = await sender.Send(command, ct);
-            await cacheStore.EvictByTagAsync("categories", ct);
 
             var response = new
             {

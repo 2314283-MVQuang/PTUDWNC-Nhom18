@@ -62,12 +62,42 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
 
   async function onSubmit(values: RecipeBasicInfoValues) {
     try {
-      await updateRecipe.mutateAsync({ id: recipe.id, input: values, rowVersion: recipe.rowVersion });
+      // Form dùng prepTimeMinutes/cookTimeMinutes để tên rõ nghĩa với người dùng.
+      // API lại nhận prepTime/cookTime, vì vậy phải map trước khi gọi mutation.
+      const input = {
+        title: values.title,
+        description: values.description,
+        categoryId: values.categoryId,
+        prepTime: values.prepTimeMinutes,
+        cookTime: values.cookTimeMinutes,
+        servings: values.servings,
+        difficulty: values.difficulty,
+      };
+
+      const updatedRecipe = await updateRecipe.mutateAsync({
+        id: recipe.id,
+        input,
+        rowVersion: recipe.rowVersion,
+      });
+
+      // Draft/Archived có thể đổi slug khi đổi title.
+      // Edit page hiện đang dùng slug làm route param, nên chuyển sang URL slug mới.
+      if (updatedRecipe.slug !== recipe.slug) {
+        router.replace(`/dashboard/recipes/${updatedRecipe.slug}/edit`);
+      }
     } catch (error) {
       if (error instanceof ApiError && error.type === ApiErrorCode.RecipeConcurrencyConflict) {
-        setError("root", { message: "Dữ liệu đã bị thay đổi bởi người dùng khác. Vui lòng tải lại trang." });
+        setError("root", {
+          message: "Dữ liệu đã bị thay đổi bởi người dùng khác. Vui lòng tải lại trang.",
+        });
+      } else if (error instanceof ApiError && error.type === ApiErrorCode.RecipeForbidden) {
+        setError("root", {
+          message: "Bạn không có quyền chỉnh sửa công thức này.",
+        });
       } else {
-        setError("root", { message: "Lưu thất bại, vui lòng thử lại." });
+        setError("root", {
+          message: apiErrorMessage(error, "Lưu thất bại, vui lòng thử lại."),
+        });
       }
     }
   }

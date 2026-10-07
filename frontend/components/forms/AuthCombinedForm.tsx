@@ -218,6 +218,15 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
             Đăng nhập
           </Button>
 
+          <div className="relative py-1 text-center text-xs text-neutral-400">
+            <span className="relative z-10 bg-white px-2">hoặc</span>
+            <div className="absolute inset-x-0 top-1/2 -z-0 border-t border-neutral-200" />
+          </div>
+
+          <Button type="button" variant="outline" onClick={() => signIn("google", { callbackUrl })}>
+            Đăng nhập với Google
+          </Button>
+
           <p className="text-center text-xs text-neutral-500 mt-1">
             Chưa có tài khoản?{" "}
             <button

@@ -56,4 +56,45 @@ public class Recipe : BaseEntity
     public ICollection<RecipeIngredient> Ingredients { get; set; } = [];
 
     public ICollection<RecipeImage> Images { get; set; } = [];
+
+    /// <Sumary>
+    /// Cập nhật các thông tin cơ bản của Recipe
+    /// Field nào truyền null thì giữ nguyên giá trị cũ
+    /// Điều này phù hợp với PUT body hiện tại của frontend
+    /// vì một số field có thể không được gửi
+    /// </Sumary>
+    public void UpdateBasicInfo(string? title, string? description, string? instructions, int? prepTime, int? cookTime, int? servings, RecipeDifficulty? difficulty, Guid? categoryId)
+    {
+        if (title != null) Title = title;
+        if (description != null) Description = description;
+        if (instructions != null) Instructions = instructions;
+        if (prepTime.HasValue) PrepTime = prepTime.Value;
+        if (cookTime.HasValue) CookTime = cookTime.Value;
+        if (servings.HasValue) Servings = servings.Value;
+        if (difficulty.HasValue) Difficulty = difficulty.Value;
+        if (categoryId.HasValue) CategoryId = categoryId.Value;
+    }
+
+    // <summary>
+    // Cập nhật slug
+    // Business rule: Slug chỉ được cập nhật khi Recipe chưa được publish
+    // được quyết định ở Application layer (RecipeService) trước khi gọi hàm này
+    // </summary>
+    public void ChangeSlug(string slug)
+    {
+        Slug = slug;
+    }
+
+    // <summary>
+    // Cập nhật toàn bộ Nutrition nếu request gửi Nutrition
+    // </summary>
+    public void UpdateNutrition(RecipeNutrition nutrition)
+    {
+        Nutrition.Calories = nutrition.Calories;
+        Nutrition.Protein = nutrition.Protein;
+        Nutrition.Carbohydrates = nutrition.Carbohydrates;
+        Nutrition.Fat = nutrition.Fat;
+        Nutrition.Fiber = nutrition.Fiber;
+        Nutrition.Sodium = nutrition.Sodium;
+    }
 }

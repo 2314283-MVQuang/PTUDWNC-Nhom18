@@ -8,39 +8,56 @@ using Microsoft.EntityFrameworkCore;
 namespace CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 
 public class UpdateCategoryCommandHandler(
-    ICategoryRepository categories,
+    IRepository<Category> categories,
     IUnitOfWork unitOfWork,
-    ISlugGenerator slugGenerator)
+    ISlugGenerator slugGenerator,
+    ICacheInvalidator? cacheInvalidator = null)
     : IRequestHandler<UpdateCategoryCommand, Category>
 {
     public async Task<Category> Handle(UpdateCategoryCommand request, CancellationToken ct)
     {
-        var category = await categories.GetByIdAsync(request.Id, ct)
-            ?? throw new CategoryNotFoundException(request.Id);
+        var category = await categories.Query()
+            .FirstOrDefaultAsync(c => c.Id == request.Id, ct);
 
-        var name = request.Name.Trim();
-        var normalizedName = name.ToUpperInvariant();
-        var nameExists = await categories.Query()
-            .IgnoreQueryFilters()
-            .AnyAsync(existing => existing.Id != category.Id
-                && existing.Name.ToUpper() == normalizedName, ct);
-
-        if (nameExists)
+        if (category is null)
         {
-            throw new ConflictException($"Danh mục '{name}' đã tồn tại.");
+            throw new NotFoundException(nameof(Category), request.Id);
         }
 
-        if (!string.Equals(category.Name, name, StringComparison.Ordinal))
+        var trimmedName = request.Name.Trim();
+        var isNameChanged = !string.Equals(category.Name, trimmedName, StringComparison.Ordinal);
+
+        if (isNameChanged)
         {
-            category.Slug = await slugGenerator.GenerateUniqueAsync(name, ct, category.Id);
+            // Name là duy nhất (SRS FR-CAT-003 + unique index "IX_Categories_Name") — kiểm tra trước để
+            // trả 409 rõ ràng thay vì để PostgreSQL ném lỗi unique constraint (thành 500).
+            var normalizedName = trimmedName.ToUpperInvariant();
+            var nameExists = await categories.Query()
+                .IgnoreQueryFilters()
+                .AnyAsync(c => c.Id != category.Id && c.Name.ToUpper() == normalizedName, ct);
+
+            if (nameExists)
+            {
+                throw new ConflictException($"Danh mục '{trimmedName}' đã tồn tại.");
+            }
+
+            category.Name = trimmedName;
+
+            // Áp đúng nghị quyết MT-06: nếu đổi tên khiến slug trùng danh mục khác
+            // thì gọi lại ISlugGenerator.GenerateUniqueAsync để tự thêm hậu tố (-2, -3...) thay vì trả lỗi 409.
+            category.Slug = await slugGenerator.GenerateUniqueAsync(trimmedName, request.Id, ct);
         }
 
-        category.Name = name;
         category.Description = NullIfBlank(request.Description);
         category.ImageUrl = NullIfBlank(request.ImageUrl);
 
-        categories.Update(category);
         await unitOfWork.SaveChangesAsync(ct);
+
+        // Xóa cache categories ngay sau khi cập nhật
+        if (cacheInvalidator is not null)
+        {
+            await cacheInvalidator.EvictByTagAsync("categories", ct);
+        }
 
         return category;
     }

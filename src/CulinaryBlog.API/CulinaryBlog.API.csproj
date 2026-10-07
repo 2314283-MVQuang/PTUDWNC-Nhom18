@@ -24,6 +24,18 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <!-- Tuần 3 (FR-OBS-002): Serilog thay logging mặc định — sink Console + Seq (xem
+         docker-compose.yml service "seq" và appsettings.json section "Serilog"). -->
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
+    <!-- Tuần 3 (FR-OBS-003): OpenTelemetry tracing cơ bản (HTTP + Npgsql/EF Core), xuất OTLP nếu
+         có collector cấu hình, ngược lại in ra console (xem Program.cs). -->
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.10.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.10.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.10.0" />
   </ItemGroup>
 
   <ItemGroup>

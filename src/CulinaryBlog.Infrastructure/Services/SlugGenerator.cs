@@ -7,16 +7,16 @@ namespace CulinaryBlog.Infrastructure.Services;
 
 public class SlugGenerator(CulinaryBlogDbContext dbContext) : ISlugGenerator
 {
-    public async Task<string> GenerateUniqueAsync(
-        string value,
-        CancellationToken ct = default,
-        Guid? categoryIdToExclude = null)
+    public Task<string> GenerateUniqueAsync(string value, CancellationToken ct = default) =>
+        GenerateUniqueAsync(value, null, ct);
+
+    public async Task<string> GenerateUniqueAsync(string value, Guid? excludeId, CancellationToken ct = default)
     {
         var baseSlug = SlugHelper.GenerateSlug(value);
         var candidate = baseSlug;
         var suffix = 2;
 
-        while (await SlugExistsAsync(candidate, categoryIdToExclude, ct))
+        while (await SlugExistsAsync(candidate, excludeId, ct))
         {
             candidate = SlugHelper.AppendSuffix(baseSlug, suffix++);
         }
@@ -24,18 +24,7 @@ public class SlugGenerator(CulinaryBlogDbContext dbContext) : ISlugGenerator
         return candidate;
     }
 
-    private async Task<bool> SlugExistsAsync(
-        string slug,
-        Guid? categoryIdToExclude,
-        CancellationToken ct)
-    {
-        var categories = dbContext.Categories.IgnoreQueryFilters().Where(x => x.Slug == slug);
-        if (categoryIdToExclude is Guid id)
-        {
-            categories = categories.Where(x => x.Id != id);
-        }
-
-        return await categories.AnyAsync(ct)
-            || await dbContext.Recipes.IgnoreQueryFilters().AnyAsync(x => x.Slug == slug, ct);
-    }
+    private async Task<bool> SlugExistsAsync(string slug, Guid? excludeId, CancellationToken ct) =>
+        await dbContext.Categories.IgnoreQueryFilters().AnyAsync(x => x.Slug == slug && (excludeId == null || x.Id != excludeId), ct)
+        || await dbContext.Recipes.IgnoreQueryFilters().AnyAsync(x => x.Slug == slug && (excludeId == null || x.Id != excludeId), ct);
 }

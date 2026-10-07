@@ -16,6 +16,8 @@ export function RegisterForm() {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+
   const {
     register: registerField,
     handleSubmit,
@@ -24,20 +26,41 @@ export function RegisterForm() {
 
   async function onSubmit(values: RegisterFormValues) {
     setFormError(null);
+    setFormSuccess(null);
     try {
-      // Đăng ký không nằm trong provider của next-auth (không phải "login"), nên gọi thẳng API.
-      await apiFetch("/auth/register", { method: "POST", body: values });
+      // Gọi API đăng ký (lưu vào bộ nhớ và đồng bộ)
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
 
-      // Đăng ký xong thì tự đăng nhập bằng chính email/password vừa nhập, đỡ bắt user gõ lại.
-      await signIn("credentials", { email: values.email, password: values.password, redirect: false });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setFormError(data.error || "Đăng ký thất bại, vui lòng thử lại.");
+        return;
+      }
+
+      setFormSuccess("Đăng ký tài khoản thành công! Đang tự động đăng nhập...");
+
+      // Đăng ký xong thì tự đăng nhập bằng chính email/password vừa nhập
+      const loginRes = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false,
+      });
+
+      if (loginRes?.error) {
+        // Nếu không tự đăng nhập được thì chuyển sang trang login với email đã điền
+        router.push(`/login?email=${encodeURIComponent(values.email)}`);
+        return;
+      }
+
       router.push("/dashboard");
       router.refresh();
-    } catch (error) {
-      if (error instanceof ApiError && error.type === ApiErrorCode.AuthEmailExists) {
-        setFormError("Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.");
-      } else {
-        setFormError("Đăng ký thất bại, vui lòng thử lại.");
-      }
+    } catch {
+      setFormError("Không thể kết nối máy chủ. Vui lòng thử lại sau.");
     }
   }
 
@@ -46,6 +69,12 @@ export function RegisterForm() {
       {formError && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {formError}
+        </p>
+      )}
+
+      {formSuccess && (
+        <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          {formSuccess}
         </p>
       )}
 
@@ -60,9 +89,17 @@ export function RegisterForm() {
         error={errors.password?.message}
         {...registerField("password")}
       />
+      <Input
+        label="Xác nhận mật khẩu (Nhập lại lần 2)"
+        type="password"
+        autoComplete="new-password"
+        hint="Nhập lại chính xác mật khẩu đã đặt ở trên."
+        error={errors.confirmPassword?.message}
+        {...registerField("confirmPassword")}
+      />
 
       <Button type="submit" isLoading={isSubmitting} className="mt-2">
-        Đăng ký
+        Đăng ký tài khoản
       </Button>
       {/* Link "Đã có tài khoản?" nằm ở AuthShell (dưới thẻ form) nên không lặp lại ở đây. */}
     </form>

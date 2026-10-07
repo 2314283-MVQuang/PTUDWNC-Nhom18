@@ -5,13 +5,14 @@
 #
 #    docker compose up -d postgres       # chỉ dựng database (đủ cho backend .NET chạy)
 #    docker compose up -d postgres adminer   # thêm giao diện web xem/sửa dữ liệu
+#    docker compose up -d seq            # Seq — web UI log tập trung (Tuần 3, FR-OBS-002)
 #    docker compose up --build api       # chạy backend .NET trong container
 #    docker compose up --build frontend  # chạy frontend bằng Docker
 #    docker compose down                 # dừng tất cả, GIỮ LẠI dữ liệu
 #    docker compose down -v              # dừng và XOÁ SẠCH dữ liệu database
 #
-#  Các service khác trong tài liệu đặc tả (redis, minio, nginx, seq, mailhog —
-#  mục 6.4) sẽ thêm sau khi backend cần đến, chưa cần lúc này.
+#  Các service khác trong tài liệu đặc tả (minio, nginx, mailhog — mục 6.4) sẽ thêm sau khi
+#  backend cần đến. Redis đã thêm ở Tuần 4 cho Output Cache (mâu thuẫn #3).
 # =============================================================================
 
 services:
@@ -68,6 +69,45 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # Seq — web UI xem structured log tập trung (FR-OBS-002, Tuần 3). Backend ghi log qua sink
+  # Serilog.Sinks.Seq (xem appsettings.json section "Serilog") gửi tới cổng ingestion 5341 —
+  # cổng này giữ nguyên số để chạy `dotnet run` NGOÀI Docker (không qua service "api" dưới đây)
+  # cũng gửi log vào Seq được luôn, không cần đổi appsettings.
+  # Mở http://localhost:8081 để xem log (KHÔNG dùng cổng 5341 cho web UI — cổng đó chỉ nhận log).
+  # Không cần dữ liệu Seq sống sót qua lần dựng lại (không đáng cho phạm vi Lab) nên không khai
+  # báo volume — `docker compose down` là mất sạch log cũ, chấp nhận được.
+  # ---------------------------------------------------------------------------
+  seq:
+    image: datalust/seq:latest
+    container_name: culinaryblog-seq
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "8081:80"
+      - "5341:5341"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — Output Cache (Tuần 4, mâu thuẫn #3: bỏ IMemoryCache, chỉ 1 tầng cache duy nhất).
+  # Không cần dữ liệu cache sống sót qua lần dựng lại (TTL ngắn nhất 1 phút, dài nhất 30 phút —
+  # mất cache chỉ gây vài request đầu chậm hơn, không mất dữ liệu thật) nên có khai volume để giữ
+  # qua restart bình thường, nhưng `docker compose down -v` xoá sạch cũng không sao.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: culinaryblog-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # Backend .NET — CulinaryBlog.API
   #
   #     docker compose up --build api
@@ -92,6 +132,9 @@ services:
       # Trong container, "localhost" trỏ về chính container này chứ không phải máy
       # thật, nên phải gọi PostgreSQL bằng tên service là "postgres".
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=culinaryblog;Username=culinary;Password=culinary123"
+      # Trong container, "localhost" trỏ về chính container này chứ không phải máy thật, nên phải
+      # gọi Redis bằng tên service "redis" (giống lý do ConnectionStrings__DefaultConnection ở trên).
+      Redis__ConnectionString: "redis:6379,abortConnect=false"
       # Jwt:Secret bình thường nằm trong User Secrets của máy dev, mà User Secrets
       # KHÔNG được copy vào image — không truyền vào đây thì API chết lúc đăng nhập.
       # Giá trị mặc định dưới đây CHỈ để chạy thử trên máy cá nhân; deploy thật thì
@@ -103,6 +146,8 @@ services:
       - uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -131,6 +176,27 @@ services:
       NEXTAUTH_URL: http://localhost:3000
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # MinIO Object Storage (FR-FILE-001, Tuần 3)
+  # Cổng 9000: S3 API / Presigned URL
+  # Cổng 9001: Web Console quản trị MinIO (minioadmin / minioadmin)
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: culinaryblog-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  redisdata:
   uploads:
+  miniodata:

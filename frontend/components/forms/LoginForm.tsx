@@ -19,8 +19,15 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
+
+  function handleQuickFill(email: string, pass: string) {
+    setValue("email", email);
+    setValue("password", pass);
+    setFormError(null);
+  }
 
   async function onSubmit(values: LoginFormValues) {
     setFormError(null);
@@ -38,6 +45,42 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      {/* Hộp hiển thị tài khoản mẫu trong đề để test */}
+      <div className="rounded-xl border border-brand-200 bg-brand-50/80 p-3 text-xs text-neutral-700 shadow-sm">
+        <p className="font-semibold text-brand-900 mb-2 flex items-center gap-1.5 text-xs">
+          <span>🔑</span> Tài khoản mẫu trong đề bài (Bấm để điền nhanh):
+        </p>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => handleQuickFill("admin@culinaryblog.local", "Admin@123")}
+            className="flex items-center justify-between rounded-lg border border-brand-200 bg-white p-2 text-left hover:border-brand-400 hover:bg-brand-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <div>
+              <span className="font-semibold text-neutral-800">Admin:</span> admin@culinaryblog.local
+              <div className="text-[11px] text-neutral-500 font-mono">Mật khẩu: Admin@123 (Role: Admin)</div>
+            </div>
+            <span className="text-[11px] font-medium text-brand-700 bg-brand-100 px-2.5 py-1 rounded-md">
+              Điền ngay
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleQuickFill("author@culinaryblog.local", "Author@123")}
+            className="flex items-center justify-between rounded-lg border border-brand-200 bg-white p-2 text-left hover:border-brand-400 hover:bg-brand-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <div>
+              <span className="font-semibold text-neutral-800">Author:</span> author@culinaryblog.local
+              <div className="text-[11px] text-neutral-500 font-mono">Mật khẩu: Author@123 (Role: Author)</div>
+            </div>
+            <span className="text-[11px] font-medium text-brand-700 bg-brand-100 px-2.5 py-1 rounded-md">
+              Điền ngay
+            </span>
+          </button>
+        </div>
+      </div>
+
       {formError && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {formError}

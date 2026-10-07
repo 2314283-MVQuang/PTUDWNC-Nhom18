@@ -1,0 +1,100 @@
+# =============================================================================
+#  CI/CD — Culinary Blog (Tuần 4, Mai Văn Quang)
+#
+#  Pipeline: build → test → docker push
+#    - Mọi push và pull request vào main: restore, build (Release), chạy unit test.
+#    - Chỉ khi push vào main (tức sau khi merge PR) và build + test đều xanh: build Docker image
+#      của API rồi đẩy lên GitHub Container Registry (ghcr.io) với 2 tag: "latest" và SHA commit.
+#
+#  Không cần tạo secret nào: đăng nhập ghcr.io bằng GITHUB_TOKEN có sẵn của workflow.
+# =============================================================================
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build & Test (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Dùng đúng phiên bản SDK khai báo trong global.json (.NET 10).
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore CulinaryBlog.sln
+
+      - name: Build
+        run: dotnet build CulinaryBlog.sln --configuration Release --no-restore
+
+      # Unit test chạy bằng EF Core InMemory nên không cần PostgreSQL/Redis trong CI.
+      - name: Test
+        run: dotnet test tests/CulinaryBlog.UnitTests/CulinaryBlog.UnitTests.csproj --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/test-results.trx"
+          if-no-files-found: ignore
+
+  docker-push:
+    name: Docker build & push (ghcr.io)
+    needs: build-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tên image trên ghcr.io bắt buộc viết thường — metadata-action tự chuyển giúp.
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/api
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build context PHẢI là gốc repo (xem ghi chú đầu src/CulinaryBlog.API/Dockerfile).
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/CulinaryBlog.API/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

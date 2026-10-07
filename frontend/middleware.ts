@@ -13,7 +13,7 @@ export default auth((req) => {
   const roles = req.auth?.roles ?? [];
 
   if (!isLoggedIn) {
-    const loginUrl = new URL("/auth/login", req.nextUrl.origin);
+    const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }

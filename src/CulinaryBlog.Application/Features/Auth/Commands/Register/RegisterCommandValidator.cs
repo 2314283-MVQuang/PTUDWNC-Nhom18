@@ -3,9 +3,11 @@ using FluentValidation;
 namespace CulinaryBlog.Application.Features.Auth.Commands.Register;
 
 /// <summary>
-/// Rule lấy nguyên văn FR-AUTH-001: password tối thiểu 8 ký tự (1 hoa, 1 số, 1 ký tự đặc biệt),
-/// userName không chứa ký tự đặc biệt. Đây là ví dụ mẫu cho FluentValidation + MediatR Pipeline
-/// (CONS-008) — các Command khác trong dự án viết Validator theo đúng khuôn này.
+/// Rule theo đặc tả FR-AUTH-001 / NFR-SEC-001 (Buổi 2):
+/// - email đúng định dạng
+/// - mật khẩu ≥ 8 ký tự, có hoa, số, ký tự đặc biệt (RequireLowercase = false — xem
+///   DependencyInjection.cs — nên KHÔNG bắt buộc chữ thường, khớp với ChangePassword/ResetPassword
+///   validator để cả 3 nơi cùng 1 chính sách mật khẩu).
 /// </summary>
 public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -16,17 +18,17 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
             .MaximumLength(100);
 
         RuleFor(x => x.Email)
-            .NotEmpty()
+            .NotEmpty().WithMessage("Email không được để trống.")
             .EmailAddress().WithMessage("Email không đúng định dạng.");
 
         RuleFor(x => x.UserName)
-            .NotEmpty()
-            .Matches("^[a-zA-Z0-9_.]+$").WithMessage("Tên đăng nhập chỉ được chứa chữ, số, dấu gạch dưới và dấu chấm.")
-            .MinimumLength(3)
-            .MaximumLength(50);
+            .Matches("^[a-zA-Z0-9_.]+$").When(x => !string.IsNullOrEmpty(x.UserName))
+            .WithMessage("Tên đăng nhập chỉ được chứa chữ, số, dấu gạch dưới và dấu chấm.")
+            .MinimumLength(3).When(x => !string.IsNullOrEmpty(x.UserName))
+            .MaximumLength(50).When(x => !string.IsNullOrEmpty(x.UserName));
 
         RuleFor(x => x.Password)
-            .NotEmpty()
+            .NotEmpty().WithMessage("Mật khẩu không được để trống.")
             .MinimumLength(8).WithMessage("Mật khẩu phải có ít nhất 8 ký tự.")
             .Matches("[A-Z]").WithMessage("Mật khẩu phải có ít nhất 1 chữ hoa.")
             .Matches("[0-9]").WithMessage("Mật khẩu phải có ít nhất 1 chữ số.")

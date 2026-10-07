@@ -1,4 +1,4 @@
-using CulinaryBlog.Application.Common.Interfaces;
+using CulinaryBlog.Domain.Interfaces;
 using CulinaryBlog.Application.Recipes.Dtos;
 using MediatR;
 

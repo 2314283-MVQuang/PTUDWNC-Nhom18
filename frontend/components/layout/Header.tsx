@@ -181,7 +181,7 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link href="/auth/login" className="hidden sm:block">
+              <Link href="/login" className="hidden sm:block">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -190,7 +190,7 @@ export function Header() {
                   Đăng nhập
                 </Button>
               </Link>
-              <Link href="/auth/register">
+              <Link href="/register">
                 <Button
                   size="sm"
                   className={cn(
@@ -244,13 +244,28 @@ export function Header() {
             >
               Tìm kiếm
             </Link>
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <Link
                 href="/dashboard"
                 className="rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
               >
                 Trang quản lý
               </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50"
+                >
+                  Đăng ký tài khoản
+                </Link>
+              </>
             )}
           </nav>
         </div>

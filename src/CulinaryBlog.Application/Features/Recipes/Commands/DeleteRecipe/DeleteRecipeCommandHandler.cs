@@ -2,11 +2,12 @@ using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
+using RecipeRepository = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 
 namespace CulinaryBlog.Application.Features.Recipes.Commands.DeleteRecipe;
 
 public class DeleteRecipeCommandHandler(
-    IRecipeRepository recipes,
+    RecipeRepository recipes,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork)
     : IRequestHandler<DeleteRecipeCommand>

@@ -12,6 +12,8 @@
     <!-- Phiên bản dưới đây là ước lượng tốt nhất (môi trường dựng scaffold không có internet để
          tra NuGet) — chạy `dotnet restore`, nếu lỗi version thì `dotnet add package <Tên>` để
          lấy bản mới nhất tương thích net10.0. -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.25" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <!-- Scalar UI tại /scalar (mục 6.2) — thay thế Swagger UI cổ điển. -->

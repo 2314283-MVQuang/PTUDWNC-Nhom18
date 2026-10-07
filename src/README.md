@@ -74,11 +74,11 @@ Mỗi mục dưới đây có `TODO` comment ngay tại vị trí liên quan tro
 - **FR-AUTH-003** Google OAuth 2.0 — chưa có endpoint `/auth/google`.
 - **FR-CAT-002/004/005** Chi tiết danh mục kèm recipe, sửa, xóa (kiểm tra `HasRecipesAsync` → 409) — chưa có. `ICategoryRepository.HasRecipesAsync` đã viết sẵn, chỉ cần dùng.
 - **FR-RCP-004** Update recipe (cần header `If-Match` cho optimistic concurrency) — chưa có. Phần kiểm tra quyền đã có sẵn: gọi `RecipeAuthorization.EnsureCanModify(...)` như các Handler khác.
-- **FR-RCP-007** Delete recipe (hard delete, nhớ xoá luôn file ảnh qua `IFileStorageService`) — chưa có.
+- **FR-RCP-007** Delete recipe — đã triển khai soft delete, chỉ tác giả/Admin được xóa; chạy purge hằng ngày sau 30 ngày. File ảnh vẫn chưa được xóa vì `IFileStorageService` chưa được triển khai.
 - **FR-SRCH-001** Full-Text Search (`GET /api/v1/recipes/search?q=`) — đã có Query/Handler, repository truy vấn cột `SearchVector` bằng cấu hình `vietnamese` + `unaccent` và API endpoint; cột, GIN index và trigger được khai báo trong `db/init/02-schema.sql`.
 - **Redis** — chưa tích hợp. `CachingBehavior`/`CacheInvalidationBehavior` (mục 6.3) chưa viết, category/recipe đang query thẳng DB mỗi lần.
-- **MinIO** — chưa tích hợp. `IFileStorageService` đã có interface chuẩn, bản hiện tại (`LocalFileStorageService`) lưu vào đĩa cục bộ tạm thời. Viết `MinioFileStorageService` implement cùng interface rồi đổi 1 dòng DI.
-- **Hangfire** — chưa tích hợp. Email chào mừng hiện gọi đồng bộ (`ConsoleEmailService` chỉ log ra console); resize ảnh (FR-JOB-002) và sitemap (FR-JOB-003) chưa có.
+- **MinIO / Recipe file storage** — chưa tích hợp; `IFileStorageService` chưa có implementation trong mã nguồn. Bản purge hiện xóa dữ liệu Recipe và ảnh trong DB theo cascade nhưng chưa thể xóa object/file ảnh.
+- **Hangfire** — đã tích hợp PostgreSQL storage/server và FR-JOB-004 purge recipe hằng ngày; email chào mừng hiện gọi đồng bộ (`ConsoleEmailService` chỉ log ra console), resize ảnh (FR-JOB-002) và sitemap (FR-JOB-003) chưa có.
 - **Serilog / OpenTelemetry / Rate Limiting / Health checks thật** (FR-OBS-001/002/003, mục 5.2) — chưa có, `/health` hiện chỉ trả cứng `{status: "healthy"}`.
 - **Google OAuth, MinIO, Redis, Hangfire, Seq, Mailhog** trong `docker-compose.yml` — chưa thêm service (mục 6.4 liệt kê đủ danh sách).
 - **Mã lỗi chi tiết mục 10.2** (vd `RECIPE_CONCURRENCY_CONFLICT`, `CATEGORY_DELETE_HAS_RECIPES`) — `GlobalExceptionMiddleware` hiện dùng message chung, chưa gắn field `type`/mã lỗi cụ thể.

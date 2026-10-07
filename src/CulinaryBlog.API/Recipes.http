@@ -1,0 +1,11 @@
+@baseUrl = http://localhost:5000
+@token = replace-with-author-or-admin-access-token
+@recipeId = 00000000-0000-0000-0000-000000000000
+
+### Soft-delete a recipe owned by the authenticated author (or as Admin)
+DELETE {{baseUrl}}/api/v1/recipes/{{recipeId}}
+Authorization: Bearer {{token}}
+
+### A recipe ID that does not exist returns 404
+DELETE {{baseUrl}}/api/v1/recipes/ffffffff-ffff-ffff-ffff-ffffffffffff
+Authorization: Bearer {{token}}

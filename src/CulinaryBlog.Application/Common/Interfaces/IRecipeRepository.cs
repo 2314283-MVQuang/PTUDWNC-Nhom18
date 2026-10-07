@@ -6,4 +6,5 @@ public interface IRecipeRepository
 {
     Task<IEnumerable<Recipe>> SearchRecipesAsync(string keyword, CancellationToken cancellationToken = default);
     Task<IEnumerable<Recipe>> GetAllAsync();
+    Task<Recipe?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 }

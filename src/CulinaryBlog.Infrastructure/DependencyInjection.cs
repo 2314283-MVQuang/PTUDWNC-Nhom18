@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
+using CulinaryBlog.Infrastructure.Jobs;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Repositories;
 using CulinaryBlog.Infrastructure.Services;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IRecipeRepository, RecipeRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ISlugGenerator, SlugGenerator>();
+        services.AddScoped<PurgeDeletedRecipesJob>();
 
         // Repository generic cho các entity con (RecipeStep/RecipeIngredient/RecipeImage): Handler
         // chỉ cần Remove()/AddAsync() một dòng con nên không đáng viết repository chuyên biệt cho

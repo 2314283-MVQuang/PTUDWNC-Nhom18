@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS "Categories" (
     "CreatedAt"   timestamptz  NOT NULL DEFAULT now(),
     "UpdatedAt"   timestamptz,
     "IsDeleted"   boolean      NOT NULL DEFAULT false,
+    "DeletedAt"   timestamptz,
     "RowVersion"  bytea        NOT NULL DEFAULT gen_random_bytes(8)
 );
 
@@ -195,6 +196,7 @@ CREATE TABLE IF NOT EXISTS "Recipes" (
     "CreatedAt"              timestamptz  NOT NULL DEFAULT now(),
     "UpdatedAt"              timestamptz,
     "IsDeleted"              boolean      NOT NULL DEFAULT false,
+    "DeletedAt"              timestamptz,
     "RowVersion"             bytea        NOT NULL DEFAULT gen_random_bytes(8)
 );
 
@@ -257,6 +259,7 @@ CREATE TABLE IF NOT EXISTS "RecipeSteps" (
     "CreatedAt"    timestamptz  NOT NULL DEFAULT now(),
     "UpdatedAt"    timestamptz,
     "IsDeleted"    boolean      NOT NULL DEFAULT false,
+    "DeletedAt"    timestamptz,
     "RowVersion"   bytea        NOT NULL DEFAULT gen_random_bytes(8),
 
     -- Trong 1 công thức không được có 2 bước cùng số thứ tự
@@ -286,6 +289,7 @@ CREATE TABLE IF NOT EXISTS "RecipeIngredients" (
     "CreatedAt"  timestamptz   NOT NULL DEFAULT now(),
     "UpdatedAt"  timestamptz,
     "IsDeleted"  boolean       NOT NULL DEFAULT false,
+    "DeletedAt"  timestamptz,
     "RowVersion" bytea         NOT NULL DEFAULT gen_random_bytes(8)
 );
 CREATE INDEX IF NOT EXISTS "IX_RecipeIngredients_RecipeId"
@@ -314,6 +318,7 @@ CREATE TABLE IF NOT EXISTS "RecipeImages" (
     "CreatedAt"    timestamptz  NOT NULL DEFAULT now(),
     "UpdatedAt"    timestamptz,
     "IsDeleted"    boolean      NOT NULL DEFAULT false,
+    "DeletedAt"    timestamptz,
     "RowVersion"   bytea        NOT NULL DEFAULT gen_random_bytes(8)
 );
 CREATE INDEX IF NOT EXISTS "IX_RecipeImages_RecipeId" ON "RecipeImages" ("RecipeId");

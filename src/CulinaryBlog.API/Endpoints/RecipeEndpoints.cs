@@ -1,3 +1,5 @@
+using CulinaryBlog.API.Extensions;
+using CulinaryBlog.Application.Features.Recipes.Commands.DeleteRecipe;
 using CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -22,5 +24,22 @@ public static class RecipeEndpoints
         .WithSummary("Full-text Search Recipes")
         .WithDescription("Search recipe titles and descriptions, ignoring Vietnamese diacritics.")
         .Produces(StatusCodes.Status200OK);
+
+        group.MapDelete("/{id:guid}", async (
+            Guid id,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            await sender.Send(new DeleteRecipeCommand(id), cancellationToken);
+            return TypedResults.NoContent();
+        })
+        .WithName("DeleteRecipe")
+        .WithSummary("Soft-delete a recipe")
+        .WithDescription("Marks a recipe as deleted. It is physically purged after 30 days.")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthorizationPolicies.Author);
     }
 }

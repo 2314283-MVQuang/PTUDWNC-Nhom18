@@ -1,10 +1,13 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using Hangfire;
+using Hangfire.PostgreSql;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.API.Middleware;
 using CulinaryBlog.Application;
 using CulinaryBlog.Infrastructure;
+using CulinaryBlog.Infrastructure.Jobs;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Seed;
 using CulinaryBlog.Infrastructure.Services;
@@ -20,6 +23,13 @@ var builder = WebApplication.CreateBuilder(args);
 // ---------------------------------------------------------------------------
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Thiếu cấu hình ConnectionStrings:DefaultConnection cho Hangfire.");
+
+builder.Services.AddHangfire(configuration => configuration
+    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(hangfireConnectionString)));
+builder.Services.AddHangfireServer();
 
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtSecret = jwtSection["Secret"]
@@ -71,6 +81,12 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 var app = builder.Build();
+
+app.UseHangfireDashboard();
+RecurringJob.AddOrUpdate<PurgeDeletedRecipesJob>(
+    "purge-deleted-recipes",
+    job => job.ExecuteAsync(CancellationToken.None),
+    Cron.Daily);
 
 // ---------------------------------------------------------------------------
 // Middleware pipeline

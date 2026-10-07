@@ -37,9 +37,7 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
 
         builder.ApplyConfigurationsFromAssembly(typeof(CulinaryBlogDbContext).Assembly);
 
-        // Soft delete pattern (mục 7.1): mọi entity kế thừa BaseEntity chỉ query những dòng
-        // IsDeleted = false theo mặc định. Recipe cũng có filter này dù thực tế dùng hard-delete
-        // (FR-RCP-007) — không sai, chỉ là cột IsDeleted của Recipe luôn là false.
+        // Soft delete pattern (mục 7.1): chỉ trả về các entity chưa bị xóa.
         builder.Entity<Category>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<Recipe>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RecipeStep>().HasQueryFilter(x => !x.IsDeleted);

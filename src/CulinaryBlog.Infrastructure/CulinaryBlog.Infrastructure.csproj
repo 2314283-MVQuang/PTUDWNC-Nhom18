@@ -42,6 +42,7 @@
          IMemoryCache/CachingBehavior/CacheInvalidationBehavior). Gói chính thức của Microsoft,
          cùng họ phiên bản với ASP.NET Core nên pin theo net10.0. -->
     <PackageReference Include="Microsoft.AspNetCore.OutputCaching.StackExchangeRedis" Version="10.0.0" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.25" />
   </ItemGroup>
 
   <ItemGroup>

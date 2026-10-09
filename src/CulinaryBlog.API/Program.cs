@@ -20,6 +20,9 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using Serilog;
+using Hangfire;
+using Hangfire.PostgreSql;
+using CulinaryBlog.Infrastructure.Jobs;
 
 // Bootstrap logger: bắt lỗi xảy ra TRƯỚC khi builder.Host.UseSerilog() đọc được cấu hình từ
 // appsettings (vd sai connection string lúc AddDbContext) — không có bootstrap logger thì lỗi
@@ -94,6 +97,49 @@ builder.Services.AddOutputCache(options =>
         .SetVaryByQuery("*")
         .Tag("search"));
 });
+
+// ---------------------------------------------------------------------------
+// Tuần 5 (FR-JOB-003): Hangfire Background Jobs
+// ---------------------------------------------------------------------------
+var hangfireConnStr = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddHangfire(config =>
+{
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+          .UseSimpleAssemblyNameTypeSerializer()
+          .UseRecommendedSerializerSettings();
+
+    var useInMemory = true;
+    if (!string.IsNullOrEmpty(hangfireConnStr))
+    {
+        try
+        {
+            using var tcpClient = new System.Net.Sockets.TcpClient();
+            var npgsqlBuilder = new Npgsql.NpgsqlConnectionStringBuilder(hangfireConnStr);
+            var host = npgsqlBuilder.Host ?? "localhost";
+            var port = npgsqlBuilder.Port > 0 ? npgsqlBuilder.Port : 5432;
+
+            var connectTask = tcpClient.ConnectAsync(host, port);
+            if (connectTask.Wait(TimeSpan.FromMilliseconds(400)) && tcpClient.Connected)
+            {
+                useInMemory = false;
+            }
+        }
+        catch
+        {
+            useInMemory = true;
+        }
+    }
+
+    if (!useInMemory)
+    {
+        config.UsePostgreSqlStorage(options => options.UseNpgsqlConnection(hangfireConnStr));
+    }
+    else
+    {
+        config.UseInMemoryStorage();
+    }
+});
+builder.Services.AddHangfireServer();
 
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtSecret = jwtSection["Secret"]
@@ -183,8 +229,9 @@ var app = builder.Build();
 // CHƯA có. PHẢI chạy ở MỌI environment (khác DbSeeder ở dưới, chỉ chạy Development) — thiếu
 // bước này thì RegisterCommandHandler.AddToRoleAsync(user, "Author") sẽ lỗi ngay cả ở production.
 // ---------------------------------------------------------------------------
-using (var roleSeedScope = app.Services.CreateScope())
+try
 {
+    using var roleSeedScope = app.Services.CreateScope();
     // FR-FILE-001 (Tiến): bảng metadata file upload. Database của nhóm có máy tạo bằng script SQL,
     // có máy tạo bằng migration, nên tạo bảng bằng lệnh idempotent (IF NOT EXISTS) lúc khởi động để
     // máy nào cũng chạy được module Files. Khi nhóm chốt dùng EF Migrations thì thay bằng
@@ -211,6 +258,10 @@ using (var roleSeedScope = app.Services.CreateScope())
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
 }
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Chưa thể kết nối tới cơ sở dữ liệu PostgreSQL khi khởi động (bỏ qua trong chế độ offline/dev test).");
+}
 
 // ---------------------------------------------------------------------------
 // Middleware pipeline
@@ -229,14 +280,19 @@ if (app.Environment.IsDevelopment())
     // Infrastructure/Persistence/Seed/DbSeeder.cs. An toàn khi chạy lại nhiều lần.
     // GIỮ LẠI theo yêu cầu Lab: đảm bảo database luôn có đủ dữ liệu mẫu, dù các module CRUD
     // Category/Recipe (FR-CAT, FR-RCP...) đã tạm gỡ khỏi phạm vi triển khai để phân công lại.
-    using (var seedScope = app.Services.CreateScope())
+    try
     {
+        using var seedScope = app.Services.CreateScope();
         var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
         await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
 
         // Tài khoản Admin THẬT trong DB (chỉ Development) để test API cần quyền Admin.
         var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         await RoleSeeder.SeedDevAdminAsync(userManager, app.Logger);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Chưa thể kết nối tới cơ sở dữ liệu PostgreSQL để seed dữ liệu dev.");
     }
 }
 
@@ -252,11 +308,24 @@ app.UseAuthorization();
 // cache, các endpoint Auth/health ở dưới KHÔNG bị ảnh hưởng vì không gắn policy nào.
 app.UseOutputCache();
 
+// Tuần 5 (FR-JOB-003): Hangfire Dashboard & Recurring Job sinh sitemap lúc 02:00 AM hàng ngày
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    // Cho phép truy cập dashboard trong môi trường Development/Testing
+    Authorization = []
+});
+
+RecurringJob.AddOrUpdate<GenerateSitemapJob>(
+    "generate-sitemap",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 2 * * *"); // 02:00 AM hàng ngày (NFR-SEO, FR-JOB-003)
+
 app.MapAuthEndpoints();
 app.MapRecipeEndpoints();
 app.MapRecipeItemEndpoints(); // FR-RCP-008/009/010 (Tiến): nguyên liệu, bước, ảnh
 app.MapCategoryEndpoints();
 app.MapFileEndpoints();       // FR-FILE-001 (Tiến): presigned URL MinIO
 app.MapHealthEndpoints();
+app.MapSitemapEndpoints();    // FR-JOB-003 (Tiến): GET /sitemap.xml
 
 app.Run();

@@ -22,7 +22,8 @@ public sealed class UpdateRecipeCommandHandler(
     IRecipeRepository recipeRepository,
     IRepository<Category> categoryRepository,
     ICurrentUser currentUser,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ICacheInvalidator cacheInvalidator)
     : IRequestHandler<UpdateRecipeCommand, RecipeDetailDto>
 {
     public async Task<RecipeDetailDto> Handle(
@@ -95,9 +96,10 @@ public sealed class UpdateRecipeCommandHandler(
 
             if (category is null)
             {
-                throw new NotFoundException(
-                    "Category",
-                    request.CategoryId.Value);
+                throw new ValidationException(new Dictionary<string, string[]>
+                {
+                    [nameof(request.CategoryId)] = ["Danh mục không tồn tại hoặc đã bị xóa."],
+                });
             }
         }
 
@@ -223,6 +225,12 @@ public sealed class UpdateRecipeCommandHandler(
             // EF phát hiện ra -> 409.
             throw new RecipeConcurrencyConflictException();
         }
+
+        // Title/Description/Category thay đổi ảnh hưởng cả detail, search và Category count.
+        await cacheInvalidator.EvictByTagAsync("recipes", ct);
+        await cacheInvalidator.EvictByTagAsync($"recipe-{recipe.Id}", ct);
+        await cacheInvalidator.EvictByTagAsync("search", ct);
+        await cacheInvalidator.EvictByTagAsync("categories", ct);
 
         // =========================================================
         // 12. Đọc lại Recipe mới nhất

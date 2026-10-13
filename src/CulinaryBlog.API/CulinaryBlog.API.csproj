@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Http" Version="10.2.0" />
     <!-- Phiên bản dưới đây là ước lượng tốt nhất (môi trường dựng scaffold không có internet để
          tra NuGet) — chạy `dotnet restore`, nếu lỗi version thì `dotnet add package <Tên>` để
          lấy bản mới nhất tương thích net10.0. -->

@@ -17,13 +17,11 @@ import type { RecipeStatus } from "@/types/recipe";
 export default function DashboardOverviewPage() {
   const { user, isAdmin } = useCurrentUser();
   const { data, isLoading, isError, refetch } = useRecipes({
-    pageSize: 100,
+    pageSize: 50,
     sort: "-createdAt",
   });
 
-  // GET /recipes (FR-RCP-001) chưa có tham số lọc theo tác giả và cũng không trả về id tác giả
-  // trong RecipeListItemDto, nên KHÔNG thể lọc "của tôi" — cả ở server lẫn ở client. Endpoint
-  // này hiện cũng chỉ trả Status=Published, vì vậy hai ô Draft/Archived dưới đây luôn bằng 0.
+  // Thống kê trên trang đầu của danh sách được phép xem, không phải tổng toàn hệ thống.
   const recipes = data?.items ?? [];
   const countByStatus = (status: RecipeStatus) => recipes.filter((r) => r.status === status).length;
 
@@ -32,7 +30,7 @@ export default function DashboardOverviewPage() {
       <div>
         <h1 className="text-2xl font-bold text-neutral-900">Xin chào, {user?.name ?? "bạn"} 👋</h1>
         <p className="mt-1 text-neutral-500">
-          {isAdmin ? "Bạn đang đăng nhập với quyền Admin." : "Đây là tổng quan các công thức của bạn."}
+          {isAdmin ? "Bạn đang đăng nhập với quyền Admin." : "Theo dõi các công thức bạn được phép xem."}
         </p>
       </div>
 
@@ -62,6 +60,9 @@ export default function DashboardOverviewPage() {
       {isLoading && <LoadingBlock label="Đang tải thống kê..." />}
       {isError && <ErrorBlock message="Không tải được dữ liệu công thức." onRetry={() => refetch()} />}
 
+      {!isLoading && !isError && (
+        <p className="text-sm text-neutral-500">Thống kê trên tối đa 50 công thức trong danh sách hiện tại.</p>
+      )}
       {!isLoading && !isError && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Bản nháp" value={countByStatus("Draft")} />

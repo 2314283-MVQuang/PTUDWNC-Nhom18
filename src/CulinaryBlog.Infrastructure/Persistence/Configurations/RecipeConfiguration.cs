@@ -17,7 +17,7 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
         builder.HasIndex(x => x.Slug).IsUnique();
 
         builder.Property(x => x.Description).IsRequired();
-        builder.Property(x => x.Instructions).IsRequired();
+        builder.Property(x => x.Instructions).IsRequired(false);
 
         builder.Property(x => x.Difficulty).HasConversion<short>();
         builder.Property(x => x.Status).HasConversion<short>();

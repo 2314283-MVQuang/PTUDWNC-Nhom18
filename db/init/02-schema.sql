@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS "Recipes" (
     "Title"                  varchar(200) NOT NULL,
     "Slug"                   varchar(220) NOT NULL UNIQUE,
     "Description"            text         NOT NULL,
-    "Instructions"           text         NOT NULL,
+    "Instructions"           text,
     "PrepTime"               integer      NOT NULL CHECK ("PrepTime" > 0),
     "CookTime"               integer      NOT NULL CHECK ("CookTime" >= 0),
     "Servings"               integer      NOT NULL CHECK ("Servings" > 0),

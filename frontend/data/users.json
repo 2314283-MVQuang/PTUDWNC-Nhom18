@@ -54,5 +54,16 @@
       "Author"
     ],
     "createdAt": "2026-09-29T16:52:21.644Z"
+  },
+  {
+    "id": "1e2054b6-23ce-4a40-ab60-7b18747fa108",
+    "email": "thienychung19112005@gmail.com",
+    "password": "Thieny123",
+    "displayName": "ThienY",
+    "userName": "ThienY",
+    "roles": [
+      "Author"
+    ],
+    "createdAt": "2026-10-07T11:51:42.001Z"
   }
 ]

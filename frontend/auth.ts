@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch } from "@/lib/api-client";
 import type { AuthTokenResponse, UserProfile } from "@/types/user";
 
 /**
@@ -15,8 +15,11 @@ import type { AuthTokenResponse, UserProfile } from "@/types/user";
  * - refreshToken: 7 ngày, dùng để xin accessToken mới khi hết hạn (FR-AUTH-004, có rotation).
  */
 import { findLocalUser } from "@/lib/local-users";
+import { authConfig } from "@/auth.config";
+import { isDemoAuthEnabled } from "@/lib/auth-mode";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -33,7 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!identifier || !password) return null;
 
         // 1. Ưu tiên kiểm tra tài khoản mẫu trong đề & tài khoản vừa đăng ký (2312, admin, author...)
-        const localUser = findLocalUser(identifier, password);
+        const localUser = isDemoAuthEnabled() ? findLocalUser(identifier, password) : null;
         if (localUser) {
           return {
             id: localUser.id,
@@ -79,68 +82,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET })]
       : []),
   ],
-  pages: {
-    signIn: "/login",
-  },
-  session: { strategy: "jwt" },
-  callbacks: {
-    async jwt({ token, user, account }) {
-      // Lần đăng nhập đầu tiên bằng Credentials: `user` là object trả về từ `authorize()` ở trên.
-      if (user) {
-        token.accessToken = user.accessToken as string;
-        token.refreshToken = user.refreshToken as string;
-        token.accessTokenExpires = user.accessTokenExpires as number;
-        token.roles = user.roles as string[];
-      }
-
-      // Lần đăng nhập đầu tiên bằng Google: trao đổi id_token của Google lấy token của backend.
-      if (account?.provider === "google" && account.id_token) {
-        try {
-          const tokens = await apiFetch<AuthTokenResponse>("/auth/google", {
-            method: "POST",
-            body: { idToken: account.id_token },
-          });
-          const profile = await apiFetch<UserProfile>("/auth/me", { token: tokens.accessToken });
-          token.accessToken = tokens.accessToken;
-          token.refreshToken = tokens.refreshToken;
-          token.accessTokenExpires = Date.now() + tokens.expiresIn * 1000;
-          token.roles = profile.roles;
-          token.name = profile.displayName;
-          token.picture = profile.avatarUrl;
-        } catch {
-          // Backend từ chối Google token (AUTH_GOOGLE_TOKEN_INVALID) -> không set accessToken,
-          // middleware sẽ coi như chưa đăng nhập và điều hướng lại /auth/login.
-        }
-      }
-
-      // Access token còn hạn -> giữ nguyên, không cần refresh.
-      if (token.accessTokenExpires && Date.now() < (token.accessTokenExpires as number)) {
-        return token;
-      }
-
-      // Hết hạn -> thử refresh (FR-AUTH-004). Nếu fail, xoá accessToken để buộc đăng nhập lại.
-      if (token.refreshToken) {
-        try {
-          const tokens = await apiFetch<AuthTokenResponse>("/auth/refresh", {
-            method: "POST",
-            body: { refreshToken: token.refreshToken },
-          });
-          token.accessToken = tokens.accessToken;
-          token.refreshToken = tokens.refreshToken;
-          token.accessTokenExpires = Date.now() + tokens.expiresIn * 1000;
-        } catch {
-          token.accessToken = undefined;
-        }
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      // Đưa accessToken + roles ra ngoài session để client component đọc qua useSession().
-      session.accessToken = token.accessToken as string | undefined;
-      session.roles = (token.roles as string[] | undefined) ?? [];
-      if (session.user) session.user.id = token.sub ?? "";
-      return session;
-    },
-  },
 });

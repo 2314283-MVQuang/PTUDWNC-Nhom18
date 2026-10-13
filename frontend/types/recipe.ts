@@ -82,7 +82,7 @@ export interface RecipeDetail {
   slug: string;
   title: string;
   description: string;
-  instructions: string;
+  instructions: string | null;
   prepTime: number;
   cookTime: number;
   servings: number;
@@ -121,8 +121,7 @@ export interface RecipeSearchParams extends RecipeListParams {
  * Body tạo recipe mới (FR-RCP-003) — trạng thái ban đầu luôn là Draft, server tự set.
  *
  * Tên field phải khớp record CreateRecipeRequest ở backend: `prepTime`/`cookTime` (KHÔNG phải
- * `prepTimeMinutes`), và `instructions` là bắt buộc — gửi thiếu thì model binder nhận null rồi
- * validator trả 422.
+ * `prepTimeMinutes`). `instructions` là trường legacy tùy chọn; nội dung chi tiết dùng steps.
  */
 export interface CreateRecipeInput {
   title: string;
@@ -132,7 +131,7 @@ export interface CreateRecipeInput {
   cookTime: number;
   servings: number;
   difficulty: RecipeDifficulty;
-  instructions: string;
+  instructions?: string | null;
   nutrition?: Partial<RecipeNutrition>;
   /**
    * Khác hẳn POST /recipes/{id}/steps (nơi backend tự đánh số): ở đây CreateRecipeStepInput bắt

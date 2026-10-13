@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Features.Files.Commands.GeneratePresignedUrl;
+using CulinaryBlog.API.Extensions;
 using CulinaryBlog.Application.Features.Files.Queries.GetUploadedFileById;
 using MediatR;
 
@@ -14,7 +15,8 @@ public static class FileEndpoints
 {
     public static void MapFileEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/files").WithTags("Files");
+        var group = app.MapV1Group("/files").WithTags("Files")
+            .RequireAuthorization(AuthorizationPolicies.Author);
 
         // FR-FILE-001: Sinh Presigned PUT URL để upload ảnh lên MinIO và lưu metadata vào CSDL
         group.MapPost("/presigned-url", async (GeneratePresignedUrlRequest request, ISender sender, CancellationToken ct) =>

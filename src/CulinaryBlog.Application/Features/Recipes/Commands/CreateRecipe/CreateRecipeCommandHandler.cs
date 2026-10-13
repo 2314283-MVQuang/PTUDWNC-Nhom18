@@ -23,7 +23,8 @@ public sealed class CreateRecipeCommandHandler(
     IRecipeRepository recipeRepository,
     IRepository<Category> categoryRepository,
     ICurrentUser currentUser,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ICacheInvalidator cacheInvalidator)
     : IRequestHandler<CreateRecipeCommand, RecipeDetailDto>
 {
     public async Task<RecipeDetailDto> Handle(
@@ -45,9 +46,10 @@ public sealed class CreateRecipeCommandHandler(
 
         if (category is null)
         {
-            throw new NotFoundException(
-                nameof(Category),
-                request.CategoryId);
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                [nameof(request.CategoryId)] = ["Danh mục không tồn tại hoặc đã bị xóa."],
+            });
         }
 
         // Sinh slug:
@@ -63,7 +65,7 @@ public sealed class CreateRecipeCommandHandler(
             Title = request.Title.Trim(),
             Slug = slug,
             Description = request.Description.Trim(),
-            Instructions = request.Instructions.Trim(),
+            Instructions = NullIfBlank(request.Instructions),
 
             PrepTime = request.PrepTime,
             CookTime = request.CookTime,
@@ -127,6 +129,7 @@ public sealed class CreateRecipeCommandHandler(
 
         // Một SaveChanges cho toàn bộ Recipe aggregate.
         await unitOfWork.SaveChangesAsync(ct);
+        await cacheInvalidator.EvictByTagAsync("recipes", ct);
 
         // Query lại:
         // 1. lấy Category/Author navigation

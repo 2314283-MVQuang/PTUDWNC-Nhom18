@@ -13,7 +13,8 @@ export function useCurrentUser() {
   return {
     user: session?.user,
     roles: session?.roles ?? [],
-    accessToken: session?.accessToken,
+    accessToken: session?.isDemo ? undefined : session?.accessToken,
+    isDemo: session?.isDemo ?? false,
     isAuthenticated: status === "authenticated" && !!session?.accessToken,
     isLoading: status === "loading",
     isAdmin: (session?.roles ?? []).includes("Admin"),

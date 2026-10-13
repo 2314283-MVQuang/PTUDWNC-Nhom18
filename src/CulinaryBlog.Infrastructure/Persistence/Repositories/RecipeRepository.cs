@@ -12,6 +12,14 @@ namespace CulinaryBlog.Infrastructure.Persistence.Repositories;
 public class RecipeRepository(CulinaryBlogDbContext dbContext)
     : RepositoryBase<Recipe>(dbContext), IRecipeRepository
 {
+    public Task<Recipe?> GetByIdForPublishingAsync(
+        Guid id,
+        CancellationToken ct = default) =>
+        DbSet
+            .Include(x => x.Steps)
+            .Include(x => x.Ingredients)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+
     public Task<Recipe?> GetByIdWithDetailsAsync(
         Guid id,
         CancellationToken ct = default) =>

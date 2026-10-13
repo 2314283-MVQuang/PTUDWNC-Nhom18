@@ -14,6 +14,8 @@ public sealed class CreateRecipeCommandValidator
         RuleFor(x => x.Title)
             .NotEmpty()
             .WithMessage("Tên công thức không được để trống.")
+            .Must(title => title is not null && title.Trim().Length >= 5)
+            .WithMessage("Tên công thức phải có ít nhất 5 ký tự.")
             .MaximumLength(200)
             .WithMessage("Tên công thức tối đa 200 ký tự.");
 
@@ -44,8 +46,6 @@ public sealed class CreateRecipeCommandValidator
             .WithMessage("Độ khó không hợp lệ.");
 
         RuleFor(x => x.Instructions)
-            .NotEmpty()
-            .WithMessage("Instructions không được để trống.")
             .MaximumLength(10000)
             .WithMessage("Instructions tối đa 10000 ký tự.");
 

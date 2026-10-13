@@ -53,7 +53,7 @@ public static class RecipeItemEndpoints
 {
     public static void MapRecipeItemEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/recipes/{id:guid}").WithTags("Recipe Items");
+        var group = app.MapV1Group("/recipes/{id:guid}").WithTags("Recipe Items");
 
         // ==========================================
         // 1. INGREDIENTS (FR-RCP-009)

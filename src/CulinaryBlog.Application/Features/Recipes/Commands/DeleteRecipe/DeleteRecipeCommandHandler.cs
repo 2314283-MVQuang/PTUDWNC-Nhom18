@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Interfaces;
+using Microsoft.AspNetCore.OutputCaching;
 using MediatR;
 using RecipeRepository = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 
@@ -9,7 +10,8 @@ namespace CulinaryBlog.Application.Features.Recipes.Commands.DeleteRecipe;
 public class DeleteRecipeCommandHandler(
     RecipeRepository recipes,
     ICurrentUser currentUser,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IOutputCacheStore _cacheStore)
     : IRequestHandler<DeleteRecipeCommand>
 {
     public async Task Handle(DeleteRecipeCommand request, CancellationToken ct)
@@ -26,5 +28,6 @@ public class DeleteRecipeCommandHandler(
         recipe.DeletedAt = DateTimeOffset.UtcNow;
 
         await unitOfWork.SaveChangesAsync(ct);
+        await _cacheStore.EvictByTagAsync("search", ct);
     }
 }

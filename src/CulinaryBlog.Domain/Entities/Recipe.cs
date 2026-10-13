@@ -85,6 +85,34 @@ public class Recipe : BaseEntity
         Slug = slug;
     }
 
+    /// <summary>
+    /// FR-RCP-006: lưu trữ công thức — ẩn khỏi mọi danh sách/tìm kiếm công khai nhưng KHÔNG xoá dữ
+    /// liệu (khác xoá mềm <c>IsDeleted</c> của FR-RCP-007). Gọi lại trên công thức đã lưu trữ thì
+    /// không đổi gì (idempotent). <c>PublishedAt</c> được giữ nguyên để <see cref="Unarchive"/> biết
+    /// trước khi lưu trữ công thức đã từng xuất bản hay chưa.
+    /// </summary>
+    public void Archive()
+    {
+        Status = RecipeStatus.Archived;
+    }
+
+    /// <summary>
+    /// FR-RCP-006: bỏ lưu trữ — trả công thức về trạng thái trước khi lưu trữ: đã từng xuất bản
+    /// (có <c>PublishedAt</c>) thì về <c>Published</c>, chưa thì về <c>Draft</c>. Công thức không ở
+    /// trạng thái <c>Archived</c> thì không đổi gì (idempotent).
+    /// </summary>
+    public void Unarchive()
+    {
+        if (Status != RecipeStatus.Archived)
+        {
+            return;
+        }
+
+        Status = PublishedAt.HasValue
+            ? RecipeStatus.Published
+            : RecipeStatus.Draft;
+    }
+
     // <summary>
     // Cập nhật toàn bộ Nutrition nếu request gửi Nutrition
     // </summary>

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /** Khớp ràng buộc bảng "Recipes" (mục 7.2): PrepTime>0, CookTime>=0, Servings>0. */
 export const recipeBasicInfoSchema = z.object({
-  title: z.string().min(1, "Vui lòng nhập tên công thức").max(200, "Tối đa 200 ký tự"),
+  title: z.string().trim().min(5, "Tên công thức phải có ít nhất 5 ký tự").max(200, "Tối đa 200 ký tự"),
   description: z.string().min(1, "Vui lòng nhập mô tả").max(2000, "Tối đa 2000 ký tự"),
   categoryId: z.string().min(1, "Vui lòng chọn danh mục"),
   prepTimeMinutes: z.coerce.number().int().positive("Thời gian chuẩn bị phải lớn hơn 0"),

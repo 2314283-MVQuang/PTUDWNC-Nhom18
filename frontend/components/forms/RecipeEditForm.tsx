@@ -14,7 +14,6 @@ import {
   useArchiveRecipe,
   useDeleteRecipe,
   usePublishRecipe,
-  useUnpublishRecipe,
   useUpdateRecipe,
 } from "@/hooks/useRecipes";
 import { recipeBasicInfoSchema, type RecipeBasicInfoValues } from "@/lib/validations/recipe.schema";
@@ -38,7 +37,6 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
 
   const updateRecipe = useUpdateRecipe();
   const publishRecipe = usePublishRecipe();
-  const unpublishRecipe = useUnpublishRecipe();
   const archiveRecipe = useArchiveRecipe();
   const deleteRecipe = useDeleteRecipe();
 
@@ -119,21 +117,13 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
           {recipe.status !== "Published" && (
             <Button
               size="sm"
+              type="button"
               variant="outline"
+              disabled={updateRecipe.isPending}
               isLoading={publishRecipe.isPending}
               onClick={() => publishRecipe.mutate(recipe.id)}
             >
-              Publish
-            </Button>
-          )}
-          {recipe.status === "Published" && (
-            <Button
-              size="sm"
-              variant="outline"
-              isLoading={unpublishRecipe.isPending}
-              onClick={() => unpublishRecipe.mutate(recipe.id)}
-            >
-              Unpublish
+              Xuất bản
             </Button>
           )}
           {recipe.status !== "Archived" && (
@@ -151,10 +141,15 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
           </Button>
         </div>
       </div>
+      {publishRecipe.isSuccess && (
+        <p role="status" className="rounded-lg bg-herb-50 px-3 py-2 text-sm text-herb-700">
+          Công thức đã được xuất bản thành công.
+        </p>
+      )}
       {publishRecipe.isError && (
         // Hiển thị nguyên văn lỗi backend: công thức có thể thiếu bước, thiếu nguyên liệu, hoặc
         // thiếu cả hai — câu chữ cứng sẵn ở đây trước kia chỉ nhắc mỗi "bước" nên gây hiểu nhầm.
-        <p className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700">
+        <p role="alert" className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700">
           Không thể publish — {apiErrorMessage(publishRecipe.error, "vui lòng thử lại.")}
         </p>
       )}

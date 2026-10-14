@@ -2,6 +2,7 @@
   "name": "culinary-blog-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": ">=20" },
   "description": "Frontend của Culinary Blog - Next.js App Router + TypeScript (mục 6.1, 9, 11 trong tài liệu đặc tả)",
   "scripts": {
     "setup": "node scripts/setup-env.mjs",
@@ -11,7 +12,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "node --test tests/auth-mode.test.mjs",
+    "test:production-auth": "node scripts/test-production-auth.mjs"
   },
   "dependencies": {
     "next": "15.1.6",
@@ -28,6 +31,7 @@
     "lucide-react": "0.474.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "3.3.7",
     "typescript": "5.7.3",
     "@types/node": "22.10.7",
     "@types/react": "19.0.7",

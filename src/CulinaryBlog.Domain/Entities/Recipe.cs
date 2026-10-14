@@ -1,5 +1,6 @@
 using CulinaryBlog.Domain.Common;
 using CulinaryBlog.Domain.Enums;
+using CulinaryBlog.Domain.Common.Exceptions;
 
 namespace CulinaryBlog.Domain.Entities;
 
@@ -19,7 +20,7 @@ public class Recipe : BaseEntity
     public string Description { get; set; } = null!;
 
     /// <summary>Hướng dẫn tổng quan dạng markdown — trường "legacy", chi tiết từng bước dùng Steps.</summary>
-    public string Instructions { get; set; } = null!;
+    public string? Instructions { get; set; }
 
     /// <summary>Phút.</summary>
     public int PrepTime { get; set; }
@@ -124,5 +125,36 @@ public class Recipe : BaseEntity
         Nutrition.Fat = nutrition.Fat;
         Nutrition.Fiber = nutrition.Fiber;
         Nutrition.Sodium = nutrition.Sodium;
+    }
+
+
+    /// <summary>
+    /// Xuất bản khi có ít nhất một bước và một nguyên liệu chưa bị xóa mềm.
+    /// Gọi lại trên công thức đã xuất bản giữ nguyên thời điểm xuất bản đầu tiên.
+    /// </summary>
+    public void Publish()
+    {
+        if (Status == RecipeStatus.Published)
+        {
+            return;
+        }
+
+        var hasSteps = Steps.Any(step => !step.IsDeleted);
+        var hasIngredients = Ingredients.Any(ingredient => !ingredient.IsDeleted);
+
+        if (!hasSteps || !hasIngredients)
+        {
+            throw new RecipePublishIncompleteException(
+                hasSteps,
+                hasIngredients);
+        }
+
+        Status = RecipeStatus.Published;
+
+        // Chỉ ghi thời điểm publish lần đầu.
+        if (!PublishedAt.HasValue)
+        {
+            PublishedAt = DateTimeOffset.UtcNow;
+        }
     }
 }

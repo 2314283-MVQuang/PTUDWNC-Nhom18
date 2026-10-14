@@ -120,6 +120,8 @@ public static class DependencyInjection
         services.AddScoped<ISitemapBuilder, SitemapBuilder>();
         services.AddScoped<ISitemapService, SitemapService>();
         services.AddTransient<GenerateSitemapJob>();
+        // FR-RCP-007 / FR-JOB-004 (Thịnh): xoá hẳn công thức đã xoá mềm quá 30 ngày.
+        services.AddTransient<PurgeDeletedRecipesJob>();
 
         return services;
     }

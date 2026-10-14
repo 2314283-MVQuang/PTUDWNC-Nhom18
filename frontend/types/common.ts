@@ -16,6 +16,8 @@ export interface PageMeta {
   pageSize: number;
   total: number;
   totalPages: number;
+  hasNextPage?: boolean;
+  hasPreviousPage?: boolean;
 }
 
 /** Kết quả phân trang dùng ở tầng UI sau khi đã "bóc" ApiEnvelope ra (xem lib/api-client.ts). */
@@ -26,13 +28,15 @@ export interface PagedResult<T> {
 
 /**
  * RFC 7807 Problem Details — format lỗi chuẩn của toàn bộ API (CONS-005, mục 10).
- * `errors` chỉ xuất hiện khi lỗi là VALIDATION_ERROR (400), key là tên field.
+ * `errors` xuất hiện khi lỗi là VALIDATION_ERROR (422), key là tên field.
  */
 export interface ProblemDetails {
   type: string;
   title: string;
   status: number;
   detail?: string;
+  instance?: string;
+  traceId?: string;
   errors?: Record<string, string[]>;
 }
 

@@ -8,7 +8,9 @@ import type { ApiEnvelope, PagedResult, ProblemDetails } from "@/types/common";
  *   3. Dễ thêm log/retry/refresh-token sau này mà không phải sửa từng nơi gọi API.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api/v1";
+const publicApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = typeof window === "undefined"
+  ? process.env.API_INTERNAL_BASE_URL || publicApiUrl : publicApiUrl;
 
 /** Lỗi ném ra khi API trả về response không thành công (4xx/5xx), theo format RFC 7807. */
 export class ApiError extends Error {

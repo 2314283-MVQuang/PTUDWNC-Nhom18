@@ -21,7 +21,7 @@ public static class CategoryEndpoints
 {
     public static void MapCategoryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/categories").WithTags("Categories");
+        var group = app.MapV1Group("/categories").WithTags("Categories");
 
         // FR-CAT-001: public, không yêu cầu đăng nhập. Cache 30 phút (NFR-PERF-003) —
         // xem policy "categories" (có tag "categories") đăng ký trong Program.cs.

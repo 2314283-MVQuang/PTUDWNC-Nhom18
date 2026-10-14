@@ -13,9 +13,11 @@ public sealed class UpdateRecipeCommandValidator
 
         RuleFor(x => x.Title)
             .NotEmpty()
+            .Must(title => title is not null && title.Trim().Length >= 5)
+            .WithMessage("Title phải có ít nhất 5 ký tự.")
             .MaximumLength(200)
             .When(x => x.Title is not null)
-            .WithMessage("Title phải từ 1 đến 200 ký tự.");
+            .WithMessage("Title phải từ 5 đến 200 ký tự.");
 
         RuleFor(x => x.Description)
             .NotEmpty()

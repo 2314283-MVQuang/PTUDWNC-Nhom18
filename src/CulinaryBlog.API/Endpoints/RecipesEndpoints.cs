@@ -1,7 +1,9 @@
 using CulinaryBlog.API.Extensions;
+using CulinaryBlog.Application.Features.Recipes.Commands.DeleteRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.ArchiveRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
+using CulinaryBlog.Application.Features.Recipes.Commands.PublishRecipe;
 using Microsoft.AspNetCore.Mvc;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeById;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeBySlug;
@@ -23,7 +25,7 @@ public static class RecipesEndpoints
         this IEndpointRouteBuilder app)
     {
         var group =
-            app.MapGroup("/api/v1/recipes")
+            app.MapV1Group("/recipes")
                 .WithTags("Recipes");
 
         // -----------------------------------------------------------
@@ -222,6 +224,55 @@ public static class RecipesEndpoints
                 return result.ToOkResponse();
             })
             .CacheOutput("RecipeDetail");
+
+        // -----------------------------------------------------------
+        // Patch /api/v1/recipes/{id}/publish
+        // -----------------------------------------------------------
+        group.MapPatch(
+            "/{id:guid}/publish",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                var result =
+                    await sender.Send(
+                        new PublishRecipeCommand(id),
+                        cancellationToken);
+
+                return result.ToOkResponse();
+            })
+            .RequireAuthorization(
+                AuthorizationPolicies.Author)
+            .WithName("PublishRecipe");
+
+
+        // -----------------------------------------------------------
+        // DELETE /api/v1/recipes/{id}   (FR-RCP-007 — Thịnh)
+        // -----------------------------------------------------------
+        // Xoá mềm (mâu thuẫn #1): chỉ đánh dấu IsDeleted + DeletedAt; PurgeDeletedRecipesJob xoá
+        // hẳn sau 30 ngày. Handler kiểm tra chủ sở hữu/Admin (403) và tồn tại (404).
+        group.MapDelete(
+            "/{id:guid}",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                await sender.Send(
+                    new DeleteRecipeCommand(id),
+                    cancellationToken);
+
+                return TypedResults.NoContent();
+            })
+            .WithName("DeleteRecipe")
+            .WithSummary("Soft-delete a recipe")
+            .WithDescription("Marks a recipe as deleted. It is physically purged after 30 days.")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .RequireAuthorization(AuthorizationPolicies.Author);
     }
 }
 

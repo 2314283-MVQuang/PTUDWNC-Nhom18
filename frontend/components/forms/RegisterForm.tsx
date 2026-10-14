@@ -7,9 +7,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { apiFetch, ApiError } from "@/lib/api-client";
 import { registerSchema, type RegisterFormValues } from "@/lib/validations/auth.schema";
-import { ApiErrorCode } from "@/types/common";
+import type { RegistrationResponse } from "@/types/user";
 
 /** Form đăng ký tài khoản mới (FR-AUTH-001) — sau khi đăng ký thành công, tự đăng nhập luôn. */
 export function RegisterForm() {
@@ -35,7 +34,7 @@ export function RegisterForm() {
         body: JSON.stringify(values),
       });
 
-      const data = await res.json();
+      const data: RegistrationResponse = await res.json();
 
       if (!res.ok) {
         setFormError(data.error || "Đăng ký thất bại, vui lòng thử lại.");
@@ -80,7 +79,7 @@ export function RegisterForm() {
 
       <Input label="Họ và tên" error={errors.fullName?.message} {...registerField("fullName")} />
       <Input label="Email" type="email" autoComplete="email" error={errors.email?.message} {...registerField("email")} />
-      <Input label="Tên đăng nhập" error={errors.userName?.message} {...registerField("userName")} />
+      <Input label="Tên đăng nhập" error={errors.account?.message} {...registerField("account")} />
       <Input
         label="Mật khẩu"
         type="password"

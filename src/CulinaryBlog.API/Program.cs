@@ -1,5 +1,3 @@
-using System.Security.Claims;
-using System.Text;
 using System.Text.Json.Serialization;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Extensions;
@@ -11,14 +9,10 @@ using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Seed;
-using CulinaryBlog.Infrastructure.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Scalar.AspNetCore;
 using Serilog;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -149,49 +143,9 @@ builder.Services.AddHangfire(config =>
 });
 builder.Services.AddHangfireServer();
 
-var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
-var jwtSecret = jwtSection["Secret"]
-    ?? throw new InvalidOperationException(
-        "Thiếu cấu hình Jwt:Secret. Chạy 'dotnet user-secrets set \"Jwt:Secret\" \"<chuỗi bí mật dài>\"' " +
-        "trong thư mục src/CulinaryBlog.API (CONS mục 5.2: không commit secret vào Git).");
-
-builder.Services
-    .AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = jwtSection["Issuer"],
-            ValidateAudience = true,
-            ValidAudience = jwtSection["Audience"],
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromSeconds(30),
-            RoleClaimType = ClaimTypes.Role,
-        };
-    });
-
-builder.Services.AddAuthorization(options => options.AddCulinaryBlogPolicies());
-
-// TODO (nhóm làm tiếp): CORS hiện cho phép origin frontend từ appsettings ("Cors:AllowedOrigins"),
-// KHÔNG BAO GIỜ dùng AllowAnyOrigin() ở production (mục 5.2 — không wildcard "*").
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy => policy
-        .WithOrigins(allowedOrigins)
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials());
-});
-
-builder.Services.AddOpenApi();
+builder.Services.AddApiSecurity(builder.Configuration);
+builder.Services.AddCulinaryApiVersioning();
+builder.Services.AddCulinaryOpenApi();
 
 // Cho phép body JSON gửi/nhận enum dạng chuỗi (vd "Easy" thay vì số 1) — dễ đọc hơn khi test API.
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -258,9 +212,22 @@ try
             "CreatedAt" timestamp with time zone NOT NULL,
             "UpdatedAt" timestamp with time zone NULL,
             "IsDeleted" boolean NOT NULL DEFAULT FALSE,
+            "DeletedAt" timestamp with time zone NULL,
             "RowVersion" bytea NOT NULL DEFAULT '\x'::bytea,
             CONSTRAINT "PK_UploadedFiles" PRIMARY KEY ("Id")
         );
+        """);
+
+    // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job purge
+    // 30 ngày). db/init/02-schema.sql chỉ chạy khi tạo database MỚI, nên database đã có sẵn trên máy
+    // các thành viên phải được thêm cột ở đây — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
+    await filesDb.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "Categories"        ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+        ALTER TABLE "Recipes"           ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+        ALTER TABLE "RecipeSteps"       ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+        ALTER TABLE "RecipeIngredients" ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+        ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+        ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
         """);
 
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
@@ -277,11 +244,9 @@ catch (Exception ex)
 app.UseMiddleware<CorrelationIdMiddleware>(); // Đứng TRƯỚC GlobalException — request lỗi 500 vẫn cần có CorrelationId trong log.
 app.UseMiddleware<GlobalExceptionMiddleware>(); // Phải đứng ĐẦU pipeline (sau CorrelationId) để bắt mọi exception phía sau.
 
+app.MapCulinaryApiDocumentation();
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference(); // UI tại /scalar (mục 6.2), thay Swagger UI.
-
     // Sinh dữ liệu mẫu ngẫu nhiên bằng Bogus (chỉ ở Development, KHÔNG bao giờ chạy ở production).
     // DbSeeder tự kiểm tra số lượng hiện có và chỉ chèn thêm cho tới khi đạt tối thiểu 20
     // categories / 100 recipes (mỗi recipe >= 10 nguyên liệu, >= 5 bước) — xem
@@ -305,9 +270,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 // Tuần 4: Output Cache middleware (backend Redis, đăng ký ở khối AddStackExchangeRedisOutputCache/
@@ -327,6 +294,13 @@ RecurringJob.AddOrUpdate<GenerateSitemapJob>(
     "generate-sitemap",
     job => job.ExecuteAsync(CancellationToken.None),
     "0 2 * * *"); // 02:00 AM hàng ngày (NFR-SEO, FR-JOB-003)
+
+// FR-JOB-004 (Thịnh, mâu thuẫn #1): xoá hẳn công thức đã xoá mềm quá 30 ngày, chạy 03:00 AM hàng
+// ngày (sau job sitemap để sitemap của ngày đó không còn chứa công thức sắp bị xoá).
+RecurringJob.AddOrUpdate<PurgeDeletedRecipesJob>(
+    "purge-deleted-recipes",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 3 * * *");
 
 app.MapAuthEndpoints();
 app.MapRecipeEndpoints();

@@ -12,6 +12,8 @@ import type { NextConfig } from "next";
  */
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Giới hạn worker build để máy phát triển vẫn đủ bộ nhớ khi chạy Docker/.NET cùng lúc.
+  experimental: { cpus: 1 },
   images: {
     remotePatterns: [
       {

@@ -10,6 +10,14 @@ namespace CulinaryBlog.Domain.Interfaces;
 public interface IRecipeRepository : IRepository<Recipe>
 {
     /// <summary>
+    /// Lấy aggregate có tracking để xuất bản, kèm các bước và nguyên liệu còn hiệu lực.
+    /// Khác truy vấn detail chỉ đọc, thay đổi trạng thái ở đây được UnitOfWork lưu lại.
+    /// </summary>
+    Task<Recipe?> GetByIdForPublishingAsync(
+        Guid id,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Lấy Recipe đầy đủ cho màn hình chi tiết:
     /// Category, Author, Steps, Ingredients, Images.
     /// </summary>

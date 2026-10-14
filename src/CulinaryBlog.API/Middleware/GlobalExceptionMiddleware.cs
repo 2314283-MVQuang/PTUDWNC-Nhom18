@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Domain.Common.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CulinaryBlog.API.Middleware;
@@ -50,6 +51,13 @@ public class GlobalExceptionMiddleware(
                         (int)HttpStatusCode.NotFound,
                         "Không tìm thấy công thức",
                         "RECIPE_NOT_FOUND"
+                    ),
+
+                RecipePublishIncompleteException =>
+                    (
+                        (int)HttpStatusCode.BadRequest,
+                        "Công thức chưa đủ điều kiện để xuất bản",
+                        "RECIPE_PUBLISH_INCOMPLETE"
                     ),
 
                 RecipeConcurrencyConflictException =>

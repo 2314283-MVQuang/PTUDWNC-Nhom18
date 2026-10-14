@@ -47,9 +47,6 @@ export function RecipeWizardForm() {
       cookTime: basicInfo.cookTimeMinutes,
       servings: basicInfo.servings,
       difficulty: basicInfo.difficulty,
-      // Backend bắt buộc có Instructions (không nullable). Form hiện chưa có ô riêng cho phần
-      // này, nên tạm dùng mô tả ngắn để request không bị 422; thêm ô riêng khi làm FR-RCP-004.
-      instructions: basicInfo.description,
       // Zod trả về `undefined` cho field bỏ trống, còn DTO của backend (mục 7.3/7.4) dùng `null`.
       // Đổi undefined -> null ở đây để JSON gửi đi đúng chuẩn API, không phải bỏ hẳn key.
       ingredients: ingredients.map((item, index) => ({
@@ -69,8 +66,7 @@ export function RecipeWizardForm() {
       })),
     };
     const created = await createRecipe.mutateAsync(input);
-    // Route "/dashboard/recipes/[id]/edit" (mục 9) dùng slug làm định danh trên URL vì backend
-    // chỉ có endpoint GET /recipes/{slug} (mục 8.3) — không có GET theo id riêng.
+    // Trang chỉnh sửa hiện dùng slug làm định danh trên URL.
     router.push(`/dashboard/recipes/${created.slug}/edit`);
   }
 

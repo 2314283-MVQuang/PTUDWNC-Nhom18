@@ -6,7 +6,6 @@ using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Enums;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
-using RecipeRepository = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 
 namespace CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
 
@@ -21,7 +20,7 @@ namespace CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
 /// -> query lại detail
 /// </summary>
 public sealed class CreateRecipeCommandHandler(
-    RecipeRepository recipeRepository,
+    IRecipeRepository recipeRepository,
     IRepository<Category> categoryRepository,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork)

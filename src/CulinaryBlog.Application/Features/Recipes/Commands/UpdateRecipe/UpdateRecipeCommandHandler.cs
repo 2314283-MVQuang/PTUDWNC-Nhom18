@@ -7,7 +7,6 @@ using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Enums;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
-using RecipeRepository = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 using Microsoft.EntityFrameworkCore;
 
 namespace CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
@@ -20,7 +19,7 @@ namespace CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
 /// - Slug update/collision
 /// </summary>
 public sealed class UpdateRecipeCommandHandler(
-    RecipeRepository recipeRepository,
+    IRecipeRepository recipeRepository,
     IRepository<Category> categoryRepository,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork)

@@ -5,13 +5,12 @@ using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Enums;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
-using RecipeRepository = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 using Microsoft.EntityFrameworkCore;
 
 namespace CulinaryBlog.Application.Features.Recipes.Queries.GetRecipes;
 
 public sealed class GetRecipesQueryHandler(
-    RecipeRepository recipeRepository,
+    IRecipeRepository recipeRepository,
     ICurrentUser currentUser)
     : IRequestHandler<
         GetRecipesQuery,

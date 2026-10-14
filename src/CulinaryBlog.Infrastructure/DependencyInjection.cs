@@ -1,16 +1,15 @@
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
-using CulinaryBlog.Infrastructure.Jobs;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Repositories;
 using CulinaryBlog.Infrastructure.Services;
+using CulinaryBlog.Infrastructure.Jobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using RecipeRepositoryInterface = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 
 namespace CulinaryBlog.Infrastructure;
 
@@ -29,12 +28,11 @@ public static class DependencyInjection
         // CHỈ giữ lại những gì FR-AUTH cần. ICategoryRepository đã gỡ cùng module
         // Category/Recipe (xem ghi chú trong Program.cs) — sẽ đăng ký lại khi nhóm triển khai tiếp.
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<RecipeRepositoryInterface, RecipeRepository>();
+        services.AddScoped<IRecipeRepository, RecipeRepository>();
         // FR-CAT-005 (Thịnh): kiểm tra danh mục còn công thức trước khi xoá.
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         // FR-CAT-003/004 (Tiến): sinh slug duy nhất cho Category (tự thêm hậu tố -2, -3...).
         services.AddScoped<ISlugGenerator, SlugGenerator>();
-        services.AddScoped<PurgeDeletedRecipesJob>();
 
         // Repository generic cho các entity con (RecipeStep/RecipeIngredient/RecipeImage): Handler
         // chỉ cần Remove()/AddAsync() một dòng con nên không đáng viết repository chuyên biệt cho
@@ -117,6 +115,13 @@ public static class DependencyInjection
         services.AddHealthChecks()
             .AddNpgSql(connectionString, name: "postgresql", tags: ["ready"])
             .AddRedis(redisConnectionString, name: "redis", tags: ["ready"]);
+
+        // --- FR-JOB-003 (Tuần 5 — Tiến): Sitemap & Background Job ---
+        services.AddScoped<ISitemapBuilder, SitemapBuilder>();
+        services.AddScoped<ISitemapService, SitemapService>();
+        services.AddTransient<GenerateSitemapJob>();
+        // FR-RCP-007 / FR-JOB-004 (Thịnh): xoá hẳn công thức đã xoá mềm quá 30 ngày.
+        services.AddTransient<PurgeDeletedRecipesJob>();
 
         return services;
     }

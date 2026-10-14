@@ -4,12 +4,11 @@ using CulinaryBlog.Application.Features.Recipes.Dtos;
 using CulinaryBlog.Domain.Enums;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
-using RecipeRepository = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 
 namespace CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeBySlug;
 
 public sealed class GetRecipeBySlugQueryHandler(
-    RecipeRepository recipeRepository,
+    IRecipeRepository recipeRepository,
     ICurrentUser currentUser)
     : IRequestHandler<GetRecipeBySlugQuery, RecipeDetailDto>
 {

@@ -4,7 +4,6 @@ using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Recipes.Dtos;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
-using RecipeRepository = CulinaryBlog.Domain.Interfaces.IRecipeRepository;
 
 namespace CulinaryBlog.Application.Features.Recipes.Commands.ArchiveRecipe;
 
@@ -20,7 +19,7 @@ namespace CulinaryBlog.Application.Features.Recipes.Commands.ArchiveRecipe;
 ///   - GetCategoriesQueryHandler: RecipeCount chỉ đếm Published.
 /// </summary>
 public sealed class ArchiveRecipeCommandHandler(
-    RecipeRepository recipeRepository,
+    IRecipeRepository recipeRepository,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork,
     ICacheInvalidator cacheInvalidator)

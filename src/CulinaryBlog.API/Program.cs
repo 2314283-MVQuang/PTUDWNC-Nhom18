@@ -82,6 +82,14 @@ builder.Services.AddOutputCache(options =>
         .Expire(TimeSpan.FromMinutes(30))
         .Tag("categories"));
 
+    // Category detail kèm danh sách công thức (FR-CAT-002): TTL 5 phút vì có chứa công thức (thay đổi
+    // thường xuyên hơn danh mục), vary theo page/pageSize; gắn cả 2 tag để thao tác trên danh mục
+    // (tạo/sửa/xoá) lẫn công thức (lưu trữ, thêm ảnh...) đều làm mới được trang này.
+    options.AddPolicy("CategoryDetail", policy => policy
+        .Expire(TimeSpan.FromMinutes(5))
+        .SetVaryByQuery("page", "pageSize")
+        .Tag("categories", "recipes"));
+
     // Recipe detail: TTL 5 phút (NFR-PERF-003, cache-aside pattern).
     options.AddPolicy("RecipeDetail", policy => policy
         .Expire(TimeSpan.FromMinutes(5))

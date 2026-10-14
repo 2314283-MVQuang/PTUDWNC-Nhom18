@@ -440,7 +440,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 ---
 
-### Buổi 6 (Tuần 6) — Hoàn thiện Tìm kiếm (lọc, sắp xếp, phân trang) + Chi tiết Danh mục ⬜ Chưa làm (cả nhóm)
+### Buổi 6 (Tuần 6) — Hoàn thiện Tìm kiếm (lọc, sắp xếp, phân trang) + Chi tiết Danh mục ✅ Quang xong · còn lại chưa làm
 
 > ⚠️ **Đã cập nhật:** FR-SRCH-001 (tìm toàn văn bản) Thịnh đã làm ở Tuần 4 và FR-OBS-003 (tracing) Quang đã làm ở Tuần 3 nên **không giao lại**. Quang nhận FR-CAT-002 (đang làm dở: mới có xem theo ID, chưa kèm công thức).
 
@@ -451,13 +451,15 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 2. Merge theo thứ tự Ý (lọc) → Thịnh (sắp xếp) → Tiến (phân trang) để tránh xung đột.
 3. Quang làm FR-CAT-002 song song, độc lập với phần Search.
 
-**Mai Văn Quang · FR-CAT-002 Chi tiết danh mục kèm công thức** — ⬜ Chưa làm
+**Mai Văn Quang · FR-CAT-002 Chi tiết danh mục kèm công thức** — ✅ Đã hoàn thành
 
 - **Cách làm:** `GetCategoryBySlugQuery` tìm category theo slug, trả `CategoryDetailDto` kèm `PagedResult<RecipeSummaryDto>` chỉ gồm recipe `Published`; gắn Output Cache (tag `categories`); đồng thời gắn policy `RecipeDetail` (đã khai báo trong `Program.cs` nhưng chưa dùng) cho `GET /recipes/{slug}`.
 
 - **Vì sao:** hiện `GET /categories/{id}` chỉ trả thông tin danh mục, chưa đúng SRS (tra theo slug, kèm danh sách công thức phân trang) — trang danh mục ở frontend cần đúng dữ liệu này.
 
 - **Xong khi:** `GET /categories/{slug}?page=&pageSize=` trả `{ category, recipes: { items, totalCount, page, pageSize, totalPages } }`; slug sai trả 404 dạng ProblemDetails.
+
+- **Đã làm:** `GET /api/v1/categories/{slug}?page=&pageSize=` (`GetCategoryBySlugQuery`/Validator/Handler, `ICategoryRepository.GetBySlugAsync`) trả `{ category, recipes }`: công thức Published + bản nháp của chính người đang đăng nhập, mới xuất bản lên trước, `pageSize` tối đa 50; slug sai trả 404 `CATEGORY_NOT_FOUND`. Cache policy `CategoryDetail` (5 phút, vary theo `page`/`pageSize`, tag `categories` + `recipes`); gắn policy `RecipeDetail` cho `GET /recipes/{id}` và `GET /recipes/{slug}`. 6 unit test trong `tests/CulinaryBlog.UnitTests/Categories/GetCategoryBySlugQueryHandlerTests.cs`.
 
 - **Commit:** `feat(categories): implement FR-CAT-002 category detail with paged recipes`
 

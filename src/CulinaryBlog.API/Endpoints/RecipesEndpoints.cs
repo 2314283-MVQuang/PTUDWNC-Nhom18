@@ -200,7 +200,10 @@ public static class RecipesEndpoints
                         new GetRecipeByIdQuery(id));
 
                 return result.ToOkResponse();
-            });
+            })
+            // Cache 5 phút (policy "RecipeDetail", tag "recipes"). Chỉ cache response 200 của
+            // request KHÔNG đăng nhập, nên bản nháp chỉ chủ sở hữu xem được không bị lộ qua cache.
+            .CacheOutput("RecipeDetail");
 
         // -----------------------------------------------------------
         // GET /api/v1/recipes/{slug}
@@ -217,7 +220,8 @@ public static class RecipesEndpoints
                         new GetRecipeBySlugQuery(slug));
 
                 return result.ToOkResponse();
-            });
+            })
+            .CacheOutput("RecipeDetail");
     }
 }
 

@@ -26,12 +26,10 @@ public abstract class BaseEntity
 
     public DateTimeOffset? UpdatedAt { get; set; }
 
-    /// <summary>
-    /// Soft delete flag. LƯU Ý: Recipe áp dụng HARD DELETE theo FR-RCP-007 (xóa thật, cascade
-    /// xóa Steps/Ingredients/Images), nên với Recipe cột này luôn là false trong thực tế —
-    /// vẫn giữ vì Recipe kế thừa BaseEntity như các entity khác.
-    /// </summary>
+    /// <summary>Soft-delete flag. DeletedAt records when the entity was marked deleted.</summary>
     public bool IsDeleted { get; set; }
+
+    public DateTimeOffset? DeletedAt { get; set; }
 
     public byte[] RowVersion { get; set; } = [];
 }

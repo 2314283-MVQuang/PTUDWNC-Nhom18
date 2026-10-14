@@ -4,6 +4,7 @@ using CulinaryBlog.Domain.Interfaces;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Repositories;
 using CulinaryBlog.Infrastructure.Services;
+using CulinaryBlog.Infrastructure.Jobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -114,6 +115,13 @@ public static class DependencyInjection
         services.AddHealthChecks()
             .AddNpgSql(connectionString, name: "postgresql", tags: ["ready"])
             .AddRedis(redisConnectionString, name: "redis", tags: ["ready"]);
+
+        // --- FR-JOB-003 (Tuần 5 — Tiến): Sitemap & Background Job ---
+        services.AddScoped<ISitemapBuilder, SitemapBuilder>();
+        services.AddScoped<ISitemapService, SitemapService>();
+        services.AddTransient<GenerateSitemapJob>();
+        // FR-RCP-007 / FR-JOB-004 (Thịnh): xoá hẳn công thức đã xoá mềm quá 30 ngày.
+        services.AddTransient<PurgeDeletedRecipesJob>();
 
         return services;
     }

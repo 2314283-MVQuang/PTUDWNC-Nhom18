@@ -1,4 +1,6 @@
 using CulinaryBlog.API.Extensions;
+using CulinaryBlog.Application.Features.Recipes.Commands.DeleteRecipe;
+using CulinaryBlog.Application.Features.Recipes.Commands.ArchiveRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.PublishRecipe;
@@ -88,6 +90,51 @@ public static class RecipesEndpoints
             .RequireAuthorization(
                 AuthorizationPolicies.Author);
 
+        // -----------------------------------------------------------
+        // PATCH /api/v1/recipes/{id}/archive     (FR-RCP-006 — Quang)
+        // PATCH /api/v1/recipes/{id}/unarchive
+        // -----------------------------------------------------------
+        // Require Author/Admin ở endpoint; Handler kiểm tra thêm Owner (403) và tồn tại (404).
+        // Lưu trữ = ẩn khỏi danh sách/tìm kiếm công khai, KHÔNG xoá dữ liệu; tác giả vẫn thấy bài
+        // trong danh sách của mình. Bỏ lưu trữ trả bài về trạng thái trước đó (Published/Draft).
+        group.MapPatch(
+            "/{id:guid}/archive",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var result =
+                    await sender.Send(
+                        new ArchiveRecipeCommand(id, Archive: true),
+                        ct);
+
+                return result.ToOkResponse();
+            })
+            .WithName("ArchiveRecipe")
+            .WithSummary("Lưu trữ công thức (ẩn khỏi trang công khai, không xoá)")
+            .RequireAuthorization(
+                AuthorizationPolicies.Author);
+
+        group.MapPatch(
+            "/{id:guid}/unarchive",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var result =
+                    await sender.Send(
+                        new ArchiveRecipeCommand(id, Archive: false),
+                        ct);
+
+                return result.ToOkResponse();
+            })
+            .WithName("UnarchiveRecipe")
+            .WithSummary("Bỏ lưu trữ công thức (trả về trạng thái trước khi lưu trữ)")
+            .RequireAuthorization(
+                AuthorizationPolicies.Author);
+
         group.MapGet(
             "",
             async (
@@ -155,7 +202,10 @@ public static class RecipesEndpoints
                         new GetRecipeByIdQuery(id));
 
                 return result.ToOkResponse();
-            });
+            })
+            // Cache 5 phút (policy "RecipeDetail", tag "recipes"). Chỉ cache response 200 của
+            // request KHÔNG đăng nhập, nên bản nháp chỉ chủ sở hữu xem được không bị lộ qua cache.
+            .CacheOutput("RecipeDetail");
 
         // -----------------------------------------------------------
         // GET /api/v1/recipes/{slug}
@@ -172,7 +222,8 @@ public static class RecipesEndpoints
                         new GetRecipeBySlugQuery(slug));
 
                 return result.ToOkResponse();
-            });
+            })
+            .CacheOutput("RecipeDetail");
 
         // -----------------------------------------------------------
         // Patch /api/v1/recipes/{id}/publish
@@ -194,6 +245,34 @@ public static class RecipesEndpoints
             .RequireAuthorization(
                 AuthorizationPolicies.Author)
             .WithName("PublishRecipe");
+
+
+        // -----------------------------------------------------------
+        // DELETE /api/v1/recipes/{id}   (FR-RCP-007 — Thịnh)
+        // -----------------------------------------------------------
+        // Xoá mềm (mâu thuẫn #1): chỉ đánh dấu IsDeleted + DeletedAt; PurgeDeletedRecipesJob xoá
+        // hẳn sau 30 ngày. Handler kiểm tra chủ sở hữu/Admin (403) và tồn tại (404).
+        group.MapDelete(
+            "/{id:guid}",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                await sender.Send(
+                    new DeleteRecipeCommand(id),
+                    cancellationToken);
+
+                return TypedResults.NoContent();
+            })
+            .WithName("DeleteRecipe")
+            .WithSummary("Soft-delete a recipe")
+            .WithDescription("Marks a recipe as deleted. It is physically purged after 30 days.")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .RequireAuthorization(AuthorizationPolicies.Author);
     }
 }
 

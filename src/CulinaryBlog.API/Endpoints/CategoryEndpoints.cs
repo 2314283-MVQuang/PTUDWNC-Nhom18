@@ -3,6 +3,7 @@ using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.DeleteCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
+using CulinaryBlog.Application.Features.Categories.Queries.GetCategoryBySlug;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
@@ -53,6 +54,19 @@ public static class CategoryEndpoints
 
             return Results.Ok(new { data = response });
         });
+
+        // FR-CAT-002 (Quang): chi tiết danh mục theo slug kèm công thức đã xuất bản, có phân trang.
+        // Public; cache 5 phút theo policy "CategoryDetail" (Program.cs). Request có đăng nhập không
+        // bị cache (mặc định của Output Cache), nên bản nháp riêng của tác giả không lọt vào cache.
+        // Route "/{id:guid}" ở trên được ưu tiên cho chuỗi dạng GUID; còn lại rơi vào "/{slug}".
+        group.MapGet("/{slug}", async (string slug, int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(
+                new GetCategoryBySlugQuery(slug, page ?? 1, pageSize ?? 12),
+                ct);
+
+            return result.ToOkResponse();
+        }).CacheOutput("CategoryDetail");
 
         // FR-CAT-003: Tạo danh mục mới (Admin). Xoá cache danh sách ngay sau khi tạo (mâu thuẫn #4).
         group.MapPost("", async (CreateCategoryCommand command, ISender sender, IOutputCacheStore cacheStore, CancellationToken ct) =>

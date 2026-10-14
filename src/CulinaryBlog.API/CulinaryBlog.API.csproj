@@ -34,6 +34,10 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.10.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.10.0" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.10.0" />
+    <!-- Tuần 5 (FR-JOB-003): Hangfire cho Background Jobs & Sitemap -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.25" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
+    <PackageReference Include="Hangfire.InMemory" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>

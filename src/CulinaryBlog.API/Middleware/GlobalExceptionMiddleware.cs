@@ -73,6 +73,13 @@ public class GlobalExceptionMiddleware(
                         "FILE_INVALID"
                     ),
 
+                InvalidSortException =>
+                    (
+                        (int)HttpStatusCode.BadRequest,
+                        "Tham số sắp xếp không hợp lệ",
+                        "INVALID_SORT"
+                    ),
+
                 ValidationException =>
                     (
                         422,

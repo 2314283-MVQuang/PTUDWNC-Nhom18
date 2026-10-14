@@ -11,18 +11,23 @@ public class SearchRecipesQueryHandler(IRecipeRepository recipeRepository)
         SearchRecipesQuery request,
         CancellationToken cancellationToken)
     {
-        var recipes = await recipeRepository.SearchRecipesAsync(request.Keyword, cancellationToken);
+        var sort = SortParser.Parse(request.Sort);
+        var recipes =
+            await recipeRepository.SearchRecipesAsync(
+                request.Keyword,
+                cancellationToken);
 
-        return recipes.Select(recipe => new RecipeDto(
-            recipe.Id,
-            recipe.Slug,
-            recipe.Title,
-            recipe.Description,
-            recipe.PrepTime,
-            recipe.CookTime,
-            recipe.Servings,
-            recipe.Difficulty,
-            recipe.Status,
-            recipe.PublishedAt));
+        return SortParser.Apply(recipes, sort)
+            .Select(recipe => new RecipeDto(
+                recipe.Id,
+                recipe.Slug,
+                recipe.Title,
+                recipe.Description,
+                recipe.PrepTime,
+                recipe.CookTime,
+                recipe.Servings,
+                recipe.Difficulty,
+                recipe.Status,
+                recipe.PublishedAt));
     }
 }

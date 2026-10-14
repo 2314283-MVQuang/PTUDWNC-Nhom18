@@ -173,18 +173,23 @@ public static class RecipesEndpoints
             "/search",
             async (
                 [FromQuery(Name = "q")] string? q,
+                [FromQuery(Name = "sort")] string? sort,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
                 var recipes =
                     await sender.Send(
-                        new SearchRecipesQuery(q ?? string.Empty),
+                        new SearchRecipesQuery(q ?? string.Empty, sort),
                         cancellationToken);
 
                 return recipes.ToOkResponse();
             })
             .WithName("SearchRecipes")
             .WithSummary("Full-text Search Recipes")
+            .WithDescription(
+                "Tìm công thức toàn văn; hỗ trợ sort theo createdAt, publishedAt, title, prepTime " +
+                "hoặc cookTime. Thêm dấu '-' để sắp xếp giảm dần.")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .CacheOutput("Search");
 
         // -----------------------------------------------------------

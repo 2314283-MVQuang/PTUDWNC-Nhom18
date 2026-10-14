@@ -9,4 +9,7 @@ public class CategoryRepository(CulinaryBlogDbContext dbContext)
 {
     public Task<bool> HasRecipesAsync(Guid categoryId, CancellationToken ct = default) =>
         DbContext.Recipes.AnyAsync(recipe => recipe.CategoryId == categoryId, ct);
+
+    public Task<Category?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
+        DbSet.AsNoTracking().FirstOrDefaultAsync(category => category.Slug == slug, ct);
 }

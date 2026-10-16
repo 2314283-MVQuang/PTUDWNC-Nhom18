@@ -166,26 +166,40 @@ public static class RecipesEndpoints
             });
 
         // -----------------------------------------------------------
-        // GET /api/v1/recipes/search?q=   (FR-SRCH-001 — Thịnh)
+        // GET /api/v1/recipes/search?q=   (FR-SRCH-001 — Thịnh, FR-SRCH-004 — Tiến)
         // -----------------------------------------------------------
-        // Full-text search tiếng Việt, bỏ dấu. Cache 1 phút, vary theo query string
+        // Full-text search tiếng Việt, bỏ dấu kèm phân trang. Cache 1 phút, vary theo query string
         // (policy "Search" trong Program.cs — NFR-PERF-003 / mâu thuẫn #4).
         group.MapGet(
             "/search",
             async (
                 [FromQuery(Name = "q")] string? q,
+                int? page,
+                int? pageSize,
+                Guid? categoryId,
+                RecipeDifficulty? difficulty,
+                int? maxCookTime,
+                int? minServings,
+                string? sort,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var recipes =
-                    await sender.Send(
-                        new SearchRecipesQuery(q ?? string.Empty),
-                        cancellationToken);
+                var query = new SearchRecipesQuery(
+                    Keyword: q ?? string.Empty,
+                    Page: page ?? 1,
+                    PageSize: pageSize ?? 12,
+                    CategoryId: categoryId,
+                    Difficulty: difficulty,
+                    MaxCookTime: maxCookTime,
+                    MinServings: minServings,
+                    Sort: sort);
 
-                return recipes.ToOkResponse();
+                var result = await sender.Send(query, cancellationToken);
+
+                return result.ToPagedResponse();
             })
             .WithName("SearchRecipes")
-            .WithSummary("Full-text Search Recipes")
+            .WithSummary("Full-text Search Recipes with Pagination")
             .CacheOutput("Search");
 
         // -----------------------------------------------------------

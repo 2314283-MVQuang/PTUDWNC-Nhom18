@@ -58,4 +58,19 @@ public interface IRecipeRepository : IRepository<Recipe>
     Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
         string keyword,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// FR-SRCH-001 & FR-SRCH-004 (Tiến - Tuần 6): Tìm kiếm toàn văn có phân trang (page, pageSize)
+    /// và hỗ trợ các tiêu chí lọc nâng cao. Trả về danh sách Entity kèm TotalCount.
+    /// </summary>
+    Task<(IReadOnlyList<Recipe> Items, int TotalCount)> SearchRecipesPagedAsync(
+        string keyword,
+        int page,
+        int pageSize,
+        Guid? categoryId = null,
+        Domain.Enums.RecipeDifficulty? difficulty = null,
+        int? maxCookTime = null,
+        int? minServings = null,
+        string? sort = null,
+        CancellationToken ct = default);
 }

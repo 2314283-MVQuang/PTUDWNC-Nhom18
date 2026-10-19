@@ -57,5 +57,6 @@ public interface IRecipeRepository : IRepository<Recipe>
     /// </summary>
     Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
         string keyword,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        RecipeSearchFilters? filters = null);
 }

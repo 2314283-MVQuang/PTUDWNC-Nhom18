@@ -2,7 +2,9 @@
   "name": "culinary-blog-frontend",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "description": "Frontend của Culinary Blog - Next.js App Router + TypeScript (mục 6.1, 9, 11 trong tài liệu đặc tả)",
   "scripts": {
     "setup": "node scripts/setup-env.mjs",
@@ -13,33 +15,34 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
-    "test": "node --test tests/auth-mode.test.mjs",
+    "test": "node --test tests/auth-mode.test.mjs tests/search.test.mjs",
     "test:production-auth": "node scripts/test-production-auth.mjs"
   },
   "dependencies": {
-    "next": "15.1.6",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "next-auth": "5.0.0-beta.25",
+    "@hookform/resolvers": "3.10.0",
+    "@radix-ui/react-dialog": "1.3.1",
     "@tanstack/react-query": "5.66.0",
     "@tanstack/react-query-devtools": "5.66.0",
-    "react-hook-form": "7.54.2",
-    "@hookform/resolvers": "3.10.0",
-    "zod": "3.24.1",
     "clsx": "2.1.1",
+    "lucide-react": "0.474.0",
+    "next": "15.1.6",
+    "next-auth": "5.0.0-beta.25",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hook-form": "7.54.2",
     "tailwind-merge": "2.6.0",
-    "lucide-react": "0.474.0"
+    "zod": "3.24.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.7",
-    "typescript": "5.7.3",
     "@types/node": "22.10.7",
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
-    "tailwindcss": "3.4.17",
-    "postcss": "8.5.1",
     "autoprefixer": "10.4.20",
     "eslint": "9.18.0",
-    "eslint-config-next": "15.1.6"
+    "eslint-config-next": "15.1.6",
+    "postcss": "8.5.1",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.3"
   }
 }

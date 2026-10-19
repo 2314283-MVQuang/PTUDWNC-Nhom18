@@ -174,18 +174,27 @@ public static class RecipesEndpoints
             "/search",
             async (
                 [FromQuery(Name = "q")] string? q,
+                Guid? categoryId,
+                RecipeDifficulty? difficulty,
+                int? minPrepTime,
+                int? maxPrepTime,
+                int? minCookTime,
+                int? maxCookTime,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
                 var recipes =
                     await sender.Send(
-                        new SearchRecipesQuery(q ?? string.Empty),
+                        new SearchRecipesQuery(q ?? string.Empty, categoryId, difficulty,
+                            minPrepTime, maxPrepTime, minCookTime, maxCookTime),
                         cancellationToken);
 
                 return recipes.ToOkResponse();
             })
             .WithName("SearchRecipes")
             .WithSummary("Full-text Search Recipes")
+            .WithDescription("FR-SRCH-002: kết hợp danh mục, độ khó và khoảng phút chuẩn bị/nấu bằng AND. Biên được tính cả hai đầu; bỏ tham số để không lọc. Giữ thứ tự liên quan và giới hạn 50 kết quả hiện có.")
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .CacheOutput("Search");
 
         // -----------------------------------------------------------

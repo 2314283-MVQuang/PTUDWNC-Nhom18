@@ -73,7 +73,8 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
 
     public async Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
         string keyword,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        RecipeSearchFilters? filters = null)
     {
         if (string.IsNullOrWhiteSpace(keyword))
         {
@@ -81,6 +82,8 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
         }
 
         var normalizedKeyword = keyword.Trim();
+        filters ??= new RecipeSearchFilters();
+        var difficulty = (int?)filters.Difficulty;
 
         // Cột "SearchVector" (tsvector) do trigger PostgreSQL quản lý và KHÔNG map vào model EF
         // (xem ghi chú đầu CulinaryBlogDbContext.cs), nên truy vấn bằng SQL tham số hoá: bước 1 lấy
@@ -91,6 +94,13 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
                 SELECT r."Id" AS "Value"
                 FROM "Recipes" AS r
                 WHERE r."IsDeleted" = FALSE
+                  AND r."Status" = {(int)RecipeStatus.Published}
+                  AND (CAST({filters.CategoryId} AS uuid) IS NULL OR r."CategoryId" = CAST({filters.CategoryId} AS uuid))
+                  AND (CAST({difficulty} AS integer) IS NULL OR r."Difficulty" = CAST({difficulty} AS integer))
+                  AND (CAST({filters.MinPrepTime} AS integer) IS NULL OR r."PrepTime" >= CAST({filters.MinPrepTime} AS integer))
+                  AND (CAST({filters.MaxPrepTime} AS integer) IS NULL OR r."PrepTime" <= CAST({filters.MaxPrepTime} AS integer))
+                  AND (CAST({filters.MinCookTime} AS integer) IS NULL OR r."CookTime" >= CAST({filters.MinCookTime} AS integer))
+                  AND (CAST({filters.MaxCookTime} AS integer) IS NULL OR r."CookTime" <= CAST({filters.MaxCookTime} AS integer))
                   AND r."SearchVector" @@ websearch_to_tsquery('vietnamese', unaccent({normalizedKeyword}))
                 ORDER BY ts_rank(r."SearchVector", websearch_to_tsquery('vietnamese', unaccent({normalizedKeyword}))) DESC
                 LIMIT 50

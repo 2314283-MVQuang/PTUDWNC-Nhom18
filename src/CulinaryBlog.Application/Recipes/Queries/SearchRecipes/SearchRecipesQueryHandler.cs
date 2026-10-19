@@ -11,7 +11,9 @@ public class SearchRecipesQueryHandler(IRecipeRepository recipeRepository)
         SearchRecipesQuery request,
         CancellationToken cancellationToken)
     {
-        var recipes = await recipeRepository.SearchRecipesAsync(request.Keyword, cancellationToken);
+        var filters = new RecipeSearchFilters(request.CategoryId, request.Difficulty,
+            request.MinPrepTime, request.MaxPrepTime, request.MinCookTime, request.MaxCookTime);
+        var recipes = await recipeRepository.SearchRecipesAsync(request.Keyword, cancellationToken, filters);
 
         return recipes.Select(recipe => new RecipeDto(
             recipe.Id,

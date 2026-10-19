@@ -17,6 +17,8 @@ export function Pagination({ meta, buildHref }: { meta: PageMeta; buildHref: (pa
         <Link
           key={page}
           href={buildHref(page)}
+          aria-label={`Trang ${page}`}
+          aria-current={page === meta.page ? "page" : undefined}
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium",
             page === meta.page ? "bg-brand-600 text-white" : "text-neutral-600 hover:bg-neutral-100",

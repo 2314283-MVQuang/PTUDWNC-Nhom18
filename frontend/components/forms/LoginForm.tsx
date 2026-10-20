@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { loginSchema, type LoginFormValues } from "@/lib/validations/auth.schema";
 import { safeCallbackUrl } from "@/lib/auth-mode";
+import { loginErrorMessage } from "@/lib/auth-errors";
 
 /** Form đăng nhập email/password + nút Google (FR-AUTH-002, FR-AUTH-003). */
 export function LoginForm({ demoEnabled = false, googleEnabled = false }: { demoEnabled?: boolean; googleEnabled?: boolean }) {
@@ -33,11 +34,12 @@ export function LoginForm({ demoEnabled = false, googleEnabled = false }: { demo
   async function onSubmit(values: LoginFormValues) {
     setFormError(null);
     // FR-AUTH-002: sai email/password KHÔNG được tiết lộ email có tồn tại hay không (chống
-    // User Enumeration Attack) — nên chỉ hiển thị 1 thông báo chung chung ở đây.
+    // User Enumeration Attack) — nên 401 chỉ hiện 1 thông báo chung. Các lỗi khác (tài khoản bị
+    // khoá, quá giới hạn request, backend không chạy) có mã riêng từ auth.ts (Tuần 7).
     const result = await signIn("credentials", { ...values, redirect: false });
 
     if (result?.error) {
-      setFormError("Email hoặc mật khẩu không đúng.");
+      setFormError(loginErrorMessage((result as { code?: string | null }).code));
       return;
     }
     router.push(callbackUrl);

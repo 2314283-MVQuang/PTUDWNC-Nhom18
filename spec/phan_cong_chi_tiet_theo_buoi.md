@@ -94,13 +94,13 @@
 
 **Bổ sung đã xác nhận của Chung Thiện Ý:** hoàn thiện tiện ích API/lỗi, Radix Dialog, store bộ lọc, Search responsive, component và layout chung; báo cáo ở mục 13 của [bản tổng hợp tuần 1–6](bao_cao_tong_hop_ChungThienY_tuan_1_6.md). Kiểm thử hiện bao phủ lọc; không đánh dấu hoàn thành phần sorting, pagination hoặc kiểm thử toàn module của các thành viên khác.
 
-## 📅 Tuần 7 — Module Tệp tin, Job nền còn lại & nối Frontend Auth
+## 📅 Tuần 7 — Module Tệp tin, Job nền còn lại & nối Frontend Auth ✅ Quang xong · còn lại chưa làm
 
 > ⚠️ **Cập nhật so với bảng Tuần 7 gốc:** FR-FILE-001 (upload MinIO) Tiến đã làm ở Tuần 3–4 nên **không giao lại**; Tiến nhận FR-JOB-002 (chưa ai làm). Quang nhận việc nối frontend đăng ký/đăng nhập với backend thật.
 
 | Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành | Trạng thái |
 | :--- | :--- | :--- | :--- | :-: |
-| Mai Văn Quang | **FR-AUTH-001/002** (frontend) Nối đăng ký/đăng nhập với backend | Frontend hiện dùng danh sách user cục bộ (`frontend/data/users.json`); chuyển `auth.ts` và form đăng ký sang gọi `POST /auth/register`, `POST /auth/login` của backend, bỏ token giả `local-token-...` | Tài khoản đăng ký trên giao diện xuất hiện trong PostgreSQL; đăng nhập xong gọi được API cần quyền bằng JWT thật | ⬜ Chưa làm |
+| Mai Văn Quang | **FR-AUTH-001/002** (frontend) Nối đăng ký/đăng nhập với backend | Frontend hiện dùng danh sách user cục bộ (`frontend/data/users.json`); chuyển `auth.ts` và form đăng ký sang gọi `POST /auth/register`, `POST /auth/login` của backend, bỏ token giả `local-token-...` | Tài khoản đăng ký trên giao diện xuất hiện trong PostgreSQL; đăng nhập xong gọi được API cần quyền bằng JWT thật | ✅ Đã hoàn thành |
 | Chung Thiện Ý | **FR-JOB-001** Welcome Email (Hangfire) + bổ sung health check MinIO | Enqueue `WelcomeEmailJob` sau khi `RegisterCommand` thành công, gửi qua MailKit (dev dùng MailHog); thêm check MinIO vào `/health/ready` | Đăng ký xong thấy email chào mừng trong MailHog; tắt MinIO thì `/health/ready` trả 503 | ⬜ Chưa làm |
 | Nguyễn Ngọc Bảo Thịnh | **FR-FILE-002** Xóa file khỏi MinIO + bổ sung log ra file | `DeleteFileCommand`/`IFileStorageService.DeleteAsync`; gọi khi ảnh bị gỡ khỏi Recipe và khi `PurgeDeletedRecipesJob` chạy; thêm Serilog sink File (rolling theo ngày) | Gỡ ảnh khỏi công thức thì file cũng biến mất khỏi bucket MinIO; thư mục log có file theo ngày | ⬜ Chưa làm |
 | Hồ Quốc Tiến | **FR-JOB-002** Sinh Thumbnail + migration bảng `UploadedFiles` | `GenerateThumbnailJob` (Hangfire) chạy sau khi upload ảnh, sinh bản medium/thumbnail qua `IImageProcessor.Resize`; thay khối `CREATE TABLE IF NOT EXISTS` trong `Program.cs` bằng EF migration `AddUploadedFiles` | Upload ảnh xong vài giây sau có `MediumUrl`/`ThumbnailUrl`; `dotnet ef database update` tạo đúng bảng | ⬜ Chưa làm |

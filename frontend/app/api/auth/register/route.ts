@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { registerLocalUser } from "@/lib/local-users";
 import { demoRegisterSchema, registerSchema } from "@/lib/validations/auth.schema";
 import { isDemoAuthEnabled } from "@/lib/auth-mode";
-import { apiFetch, ApiError } from "@/lib/api-client";
-import type { AuthTokenResponse, RegisterInput } from "@/types/user";
+import { registerErrorResponse, registerWithBackend } from "@/lib/backend-auth";
+import type { RegisterInput } from "@/types/user";
 
 export async function POST(req: Request) {
   try {
@@ -38,8 +38,16 @@ export async function POST(req: Request) {
       const production = registerSchema.parse({ ...validated.data, fullName: body.fullName ?? rawAccount });
       const request: RegisterInput = { fullName: production.fullName, email: production.email,
         userName: production.account, password: production.password };
-      const result = await apiFetch<AuthTokenResponse>("/auth/register", { method: "POST", body: request, cache: "no-store" });
-      return NextResponse.json({ success: true, user: result.user }, { status: 201 });
+      // Tuần 7 (FR-AUTH-001): tài khoản được tạo trong PostgreSQL bởi backend .NET. Lỗi backend
+      // (email trùng 409, mật khẩu yếu 422, quá giới hạn 429, backend tắt) được đổi thành thông
+      // báo cụ thể ở registerErrorResponse thay vì câu chung chung.
+      try {
+        const result = await registerWithBackend(request);
+        return NextResponse.json({ success: true, user: result.user }, { status: 201 });
+      } catch (error) {
+        const { status, message } = registerErrorResponse(error);
+        return NextResponse.json({ error: message }, { status });
+      }
     }
 
     const user = registerLocalUser({
@@ -63,8 +71,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    if (err instanceof ApiError)
-      return NextResponse.json({ error: err.message }, { status: err.status });
     if (err instanceof SyntaxError)
       return NextResponse.json({ error: "JSON không hợp lệ" }, { status: 400 });
     return NextResponse.json(

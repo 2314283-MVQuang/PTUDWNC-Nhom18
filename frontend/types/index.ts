@@ -4,3 +4,4 @@ export * from "./user";
 export * from "./category";
 export * from "./recipe";
 export * from "./file";
+export * from "./search";

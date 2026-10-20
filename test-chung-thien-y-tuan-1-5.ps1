@@ -2,6 +2,8 @@
 # Tao hai container TAM voi cong ngau nhien; tu don khi test ket thuc.
 # Can Docker Desktop va image postgres:16-alpine, redis:7-alpine da co tren may.
 
+param([string]$TestFilter = 'FullyQualifiedName~CulinaryBlog.UnitTests.Recipes.RecipeApiTests')
+
 $ErrorActionPreference = 'Stop'
 $testSuffix = [Guid]::NewGuid().ToString('N')
 $testDatabase = "culinary_recipe_tests_$testSuffix"
@@ -62,7 +64,7 @@ try {
     Write-Output "Kiem thu tren database tam: $testDatabase"
     dotnet test tests/CulinaryBlog.UnitTests/CulinaryBlog.UnitTests.csproj --no-restore `
         --disable-build-servers -m:1 -p:UseSharedCompilation=false `
-        --filter 'FullyQualifiedName~CulinaryBlog.UnitTests.Recipes.RecipeApiTests' --verbosity minimal
+        --filter $TestFilter --verbosity minimal
     $testExitCode = $LASTEXITCODE
 }
 finally {

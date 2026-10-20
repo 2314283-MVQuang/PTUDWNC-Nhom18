@@ -1,13 +1,13 @@
-# Báo cáo tổng hợp công việc Chung Thiện Ý — Tuần 1 đến Tuần 5
+# Báo cáo tổng hợp công việc Chung Thiện Ý — Tuần 1 đến Tuần 6
 
 - **Môn học:** Phát triển ứng dụng web nâng cao.
 - **Sinh viên:** Chung Thiện Ý — **2312804**, Nhóm 18.
 - **Dự án:** Culinary Blog — ứng dụng chia sẻ công thức nấu ăn.
 - **Nhánh làm việc:** `2312804_ChungThienY_nhom18`.
-- **Ngày tổng hợp và kết quả kiểm chứng gần nhất:** 13/10/2026.
+- **Ngày cập nhật:** 14/10/2026. Số liệu tuần 1–5 giữ theo lần tổng hợp 13/10; kiểm chứng bổ sung tuần 6 ở mục 13.
 - **Căn cứ:** [SRS v1.0.0, 71 trang](SRS_Culinary_Blog_v1.0.0.pdf), [phân công chi tiết](phan_cong_chi_tiet_theo_buoi.md), [quyết định giải quyết mâu thuẫn SRS](phan-tich-mau-thuan-SRS-v1.0.0.md) và mã nguồn hiện có.
 
-Tài liệu này gộp nội dung báo cáo Recipe tuần 1–5 và báo cáo yêu cầu tối thiểu tuần 5. Mục đích là giải thích **đã thực hiện gì, vì sao cần thực hiện, mã nằm ở đâu và đã kiểm chứng bằng cách nào**, để sinh viên đọc hiểu và trình bày được phần việc của mình.
+Tài liệu này gộp nội dung báo cáo Recipe tuần 1–5, yêu cầu tối thiểu tuần 5 và phần tuần 6 đã được sinh viên xác nhận mở rộng. Mục đích là giải thích **đã thực hiện gì, vì sao cần thực hiện, mã nằm ở đâu và đã kiểm chứng bằng cách nào**, để sinh viên đọc hiểu và trình bày được phần việc của mình. Báo cáo Word tuần 6: [Lab6_2312804_ChungThienY.docx](Lab6_2312804_ChungThienY.docx); bản Lab 5 đã nộp được giữ nguyên.
 
 ## 1. Phạm vi và cách đọc báo cáo
 
@@ -31,8 +31,9 @@ Trong báo cáo:
 | 3 | Recipe Create/Read; exceptions; repository và Unit of Work; ít nhất 2 endpoint; middleware toàn cục | Có 3 endpoint cơ bản và thêm đọc theo slug; sử dụng repository riêng, Unit of Work chung và ProblemDetails |
 | 4 | Hoàn thành toàn bộ endpoint được giao; Recipe Update, RowVersion, slug | Hoàn thiện PUT; đủ 5 thao tác API đến tuần 4; kiểm tra quyền, dữ liệu đầu vào và xung đột 409 |
 | 5 | Publish Recipe và các yêu cầu tối thiểu bổ sung | Thêm Publish; hoàn thiện bảo mật, đặc tả/versioning API, frontend, thư viện và TS types |
+| 6 | FR-SRCH-002 và yêu cầu tối thiểu frontend đã được xác nhận | Bộ lọc tìm kiếm kết hợp; tiện ích API/lỗi; Radix Dialog; store; trang Search responsive; component và layout dùng chung. Chi tiết mục 13 |
 
-### 1.2. Kết quả kiểm chứng chung
+### 1.2. Kết quả kiểm chứng tuần 1–5 tại ngày 13/10/2026
 
 | Kiểm tra | Kết quả gần nhất |
 |---|---|
@@ -598,7 +599,7 @@ Một cách mô tả phần việc khi báo cáo: **“Em phụ trách Recipe t�
 
 ## 12. Giới hạn còn lại và tài liệu tham khảo
 
-- Không triển khai Archive, Delete/Purge, Sitemap của thành viên khác; không triển khai Search filters tuần 6, Welcome Email/MinIO health check tuần 7 hoặc deploy/tích hợp toàn hệ thống tuần 8.
+- Phạm vi tuần 1–5 không bao gồm Archive, Delete/Purge, Sitemap của thành viên khác. Search filters tuần 6 được bổ sung theo xác nhận riêng và trình bày ở mục 13; vẫn không triển khai Search sorting/pagination của thành viên khác, Welcome Email/MinIO health check tuần 7 hoặc deploy/tích hợp toàn hệ thống tuần 8.
 - SQL nullable Instructions chưa được áp dụng vào database hiện có của nhóm. Cần chủ động chạy script ở mục 8.2 để database cũ khớp code khi bỏ Instructions.
 - NuGet còn cảnh báo NU1902/NU1903 ở các package có sẵn như Microsoft.OpenApi, OpenTelemetry, System.Security.Cryptography.Xml. Chưa nâng đồng loạt dependency; báo cáo không khẳng định đã xử lý hết cảnh báo bảo mật.
 - Chưa kiểm chứng toàn bộ ứng dụng qua trình duyệt với database và Google thật; kiểm tra Auth frontend Production dùng backend giả lập. Limiter chưa dùng ngân sách chia sẻ giữa nhiều API replica.
@@ -610,3 +611,179 @@ Tham khảo cài đặt đã sử dụng:
 - [ASP.NET Core OpenAPI transformers](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/customize-openapi?view=aspnetcore-10.0).
 - [ASP.NET API Versioning — các bản phát hành](https://github.com/dotnet/aspnet-api-versioning/releases).
 - [Hướng dẫn frontend của dự án](../frontend/README.md).
+
+## 13. Tuần 6 — Bộ lọc tìm kiếm và nền tảng giao diện
+
+### 13.1. Phạm vi đã được xác nhận
+
+Bảng phân công giao **FR-SRCH-002 – Lọc kết quả tìm kiếm** cho Chung Thiện Ý. Sinh viên đã xác nhận thực hiện chức năng này, phần hạ tầng frontend tối thiểu dưới đây và cập nhật báo cáo. Những thay đổi đi qua endpoint, query và repository dùng chung chỉ nhằm truyền và áp dụng bộ lọc của FR-SRCH-002.
+
+| Nội dung | Trách nhiệm và giới hạn |
+|---|---|
+| FR-SRCH-002 | Ý: danh mục, độ khó, khoảng phút chuẩn bị/nấu, kết hợp với từ khóa theo AND |
+| FR-SRCH-001 | Dùng lại full-text tiếng Việt không dấu đã có của Thịnh |
+| FR-SRCH-003 | Không triển khai tham số sort/SortParser của Thịnh; giữ thứ tự ts_rank hiện có |
+| FR-SRCH-004 | Không triển khai page/pageSize/totalCount của Tiến; giữ giới hạn 50 |
+| Chi tiết Category, cache RecipeDetail | Không nhận hoặc sửa phần việc của Quang trong đợt này |
+| Yêu cầu frontend chung | Đã được sinh viên cho phép bổ sung trong phạm vi Search, tiện ích, component và layout dùng chung |
+| Tuần 7 trở đi | Không thực hiện thêm nghiệp vụ |
+
+Thay đổi không yêu cầu migration hoặc chỉnh schema, secret, cấu hình Google, cổng Docker hay dữ liệu hiện có. Script kiểm thử tạo database/container tạm có tên riêng và tự dọn; không dùng database của nhóm hoặc LMS.
+
+### 13.2. Sáu yêu cầu tối thiểu được đáp ứng như thế nào?
+
+| Yêu cầu | Phần đã làm mới/hoàn thiện | Phần dùng lại của nhóm |
+|---|---|---|
+| Tiện ích xử lý lỗi, gọi API | ApiNetworkError; chuẩn hóa phản hồi lỗi sai định dạng; tiện ích đọc/kiểm tra/ghi bộ lọc vào URL; RetryButton tải lại dữ liệu | apiFetch, apiFetchPaged, apiUpload, ApiError, apiErrorMessage |
+| Gói thư viện hỗ trợ UI | Cài chính xác @radix-ui/react-dialog 1.3.1 và lockfile; tạo Dialog và dùng thật cho bộ lọc mobile | Tailwind, lucide-react, Button/Card sẵn có; không tuyên bố đã cài shadcn CLI |
+| Store quản lý trạng thái | SearchFilterProvider + useReducer/useContext trong search-filter-store.tsx; thao tác change/reset/sync | Auth vẫn theo SessionProvider, dữ liệu server vẫn theo cơ chế sẵn có; không lưu JWT lần nữa |
+| Thiết kế giao diện tĩnh | Bố cục Search responsive, khung bộ lọc, thẻ kết quả, trạng thái chưa nhập/rỗng/lỗi/đang tải; đã nối API theo đúng DTO | Màu, font, PageHero, trang blog và các trang nghiệp vụ khác đã có |
+| Component dùng chung | Dialog, LoadingState, ErrorState, EmptyState, RetryButton; bổ sung aria-current/nhãn trang cho Pagination | Header, Footer, Pagination, Button, Card, DifficultyBadge |
+| Layout chung | Dùng root layout bao Search; bổ sung liên kết bàn phím “Đến nội dung chính” và đích main-content; lưới Search 2 cột desktop, 1 cột mobile | app/layout.tsx, Providers, Header/Footer toàn ứng dụng |
+
+Đây là cách đáp ứng yêu cầu tối thiểu bằng việc hoàn thiện và tái sử dụng nền tảng hiện có, **không nhận toàn bộ giao diện của nhóm là sản phẩm cá nhân**. Store không nhất thiết phải tên auth-store.ts: tên đó trong đề là ví dụ; store Search phù hợp phần việc được giao và tránh tạo hai nguồn trạng thái đăng nhập.
+
+### 13.3. Luồng xử lý bộ lọc từ giao diện đến database
+
+1. Người dùng nhập từ khóa, danh mục, độ khó và khoảng thời gian trong SearchFilters. Các giá trị đang nhập được giữ trong store.
+2. Khi nhấn Áp dụng, frontend kiểm tra dữ liệu rồi tạo URL /search?... . URL chỉ chứa bộ lọc đã áp dụng nên có thể tải lại, sao chép hoặc dùng Back/Forward.
+3. Server Component của trang Search đọc URL, kiểm tra lại và gọi apiFetch tới GET /api/v1/recipes/search. Giao diện không tự lọc một danh sách 50 món đã tải về.
+4. RecipesEndpoints nhận các tham số có kiểu, tạo SearchRecipesQuery và gửi qua MediatR.
+5. SearchRecipesQueryValidator chạy qua ValidationBehavior hiện có. Lỗi nghiệp vụ đầu vào được middleware toàn cục chuyển thành ProblemDetails 422.
+6. Handler chuyển điều kiện sang RecipeSearchFilters trong Domain, gọi IRecipeRepository. Repository không phụ thuộc DTO hoặc lớp giao diện.
+7. PostgreSQL áp dụng điều kiện Published, chưa xóa mềm, khớp từ khóa và tất cả bộ lọc; sau đó mới xếp hạng và giới hạn 50 kết quả.
+8. Handler trả RecipeDto trong envelope { data: [...] }. Frontend dùng SearchRecipe đúng cấu trúc này để dựng SearchResults.
+
+Ví dụ: chọn danh mục Món nước, độ khó Easy, chuẩn bị từ 10 đến 20 phút và nấu tối đa 30 phút. Một món phải đáp ứng **đồng thời** tất cả điều kiện mới xuất hiện. Món Easy nhưng mất 60 phút nấu vẫn bị loại.
+
+**Vì sao phải lọc trước LIMIT?** Nếu lấy 50 món liên quan nhất trước rồi mới lọc, 50 món này có thể đều là Hard. Món Easy đúng yêu cầu nhưng xếp sau sẽ bị bỏ sót. Kiểm thử tạo hơn 50 món không phù hợp và nhiều bản nháp có hạng cao để chứng minh món phù hợp vẫn được trả về.
+
+### 13.4. Hợp đồng tham số, dữ liệu và lỗi
+
+| Tham số | Ý nghĩa | Quy tắc |
+|---|---|---|
+| q | Từ khóa full-text | Giữ cách tìm tiếng Việt không dấu có sẵn; q rỗng trả mảng rỗng ở API. UI yêu cầu ít nhất 2 ký tự trước khi tìm |
+| categoryId | Lọc một danh mục | GUID khác GUID rỗng; GUID hợp lệ nhưng không tồn tại trả mảng rỗng |
+| difficulty | Độ khó | Easy, Medium, Hard, Expert; API cũng bind được số enum hợp lệ |
+| minPrepTime / maxPrepTime | Phút chuẩn bị tối thiểu/tối đa | Số nguyên không âm; có thể chỉ truyền một đầu |
+| minCookTime / maxCookTime | Phút nấu tối thiểu/tối đa | Số nguyên không âm; 0 phút hợp lệ cho món không cần nấu |
+
+Các biên đều **bao gồm giá trị bằng**: minCookTime=0&maxCookTime=0 chọn đúng món có CookTime bằng 0. Khi có đủ hai đầu thì min không được lớn hơn max. Bỏ hẳn tham số để không áp dụng điều kiện đó.
+
+Ví dụ truy vấn (thay GUID bằng ID danh mục thật):
+
+~~~http
+GET /api/v1/recipes/search?q=pho&categoryId=11111111-1111-4111-8111-111111111111&difficulty=Easy&minPrepTime=10&maxPrepTime=20&minCookTime=0&maxCookTime=30
+~~~
+
+- minCookTime=-1, khoảng ngược, difficulty=99 hoặc GUID rỗng: **422 ProblemDetails** có errors.
+- Chuỗi không bind được kiểu, như categoryId=abc, difficulty=Impossible, thời gian 1.5 hoặc vượt Int32: **400 do Minimal API binding**. Không mô tả nhầm tất cả lỗi query là 422.
+- Không tìm được dữ liệu: **200** và data là mảng rỗng.
+- Phản hồi Search hiện chưa có meta. UI hiển thị “N công thức hiển thị”, không coi N là tổng số bản ghi database.
+- Khi nhận đủ 50 kết quả, UI thông báo giới hạn đang hiển thị và gợi ý thu hẹp điều kiện.
+
+SQL dùng tham số hóa qua SqlQuery, không ghép trực tiếp nội dung người dùng vào câu lệnh. CAST cho tham số nullable giúp PostgreSQL xác định đúng kiểu GUID/số ngay cả khi người dùng bỏ bộ lọc. Không sửa schema hoặc tạo index mới trong đợt này.
+
+Policy Search hiện có đã SetVaryByQuery("*"), vì vậy các tổ hợp filter có khóa cache khác nhau. Đợt này dùng lại policy và kiểm chứng Redis thực tế, không nhận việc xây dựng toàn bộ cache là phần mới.
+
+### 13.5. Cách tổ chức frontend để dễ đọc và mở rộng
+
+**Tiện ích API/lỗi.** api-client.ts vẫn là nơi gom base URL, query string, token và If-Match. Bổ sung ApiNetworkError giúp phân biệt không kết nối được với HTTP 4xx/5xx. safeParseProblem chỉ lấy trường có đúng kiểu, dùng status HTTP thực và bỏ errors sai cấu trúc; lỗi HTML 502 hoặc JSON null không làm giao diện tiếp tục phát sinh lỗi. AbortError được giữ nguyên để không thông báo nhầm thao tác hủy thành lỗi mạng.
+
+**Kiểu dữ liệu.** SearchRecipe khớp RecipeDto: id, slug, title, description, prepTime, cookTime, servings, difficulty, status, publishedAt. Không ép kết quả Search thành RecipeSummary vì Summary còn có các trường ảnh/tác giả mà API này chưa trả. Thẻ Search dùng biểu tượng và dữ liệu thật; không tạo ảnh hoặc tác giả giả.
+
+**Store.** SearchFilterDraft giữ chuỗi của input, kể cả chuỗi rỗng và "0". Reducer có change để đổi trường, reset để xóa filter nhưng giữ từ khóa và sync để đồng bộ với URL khi điều hướng. Provider được tạo theo màn hình, tránh biến toàn cục dùng chung giữa các request SSR. Desktop và dialog mobile dùng cùng store nên không mất nội dung nháp khi đóng/mở hộp thoại. Store chỉ giữ điều kiện tìm kiếm, không giữ token.
+
+**Bố cục và trạng thái.** Desktop có cột bộ lọc 280px và cột kết quả co giãn; mobile mở bộ lọc bằng dialog. loading.tsx dùng LoadingState; error.tsx là ranh giới lỗi của route và có reset. Trang Search còn phân biệt thiếu từ khóa, bộ lọc sai, không có kết quả và lỗi API. RetryButton gọi router.refresh để thực sự tải lại khi URL không đổi. Nếu danh mục chưa tải được, các bộ lọc còn lại vẫn sử dụng được.
+
+**Khả năng sử dụng bằng bàn phím.** Input/select có label, nhóm thời gian dùng fieldset/legend; lỗi dùng role=alert và tải dùng role=status. Dialog dựa trên Radix để giữ focus bên trong, hỗ trợ Escape và trả focus về nút mở. Root layout có skip link. Pagination sẵn có được thêm aria-current cho trang hiện tại; việc này không bổ sung phân trang cho API Search.
+
+### 13.6. Vì sao chọn cách này? Ưu điểm và hạn chế
+
+| Quyết định | Lý do và ưu điểm | Hạn chế/đánh đổi |
+|---|---|---|
+| Lọc ở repository trước LIMIT | Database chọn đúng tập giao; tránh tải dữ liệu dư và bỏ sót món phù hợp | Đụng chữ ký Search dùng chung, cần phối hợp merge với Thịnh/Tiến |
+| Giữ thứ tự ts_rank và giới hạn 50 | Tôn trọng phân công, không làm thay chức năng sorting/pagination | Chưa thể duyệt quá 50 kết quả; cần tích hợp FR-SRCH-004 sau |
+| Radix Dialog + Tailwind hiện có | Có hành vi dialog/focus; giữ phong cách giao diện; không cần chuyển toàn app sang bộ component khác | Tăng dependency và JS client; nhóm vẫn tự xây lớp giao diện bằng Tailwind |
+| Context + reducer cho store | Dùng React sẵn có, ít cấu hình, tách state khỏi form và kiểm thử được reducer | Hợp với phạm vi Search; không phải store toàn ứng dụng với persistence/devtools |
+| URL giữ filter đã áp dụng | Tải lại/chia sẻ/Back/Forward được; không phải đồng bộ localStorage | Cần parse/validate URL và phân biệt draft với điều kiện đã áp dụng |
+| Tái sử dụng layout/component nhóm | Giảm trùng mã, Search thống nhất Header/Footer/màu sắc | Phải ghi đúng nguồn đóng góp; hoàn thiện Search không đồng nghĩa viết lại tất cả trang |
+| Test DB tạm và API giả lập cho UI | DB thật xác nhận SQL/cache; UI có dữ liệu ổn định để thử lỗi/rỗng/mobile | Test UI giả lập không thay thế một phiên kiểm thử xuyên suốt với database nghiệp vụ thật |
+
+### 13.7. Mã nguồn chính để mở khi báo cáo
+
+| Phần | Tệp |
+|---|---|
+| Nhận query params và mô tả OpenAPI | [RecipesEndpoints.cs](../src/CulinaryBlog.API/Endpoints/RecipesEndpoints.cs) |
+| Query, handler, validator | [SearchRecipesQuery.cs](../src/CulinaryBlog.Application/Recipes/Queries/SearchRecipes/SearchRecipesQuery.cs), [handler](../src/CulinaryBlog.Application/Recipes/Queries/SearchRecipes/SearchRecipesQueryHandler.cs), [validator](../src/CulinaryBlog.Application/Recipes/Queries/SearchRecipes/SearchRecipesQueryValidator.cs) |
+| Hợp đồng bộ lọc và SQL | [RecipeSearchFilters.cs](../src/CulinaryBlog.Domain/Interfaces/RecipeSearchFilters.cs), [RecipeRepository.cs](../src/CulinaryBlog.Infrastructure/Persistence/Repositories/RecipeRepository.cs) |
+| Utility và types | [search-filters.ts](../frontend/lib/search-filters.ts), [api-client.ts](../frontend/lib/api-client.ts), [types/search.ts](../frontend/types/search.ts) |
+| Store | [search-filter-store.tsx](../frontend/stores/search-filter-store.tsx) |
+| UI | [SearchFilters.tsx](../frontend/components/search/SearchFilters.tsx), [SearchResults.tsx](../frontend/components/search/SearchResults.tsx), [Search page](../frontend/app/(public)/search/page.tsx) |
+| Component dùng chung | [Dialog.tsx](../frontend/components/ui/Dialog.tsx), [Feedback.tsx](../frontend/components/ui/Feedback.tsx), [RetryButton.tsx](../frontend/components/ui/RetryButton.tsx), [Pagination.tsx](../frontend/components/ui/Pagination.tsx) |
+| Layout và trạng thái route | [layout.tsx](../frontend/app/layout.tsx), [loading.tsx](../frontend/app/(public)/search/loading.tsx), [error.tsx](../frontend/app/(public)/search/error.tsx) |
+| Kiểm thử | [RecipeSearchApiTests.cs](../tests/CulinaryBlog.UnitTests/Recipes/RecipeSearchApiTests.cs), [search.test.mjs](../frontend/tests/search.test.mjs), [test-week6-search.mjs](../frontend/scripts/test-week6-search.mjs) |
+
+### 13.8. Kết quả kiểm chứng ngày 14/10/2026
+
+| Kiểm tra | Kết quả và cách hiểu |
+|---|---|
+| Toàn bộ project test backend | **119 đạt, 3 bỏ qua có điều kiện, 0 lỗi; tổng 122**. Ba ca raw SQL/cache cần PostgreSQL/Redis được chạy thật ở dòng dưới |
+| HTTP Recipe với PostgreSQL 16/Redis 7 tạm | **30/30 đạt**, gồm 14 ca Recipe cũ và 16 ca Search mới; không cộng lặp vào tổng 122 |
+| Search mới | 9 trường hợp validation 422; 4 trường hợp binding 400; 3 ca tích hợp về từng filter/tập giao/biên, lọc trước LIMIT và cache |
+| Frontend unit | **13/13 đạt**, gồm 5 ca Auth sẵn có và 8 ca mới về filter/store/API/lỗi |
+| TypeScript strict, ESLint | **Đạt** |
+| Build Production | **Đạt**; khi tạo một số trang sẵn có có log ECONNREFUSED do backend mặc định chưa chạy, build vẫn kết thúc thành công |
+| Trình duyệt | **Đạt trên Edge headless, bản Production**: desktop/mobile, filters, validation, reset, Back/Forward, focus trap/Escape, empty/error/retry; không có lỗi JavaScript runtime hoặc tràn ngang mobile. Backend UI là giả lập |
+
+Ca cache xác nhận request lặp lại lấy dữ liệu đã cache bằng cách thay dữ liệu trực tiếp trong database tạm và không evict. Đổi filter phải cho tập kết quả riêng. Ca lọc trước LIMIT tạo 60 món Hard và 60 bản nháp có hạng cao, vẫn tìm được món Easy phù hợp có hạng thấp.
+
+Lệnh chạy tại thư mục gốc:
+
+~~~powershell
+dotnet test .\tests\CulinaryBlog.UnitTests\CulinaryBlog.UnitTests.csproj
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test-chung-thien-y-tuan-6.ps1
+# Chạy cả Recipe và Search trên database tạm:
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test-chung-thien-y-tuan-1-5.ps1
+~~~
+
+Lệnh frontend:
+
+~~~powershell
+cd frontend
+npm ci
+npm test
+npm run type-check
+npm run lint
+npm run build
+~~~
+
+Script DB cần Docker Desktop và hai image postgres:16-alpine, redis:7-alpine có sẵn. Ba test SQL được đánh dấu bỏ qua rõ ràng khi thiếu biến kết nối tạm; không coi chúng là đã chạy trên EF InMemory. NuGet và npm còn cảnh báo dependency của nền tảng hiện có; đợt này không tự nâng đồng loạt package ngoài phạm vi đã duyệt.
+
+### 13.9. Kiểm thử giao diện và minh chứng
+
+Script UI chạy bản standalone Production trên localhost/cổng ngẫu nhiên, tạo backend giả lập riêng và mở Edge headless bằng playwright-core. Script tự đóng tiến trình; dữ liệu món ăn trong ảnh là **fixture kiểm thử**, không phải bằng chứng dữ liệu nghiệp vụ thật.
+
+Có thể cài công cụ kiểm thử riêng ngoài dependency ứng dụng rồi chạy trong thư mục frontend:
+
+~~~powershell
+npm install --prefix "$env:TEMP\culinary-week6-browser" --no-save --package-lock=false --offline=false --no-audit --no-fund playwright-core
+$env:CULINARY_PLAYWRIGHT_MODULE_PATH = "$env:TEMP\culinary-week6-browser\node_modules\playwright-core\index.mjs"
+node .\scripts\test-week6-search.mjs
+Remove-Item Env:CULINARY_PLAYWRIGHT_MODULE_PATH
+~~~
+
+Máy cần Microsoft Edge. Kiểm thử đã đạt các thao tác: lọc kết hợp, không gửi API khi khoảng sai, xóa filter, Back/Forward, dialog mobile, focus/Escape, kết quả rỗng, lỗi dịch vụ và Thử lại. Không dùng kết quả này để khẳng định đã kiểm thử Google hoặc mọi luồng của blog.
+
+Ảnh minh chứng: [desktop](minh_chung_tuan_6/search-desktop.png), [bộ lọc mobile](minh_chung_tuan_6/search-mobile.png), [kết quả rỗng](minh_chung_tuan_6/search-empty.png), [lỗi dịch vụ](minh_chung_tuan_6/search-error.png). Các ảnh sử dụng dữ liệu kiểm thử như đã nêu, không chứa thông tin tài khoản thật.
+
+File Word được sinh bằng [build-week6-report.py](../scripts/build-week6-report.py), kế thừa A4 ngang, bảng 4 cột và kiểu trình bày từ Lab 5. Đã kiểm tra cấu trúc ZIP/XML, nội dung và số dòng công việc; chưa xác nhận phân trang bằng việc render trong Microsoft Word trên máy này. File DOCX hiện là tài liệu cục bộ và khớp quy tắc ignore của repository; báo cáo không khẳng định đã commit/push tài liệu.
+
+### 13.10. Gợi ý trình bày và phần cần tích hợp tiếp
+
+Có thể trình bày: **“Tuần 6 em phụ trách FR-SRCH-002. Em truyền danh mục, độ khó và khoảng thời gian qua endpoint/query tới repository. Các điều kiện dùng AND trước khi giới hạn kết quả nên không bỏ sót món phù hợp. Ở frontend em thêm store cho bộ lọc, dùng URL cho trạng thái đã áp dụng, Radix Dialog cho mobile và component loading/error/empty. Em dùng lại Header, Footer, layout và full-text của nhóm. SQL/cache được test trên PostgreSQL/Redis tạm; giao diện được kiểm tra riêng bằng API giả lập.”**
+
+Khi thầy/cô hỏi về phần chưa làm: sắp xếp tùy chọn và phân trang Search thuộc Thịnh/Tiến. API vẫn tối đa 50, chưa có metadata phân trang. Sau khi hai phần đó được nhóm tích hợp, cần cập nhật kiểu response/Search page và kiểm thử tổ hợp filter + sort + page; việc này chưa được tính là hoàn thành trong báo cáo cá nhân hiện tại. Chưa kiểm chứng coverage/hiệu năng quy mô lớn hoặc toàn ứng dụng với Google thật.
+
+Tài liệu đối chiếu: [React useReducer](https://react.dev/reference/react/useReducer), [Radix Dialog](https://www.radix-ui.com/primitives/docs/components/dialog), [EF Core SQL queries và tham số hóa](https://learn.microsoft.com/en-us/ef/core/querying/sql-queries).
+

@@ -192,6 +192,12 @@ public sealed class RecipeApiFixture : IAsyncLifetime
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
 
+    public async Task WithDatabaseAsync(Func<CulinaryBlogDbContext, Task> action)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        await action(scope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>());
+    }
+
     public async Task<int> CategoryRecipeCountAsync()
     {
         var json = await GetJsonAsync("/api/v1/categories/");
@@ -216,7 +222,7 @@ public sealed class RecipeApiFixture : IAsyncLifetime
     }
 }
 
-public class RecipeApiTests(RecipeApiFixture api) : IClassFixture<RecipeApiFixture>
+public partial class RecipeApiTests(RecipeApiFixture api) : IClassFixture<RecipeApiFixture>
 {
     [Theory]
     [InlineData(null)]

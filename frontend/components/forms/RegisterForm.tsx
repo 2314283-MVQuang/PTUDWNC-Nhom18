@@ -27,7 +27,7 @@ export function RegisterForm() {
     setFormError(null);
     setFormSuccess(null);
     try {
-      // Gọi API đăng ký (lưu vào bộ nhớ và đồng bộ)
+      // Gọi route /api/auth/register → backend .NET tạo tài khoản trong PostgreSQL (Tuần 7)
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

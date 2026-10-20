@@ -10,6 +10,14 @@ namespace CulinaryBlog.Domain.Interfaces;
 public interface IRecipeRepository : IRepository<Recipe>
 {
     /// <summary>
+    /// Lấy aggregate có tracking để xuất bản, kèm các bước và nguyên liệu còn hiệu lực.
+    /// Khác truy vấn detail chỉ đọc, thay đổi trạng thái ở đây được UnitOfWork lưu lại.
+    /// </summary>
+    Task<Recipe?> GetByIdForPublishingAsync(
+        Guid id,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Lấy Recipe đầy đủ cho màn hình chi tiết:
     /// Category, Author, Steps, Ingredients, Images.
     /// </summary>
@@ -44,10 +52,14 @@ public interface IRecipeRepository : IRepository<Recipe>
         byte[] expectedRowVersion);
 
     /// <summary>
-    /// FR-SRCH-001: tìm công thức ĐÃ XUẤT BẢN bằng full-text search tiếng Việt (bỏ dấu), sắp theo
-    /// độ liên quan giảm dần. Từ khóa rỗng trả về danh sách rỗng.
+    /// FR-SRCH-001: tìm công thức ĐÃ XUẤT BẢN bằng full-text search tiếng Việt (bỏ dấu).
+    /// FR-SRCH-002: lọc kết hợp AND theo <paramref name="filters"/>.
+    /// FR-SRCH-003: sắp xếp theo <paramref name="sort"/>; null = độ liên quan giảm dần (ts_rank).
+    /// Lọc và sắp xếp đều chạy trong SQL TRƯỚC khi giới hạn số dòng. Từ khóa rỗng trả danh sách rỗng.
     /// </summary>
     Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
         string keyword,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        RecipeSearchFilters? filters = null,
+        RecipeSearchSort? sort = null);
 }

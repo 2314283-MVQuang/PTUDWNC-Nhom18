@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiFetchPaged } from "@/lib/api-client";
 import { useCurrentUser } from "./useAuth";
+import { categoryKeys } from "./useCategories";
 import type {
   CreateRecipeInput,
   RecipeDetail,
@@ -14,34 +15,35 @@ import type {
 
 export const recipeKeys = {
   all: ["recipes"] as const,
-  list: (params: RecipeListParams) => ["recipes", "list", params] as const,
-  detail: (slug: string) => ["recipes", "detail", slug] as const,
+  list: (params: RecipeListParams, userId = "guest") => ["recipes", "list", userId, params] as const,
+  detail: (slug: string, userId = "guest") => ["recipes", "detail", userId, slug] as const,
   search: (params: RecipeSearchParams) => ["recipes", "search", params] as const,
 };
 
 /** FR-RCP-001: GET /recipes — danh sách có filter/sort/phân trang (mục 8.3). */
 export function useRecipes(params: RecipeListParams = {}) {
-  const { accessToken } = useCurrentUser(); // có token thì Author thấy thêm Draft của chính mình
+  const { accessToken, user, isLoading } = useCurrentUser();
 
   return useQuery({
-    queryKey: recipeKeys.list(params),
+    queryKey: recipeKeys.list(params, accessToken ? user?.id : undefined),
     queryFn: () =>
       apiFetchPaged<RecipeSummary>("/recipes", {
         params: { page: 1, pageSize: 12, sort: "-createdAt", ...params },
         token: accessToken,
       }),
     staleTime: 15_000,
+    enabled: !isLoading,
   });
 }
 
 /** FR-RCP-002: GET /recipes/{slug} — chi tiết đầy đủ, dùng ở trang /recipes/[slug] và form edit. */
 export function useRecipe(slug: string | undefined) {
-  const { accessToken } = useCurrentUser();
+  const { accessToken, user, isLoading } = useCurrentUser();
 
   return useQuery({
-    queryKey: recipeKeys.detail(slug ?? ""),
+    queryKey: recipeKeys.detail(slug ?? "", accessToken ? user?.id : undefined),
     queryFn: () => apiFetch<RecipeDetail>(`/recipes/${slug}`, { token: accessToken }),
-    enabled: !!slug,
+    enabled: !!slug && !isLoading,
   });
 }
 
@@ -94,11 +96,14 @@ export function useUpdateRecipe() {
         token: accessToken,
         ifMatch: rowVersion,
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }
 
-/** FR-RCP-005: PATCH /recipes/{id}/publish — 422 nếu recipe chưa có step nào. */
+/** FR-RCP-005: PATCH /recipes/{id}/publish — 400 nếu thiếu step hoặc ingredient. */
 export function usePublishRecipe() {
   const queryClient = useQueryClient();
   const { accessToken } = useCurrentUser();
@@ -106,19 +111,25 @@ export function usePublishRecipe() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<RecipeDetail>(`/recipes/${id}/publish`, { method: "PATCH", token: accessToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }
 
-/** FR-RCP-005: PATCH /recipes/{id}/unpublish. */
+/** FR-RCP-006: Hủy xuất bản bằng cách lưu trữ, giữ nguyên dữ liệu. */
 export function useUnpublishRecipe() {
   const queryClient = useQueryClient();
   const { accessToken } = useCurrentUser();
 
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch<RecipeDetail>(`/recipes/${id}/unpublish`, { method: "PATCH", token: accessToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      apiFetch<RecipeDetail>(`/recipes/${id}/archive`, { method: "PATCH", token: accessToken }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }
 
@@ -130,11 +141,29 @@ export function useArchiveRecipe() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<RecipeDetail>(`/recipes/${id}/archive`, { method: "PATCH", token: accessToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }
 
-/** FR-RCP-007: DELETE /recipes/{id} — hard delete, cascade Steps/Ingredients/Images. */
+/** FR-RCP-006: Khôi phục trạng thái trước khi lưu trữ. */
+export function useUnarchiveRecipe() {
+  const queryClient = useQueryClient();
+  const { accessToken } = useCurrentUser();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<RecipeDetail>(`/recipes/${id}/unarchive`, { method: "PATCH", token: accessToken }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
+  });
+}
+
+/** FR-RCP-007: Xóa mềm; backend dọn dữ liệu sau 30 ngày. */
 export function useDeleteRecipe() {
   const queryClient = useQueryClient();
   const { accessToken } = useCurrentUser();
@@ -142,6 +171,9 @@ export function useDeleteRecipe() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<void>(`/recipes/${id}`, { method: "DELETE", token: accessToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }

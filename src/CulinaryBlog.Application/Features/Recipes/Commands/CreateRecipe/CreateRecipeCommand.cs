@@ -17,7 +17,7 @@ public sealed record CreateRecipeCommand(
     int CookTime,
     int Servings,
     RecipeDifficulty Difficulty,
-    string Instructions,
+    string? Instructions,
     RecipeNutritionInput? Nutrition,
     CreateRecipeStepInput[]? Steps,
     CreateRecipeIngredientInput[]? Ingredients)

@@ -8,7 +8,9 @@ import type { ApiEnvelope, PagedResult, ProblemDetails } from "@/types/common";
  *   3. Dễ thêm log/retry/refresh-token sau này mà không phải sửa từng nơi gọi API.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000/api/v1";
+const publicApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = typeof window === "undefined"
+  ? process.env.API_INTERNAL_BASE_URL || publicApiUrl : publicApiUrl;
 
 /** Lỗi ném ra khi API trả về response không thành công (4xx/5xx), theo format RFC 7807. */
 export class ApiError extends Error {
@@ -22,6 +24,22 @@ export class ApiError extends Error {
     this.status = problem.status;
     this.type = problem.type;
     this.errors = problem.errors;
+  }
+}
+
+export class ApiNetworkError extends Error {
+  constructor() {
+    super("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
+    this.name = "ApiNetworkError";
+  }
+}
+
+async function fetchApi(url: string, init: RequestInit & { next?: NextFetchRequestConfig }): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    throw new ApiNetworkError();
   }
 }
 
@@ -59,7 +77,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (ifMatch) headers["If-Match"] = ifMatch;
 
-  const res = await fetch(buildUrl(path, params), {
+  const res = await fetchApi(buildUrl(path, params), {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -88,7 +106,7 @@ export async function apiFetchPaged<T>(
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(buildUrl(path, params), { method, headers, next, cache });
+  const res = await fetchApi(buildUrl(path, params), { method, headers, next, cache });
 
   if (!res.ok) {
     const problem = await safeParseProblem(res);
@@ -111,7 +129,7 @@ export async function apiUpload<T>(
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(buildUrl(path), { method: "POST", headers, body: formData });
+  const res = await fetchApi(buildUrl(path), { method: "POST", headers, body: formData });
 
   if (!res.ok) {
     const problem = await safeParseProblem(res);
@@ -123,14 +141,30 @@ export async function apiUpload<T>(
 
 /** Parse body lỗi an toàn — phòng trường hợp server trả lỗi không đúng format RFC 7807 (vd. 502 từ Nginx). */
 async function safeParseProblem(res: Response): Promise<ProblemDetails> {
+  const fallback: ProblemDetails = {
+    type: "UNKNOWN_ERROR",
+    title: res.status >= 500 ? "Máy chủ đang gặp sự cố. Vui lòng thử lại sau." : "Không thể thực hiện yêu cầu.",
+    status: res.status,
+  };
   try {
-    return (await res.json()) as ProblemDetails;
-  } catch {
+    const body: unknown = await res.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) return fallback;
+    const problem = body as Record<string, unknown>;
+    const errors: Record<string, string[]> = {};
+    if (problem.errors && typeof problem.errors === "object" && !Array.isArray(problem.errors)) {
+      for (const [key, values] of Object.entries(problem.errors)) {
+        if (Array.isArray(values) && values.every(value => typeof value === "string")) errors[key] = values;
+      }
+    }
     return {
-      type: "UNKNOWN_ERROR",
-      title: res.statusText || "Đã có lỗi xảy ra",
-      status: res.status,
+      ...fallback,
+      type: typeof problem.type === "string" ? problem.type : fallback.type,
+      title: typeof problem.title === "string" && problem.title ? problem.title : fallback.title,
+      detail: typeof problem.detail === "string" ? problem.detail : undefined,
+      errors,
     };
+  } catch {
+    return fallback;
   }
 }
 
@@ -144,6 +178,7 @@ async function safeParseProblem(res: Response): Promise<ProblemDetails> {
  * chứ không phải câu chung.
  */
 export function apiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiNetworkError) return error.message;
   if (error instanceof ApiError) {
     const fieldMessages = Object.values(error.errors ?? {}).flat();
     if (fieldMessages.length > 0) return fieldMessages.join(" ");

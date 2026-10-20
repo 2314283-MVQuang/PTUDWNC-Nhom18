@@ -23,4 +23,14 @@ export interface AuthTokenResponse {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  user: UserProfile;
+}
+
+export interface LoginInput { email: string; password: string }
+export interface RegisterInput { fullName: string; email: string; userName?: string; password: string }
+export interface RefreshTokenInput { refreshToken: string }
+export interface RegistrationResponse {
+  success?: boolean;
+  error?: string;
+  user?: Pick<UserProfile, "id" | "email" | "displayName">;
 }

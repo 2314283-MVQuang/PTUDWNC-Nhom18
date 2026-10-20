@@ -3,6 +3,7 @@ using CulinaryBlog.Application.Features.Recipes.Commands.DeleteRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.ArchiveRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
+using CulinaryBlog.Application.Features.Recipes.Commands.PublishRecipe;
 using Microsoft.AspNetCore.Mvc;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeById;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeBySlug;
@@ -24,7 +25,7 @@ public static class RecipesEndpoints
         this IEndpointRouteBuilder app)
     {
         var group =
-            app.MapGroup("/api/v1/recipes")
+            app.MapV1Group("/recipes")
                 .WithTags("Recipes");
 
         // -----------------------------------------------------------
@@ -165,7 +166,7 @@ public static class RecipesEndpoints
             });
 
         // -----------------------------------------------------------
-        // GET /api/v1/recipes/search?q=   (FR-SRCH-001 — Thịnh)
+        // GET /api/v1/recipes/search?q=   (FR-SRCH-001/003 — Thịnh, FR-SRCH-002 — Ý)
         // -----------------------------------------------------------
         // Full-text search tiếng Việt, bỏ dấu. Cache 1 phút, vary theo query string
         // (policy "Search" trong Program.cs — NFR-PERF-003 / mâu thuẫn #4).
@@ -173,13 +174,21 @@ public static class RecipesEndpoints
             "/search",
             async (
                 [FromQuery(Name = "q")] string? q,
+                Guid? categoryId,
+                RecipeDifficulty? difficulty,
+                int? minPrepTime,
+                int? maxPrepTime,
+                int? minCookTime,
+                int? maxCookTime,
+                int? minServings,
                 [FromQuery(Name = "sort")] string? sort,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
                 var recipes =
                     await sender.Send(
-                        new SearchRecipesQuery(q ?? string.Empty, sort),
+                        new SearchRecipesQuery(q ?? string.Empty, categoryId, difficulty,
+                            minPrepTime, maxPrepTime, minCookTime, maxCookTime, minServings, sort),
                         cancellationToken);
 
                 return recipes.ToOkResponse();
@@ -187,9 +196,12 @@ public static class RecipesEndpoints
             .WithName("SearchRecipes")
             .WithSummary("Full-text Search Recipes")
             .WithDescription(
-                "Tìm công thức toàn văn; hỗ trợ sort theo createdAt, publishedAt, title, prepTime " +
-                "hoặc cookTime. Thêm dấu '-' để sắp xếp giảm dần.")
+                "FR-SRCH-002: kết hợp danh mục, độ khó, khoảng phút chuẩn bị/nấu và số khẩu phần tối thiểu " +
+                "bằng AND; biên tính cả hai đầu, bỏ tham số để không lọc. FR-SRCH-003: sort theo createdAt, " +
+                "publishedAt, title, prepTime hoặc cookTime, thêm dấu '-' để giảm dần; bỏ trống = độ liên " +
+                "quan (ts_rank). Giới hạn 50 kết quả.")
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .CacheOutput("Search");
 
         // -----------------------------------------------------------
@@ -228,6 +240,28 @@ public static class RecipesEndpoints
                 return result.ToOkResponse();
             })
             .CacheOutput("RecipeDetail");
+
+        // -----------------------------------------------------------
+        // Patch /api/v1/recipes/{id}/publish
+        // -----------------------------------------------------------
+        group.MapPatch(
+            "/{id:guid}/publish",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                var result =
+                    await sender.Send(
+                        new PublishRecipeCommand(id),
+                        cancellationToken);
+
+                return result.ToOkResponse();
+            })
+            .RequireAuthorization(
+                AuthorizationPolicies.Author)
+            .WithName("PublishRecipe");
+
 
         // -----------------------------------------------------------
         // DELETE /api/v1/recipes/{id}   (FR-RCP-007 — Thịnh)

@@ -1,25 +1,27 @@
 using CulinaryBlog.Application.Common.Exceptions;
-using CulinaryBlog.Domain.Entities;
+using CulinaryBlog.Domain.Interfaces;
 
 namespace CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
 
-public sealed record ParsedRecipeSort(string Field, bool IsDescending);
-
+/// <summary>
+/// FR-SRCH-003: đọc tham số <c>sort</c> dạng "field" (tăng dần) hoặc "-field" (giảm dần).
+/// Chỉ nhận field trong whitelist — tên cột KHÔNG BAO GIỜ lấy thẳng từ input người dùng để ghép
+/// vào SQL; repository chỉ nhận enum <see cref="RecipeSearchSortField"/>.
+/// </summary>
 public static class SortParser
 {
-    private static readonly string[] AllowedFields =
-    [
-        "createdAt",
-        "publishedAt",
-        "title",
-        "prepTime",
-        "cookTime"
-    ];
+    private static readonly IReadOnlyDictionary<string, RecipeSearchSortField> Fields =
+        new Dictionary<string, RecipeSearchSortField>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["createdAt"] = RecipeSearchSortField.CreatedAt,
+            ["publishedAt"] = RecipeSearchSortField.PublishedAt,
+            ["title"] = RecipeSearchSortField.Title,
+            ["prepTime"] = RecipeSearchSortField.PrepTime,
+            ["cookTime"] = RecipeSearchSortField.CookTime,
+        };
 
-    private static readonly HashSet<string> AllowedFieldSet =
-        new(AllowedFields, StringComparer.OrdinalIgnoreCase);
-
-    public static ParsedRecipeSort? Parse(string? sort)
+    /// <summary>Trả null khi không truyền sort (giữ thứ tự theo độ liên quan ts_rank).</summary>
+    public static RecipeSearchSort? Parse(string? sort)
     {
         if (string.IsNullOrWhiteSpace(sort))
         {
@@ -27,41 +29,14 @@ public static class SortParser
         }
 
         var value = sort.Trim();
-        var isDescending = value.StartsWith("-", StringComparison.Ordinal);
+        var isDescending = value.StartsWith('-');
         var field = isDescending ? value[1..] : value;
 
-        if (!AllowedFieldSet.Contains(field))
+        if (!Fields.TryGetValue(field, out var parsed))
         {
-            throw new InvalidSortException(field, AllowedFields);
+            throw new InvalidSortException(field, Fields.Keys);
         }
 
-        return new ParsedRecipeSort(field.ToLowerInvariant(), isDescending);
-    }
-
-    public static IEnumerable<Recipe> Apply(
-        IEnumerable<Recipe> recipes,
-        ParsedRecipeSort? sort)
-    {
-        if (sort is null)
-        {
-            return recipes;
-        }
-
-        return (sort.Field, sort.IsDescending) switch
-        {
-            ("createdat", false) => recipes.OrderBy(recipe => recipe.CreatedAt),
-            ("createdat", true) => recipes.OrderByDescending(recipe => recipe.CreatedAt),
-            ("publishedat", false) => recipes.OrderBy(recipe => recipe.PublishedAt),
-            ("publishedat", true) => recipes.OrderByDescending(recipe => recipe.PublishedAt),
-            ("title", false) =>
-                recipes.OrderBy(recipe => recipe.Title, StringComparer.OrdinalIgnoreCase),
-            ("title", true) =>
-                recipes.OrderByDescending(recipe => recipe.Title, StringComparer.OrdinalIgnoreCase),
-            ("preptime", false) => recipes.OrderBy(recipe => recipe.PrepTime),
-            ("preptime", true) => recipes.OrderByDescending(recipe => recipe.PrepTime),
-            ("cooktime", false) => recipes.OrderBy(recipe => recipe.CookTime),
-            ("cooktime", true) => recipes.OrderByDescending(recipe => recipe.CookTime),
-            _ => throw new InvalidOperationException($"Unsupported parsed sort field '{sort.Field}'.")
-        };
+        return new RecipeSearchSort(parsed, isDescending);
     }
 }

@@ -14,7 +14,7 @@ public static class AuthorizationPolicies
 
     public static void AddCulinaryBlogPolicies(this AuthorizationOptions options)
     {
-        options.AddPolicy(Admin, policy => policy.RequireRole("Admin"));
-        options.AddPolicy(Author, policy => policy.RequireRole("Author", "Admin"));
+        options.AddPolicy(Admin, policy => policy.RequireAuthenticatedUser().RequireRole("Admin"));
+        options.AddPolicy(Author, policy => policy.RequireAuthenticatedUser().RequireRole("Author", "Admin"));
     }
 }

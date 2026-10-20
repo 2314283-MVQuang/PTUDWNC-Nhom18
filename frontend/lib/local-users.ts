@@ -1,3 +1,6 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+
 export interface LocalUser {
   id: string;
   email: string;
@@ -32,20 +35,7 @@ export const SEED_USERS: LocalUser[] = [
 
 let inMemoryUsers: LocalUser[] = [...SEED_USERS];
 
-function getNodeModules() {
-  if (typeof process !== "undefined" && process.versions && process.versions.node) {
-    try {
-      // Dùng eval("require") để Next.js / Webpack không cố bundle 'fs' vào Edge runtime (middleware)
-      const req = eval("require");
-      const fs = req("fs");
-      const path = req("path");
-      return { fs, path };
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
+function getNodeModules() { return { fs, path }; }
 
 function getUsersFilePath(): string | null {
   const node = getNodeModules();

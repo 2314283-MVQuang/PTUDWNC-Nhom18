@@ -1,19 +1,22 @@
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
-using CulinaryBlog.Domain.Entities;
+using CulinaryBlog.Domain.Interfaces;
 using Xunit;
 
 namespace CulinaryBlog.UnitTests.Recipes;
 
+/// <summary>FR-SRCH-003 — đọc tham số sort của /recipes/search.</summary>
 public class SortParserTests
 {
     [Theory]
-    [InlineData("title", "title", false)]
-    [InlineData("-createdAt", "createdat", true)]
-    [InlineData(" PUBLISHEDAT ", "publishedat", false)]
+    [InlineData("title", RecipeSearchSortField.Title, false)]
+    [InlineData("-createdAt", RecipeSearchSortField.CreatedAt, true)]
+    [InlineData(" PUBLISHEDAT ", RecipeSearchSortField.PublishedAt, false)]
+    [InlineData("-cookTime", RecipeSearchSortField.CookTime, true)]
+    [InlineData("prepTime", RecipeSearchSortField.PrepTime, false)]
     public void Parse_ShouldReturnWhitelistedFieldAndDirection(
         string input,
-        string expectedField,
+        RecipeSearchSortField expectedField,
         bool expectedDescending)
     {
         var sort = SortParser.Parse(input);
@@ -29,46 +32,27 @@ public class SortParserTests
     [InlineData("  ")]
     public void Parse_ShouldReturnNull_WhenSortIsMissing(string? input)
     {
+        // null = giữ thứ tự theo độ liên quan (ts_rank) của FR-SRCH-001.
         Assert.Null(SortParser.Parse(input));
     }
 
-    [Fact]
-    public void Parse_ShouldRejectFieldOutsideWhitelist()
+    [Theory]
+    [InlineData("authorId")]
+    [InlineData("-")]
+    [InlineData("--title")]
+    [InlineData("title;DROP TABLE \"Recipes\"")]
+    public void Parse_ShouldRejectFieldOutsideWhitelist(string input)
     {
-        var exception = Assert.Throws<InvalidSortException>(() => SortParser.Parse("authorId"));
+        var exception = Assert.Throws<InvalidSortException>(() => SortParser.Parse(input));
 
-        Assert.Contains("authorId", exception.Message);
         Assert.Contains("createdAt", exception.Message);
     }
 
     [Fact]
-    public void Apply_ShouldPreserveInputOrder_WhenSortIsMissing()
+    public void Parse_ShouldMentionTheRejectedField()
     {
-        var recipes = new[]
-        {
-            new Recipe { Title = "First" },
-            new Recipe { Title = "Second" }
-        };
+        var exception = Assert.Throws<InvalidSortException>(() => SortParser.Parse("authorId"));
 
-        Assert.Equal(recipes, SortParser.Apply(recipes, null));
-    }
-
-    [Theory]
-    [InlineData("title", "A", "B")]
-    [InlineData("-title", "B", "A")]
-    public void Apply_ShouldSortInRequestedDirection(
-        string sortField,
-        string firstExpected,
-        string secondExpected)
-    {
-        var recipes = new[]
-        {
-            new Recipe { Title = "B" },
-            new Recipe { Title = "A" }
-        };
-
-        var sorted = SortParser.Apply(recipes, SortParser.Parse(sortField));
-
-        Assert.Equal(new[] { firstExpected, secondExpected }, sorted.Select(recipe => recipe.Title));
+        Assert.Contains("authorId", exception.Message);
     }
 }

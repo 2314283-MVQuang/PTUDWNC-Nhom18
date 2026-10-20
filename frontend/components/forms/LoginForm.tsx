@@ -8,12 +8,14 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { loginSchema, type LoginFormValues } from "@/lib/validations/auth.schema";
+import { safeCallbackUrl } from "@/lib/auth-mode";
+import { loginErrorMessage } from "@/lib/auth-errors";
 
 /** Form đăng nhập email/password + nút Google (FR-AUTH-002, FR-AUTH-003). */
-export function LoginForm() {
+export function LoginForm({ demoEnabled = false, googleEnabled = false }: { demoEnabled?: boolean; googleEnabled?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -24,7 +26,7 @@ export function LoginForm() {
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   function handleQuickFill(email: string, pass: string) {
-    setValue("email", email);
+    setValue("account", email);
     setValue("password", pass);
     setFormError(null);
   }
@@ -32,11 +34,12 @@ export function LoginForm() {
   async function onSubmit(values: LoginFormValues) {
     setFormError(null);
     // FR-AUTH-002: sai email/password KHÔNG được tiết lộ email có tồn tại hay không (chống
-    // User Enumeration Attack) — nên chỉ hiển thị 1 thông báo chung chung ở đây.
+    // User Enumeration Attack) — nên 401 chỉ hiện 1 thông báo chung. Các lỗi khác (tài khoản bị
+    // khoá, quá giới hạn request, backend không chạy) có mã riêng từ auth.ts (Tuần 7).
     const result = await signIn("credentials", { ...values, redirect: false });
 
     if (result?.error) {
-      setFormError("Email hoặc mật khẩu không đúng.");
+      setFormError(loginErrorMessage((result as { code?: string | null }).code));
       return;
     }
     router.push(callbackUrl);
@@ -46,7 +49,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
       {/* Hộp hiển thị tài khoản mẫu trong đề để test */}
-      <div className="rounded-xl border border-brand-200 bg-brand-50/80 p-3 text-xs text-neutral-700 shadow-sm">
+      {demoEnabled && <div className="rounded-xl border border-brand-200 bg-brand-50/80 p-3 text-xs text-neutral-700 shadow-sm">
         <p className="font-semibold text-brand-900 mb-2 flex items-center gap-1.5 text-xs">
           <span>🔑</span> Tài khoản mẫu trong đề bài (Bấm để điền nhanh):
         </p>
@@ -79,7 +82,7 @@ export function LoginForm() {
             </span>
           </button>
         </div>
-      </div>
+      </div>}
 
       {formError && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -87,7 +90,7 @@ export function LoginForm() {
         </p>
       )}
 
-      <Input label="Email" type="email" autoComplete="email" error={errors.email?.message} {...register("email")} />
+      <Input label={demoEnabled ? "Tài khoản hoặc email" : "Email"} autoComplete="username" error={errors.account?.message} {...register("account")} />
       <Input
         label="Mật khẩu"
         type="password"
@@ -105,9 +108,9 @@ export function LoginForm() {
         <div className="absolute inset-x-0 top-1/2 -z-0 border-t border-neutral-200" />
       </div>
 
-      <Button type="button" variant="outline" onClick={() => signIn("google", { callbackUrl })}>
+      {googleEnabled && <Button type="button" variant="outline" onClick={() => signIn("google", { callbackUrl })}>
         Đăng nhập với Google
-      </Button>
+      </Button>}
       {/* Link "Chưa có tài khoản?" nằm ở AuthShell (dưới thẻ form) nên không lặp lại ở đây. */}
     </form>
   );

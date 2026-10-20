@@ -9,6 +9,7 @@ const compat = new FlatCompat({
  * (mục 5.5 NFR: "Frontend: ESLint Airbnb ruleset" — nhóm có thể mở rộng thêm
  * eslint-config-airbnb sau khi npm install; để bộ mặc định trước cho gọn.)
  */
-const eslintConfig = [...compat.extends("next/core-web-vitals", "next/typescript")];
+const eslintConfig = [{ ignores: [".next/**", "out/**", "build/**", "node_modules/**", "next-env.d.ts"] },
+  ...compat.extends("next/core-web-vitals", "next/typescript")];
 
 export default eslintConfig;

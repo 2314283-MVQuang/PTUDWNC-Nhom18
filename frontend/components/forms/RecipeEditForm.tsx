@@ -15,6 +15,7 @@ import {
   useDeleteRecipe,
   usePublishRecipe,
   useUnpublishRecipe,
+  useUnarchiveRecipe,
   useUpdateRecipe,
 } from "@/hooks/useRecipes";
 import { recipeBasicInfoSchema, type RecipeBasicInfoValues } from "@/lib/validations/recipe.schema";
@@ -40,7 +41,12 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
   const publishRecipe = usePublishRecipe();
   const unpublishRecipe = useUnpublishRecipe();
   const archiveRecipe = useArchiveRecipe();
+  const unarchiveRecipe = useUnarchiveRecipe();
   const deleteRecipe = useDeleteRecipe();
+  const isActionPending = updateRecipe.isPending || publishRecipe.isPending ||
+    unpublishRecipe.isPending || archiveRecipe.isPending || unarchiveRecipe.isPending || deleteRecipe.isPending;
+  const actionError = publishRecipe.error ?? unpublishRecipe.error ?? archiveRecipe.error ??
+    unarchiveRecipe.error ?? deleteRecipe.error;
 
   const {
     register,
@@ -102,10 +108,11 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
     }
   }
 
-  async function handleDelete() {
-    if (!confirm("Xoá vĩnh viễn công thức này? Hành động không thể hoàn tác.")) return;
-    await deleteRecipe.mutateAsync(recipe.id);
-    router.push("/dashboard/recipes");
+  function handleDelete() {
+    if (!confirm("Xoá công thức này? Công thức sẽ được ẩn và dữ liệu được dọn sau 30 ngày.")) return;
+    deleteRecipe.mutate(recipe.id, {
+      onSuccess: () => router.push("/dashboard/recipes"),
+    });
   }
 
   return (
@@ -119,26 +126,32 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
           {recipe.status !== "Published" && (
             <Button
               size="sm"
+              type="button"
+              disabled={isActionPending}
               variant="outline"
               isLoading={publishRecipe.isPending}
               onClick={() => publishRecipe.mutate(recipe.id)}
             >
-              Publish
+              Xuất bản
             </Button>
           )}
           {recipe.status === "Published" && (
             <Button
               size="sm"
+              type="button"
+              disabled={isActionPending}
               variant="outline"
               isLoading={unpublishRecipe.isPending}
               onClick={() => unpublishRecipe.mutate(recipe.id)}
             >
-              Unpublish
+              Hủy xuất bản
             </Button>
           )}
           {recipe.status !== "Archived" && (
             <Button
               size="sm"
+              type="button"
+              disabled={isActionPending}
               variant="outline"
               isLoading={archiveRecipe.isPending}
               onClick={() => archiveRecipe.mutate(recipe.id)}
@@ -146,16 +159,27 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
               Lưu trữ
             </Button>
           )}
-          <Button size="sm" variant="danger" isLoading={deleteRecipe.isPending} onClick={handleDelete}>
+          {recipe.status === "Archived" && (
+            <Button type="button" size="sm" variant="outline" disabled={isActionPending}
+              isLoading={unarchiveRecipe.isPending} onClick={() => unarchiveRecipe.mutate(recipe.id)}>
+              Bỏ lưu trữ
+            </Button>
+          )}
+          <Button type="button" size="sm" variant="danger" disabled={isActionPending} isLoading={deleteRecipe.isPending} onClick={handleDelete}>
             Xoá
           </Button>
         </div>
       </div>
-      {publishRecipe.isError && (
+      {publishRecipe.isSuccess && recipe.status === "Published" && (
+        <p role="status" className="rounded-lg bg-herb-50 px-3 py-2 text-sm text-herb-700">
+          Công thức đã được xuất bản thành công.
+        </p>
+      )}
+      {actionError && (
         // Hiển thị nguyên văn lỗi backend: công thức có thể thiếu bước, thiếu nguyên liệu, hoặc
         // thiếu cả hai — câu chữ cứng sẵn ở đây trước kia chỉ nhắc mỗi "bước" nên gây hiểu nhầm.
-        <p className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700">
-          Không thể publish — {apiErrorMessage(publishRecipe.error, "vui lòng thử lại.")}
+        <p role="alert" className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700">
+          {apiErrorMessage(actionError, "Thao tác thất bại, vui lòng thử lại.")}
         </p>
       )}
 
@@ -184,7 +208,7 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
         />
 
         <div className="flex justify-end">
-          <Button type="submit" isLoading={isSubmitting || updateRecipe.isPending}>
+          <Button type="submit" disabled={isActionPending} isLoading={isSubmitting || updateRecipe.isPending}>
             Lưu thay đổi
           </Button>
         </div>

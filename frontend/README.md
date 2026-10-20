@@ -5,11 +5,20 @@ Next.js App Router + TypeScript, theo mục 6.1 và mục 9 (Sitemap Frontend) c
 
 ## Công nghệ dùng
 
+Phần việc tuần 1–6, các yêu cầu tối thiểu, cấu hình bảo mật và kết quả kiểm chứng được ghi tại
+[báo cáo tổng hợp Chung Thiện Ý tuần 1–6](../spec/bao_cao_tong_hop_ChungThienY_tuan_1_6.md).
+
+Tuần 6 bổ sung FR-SRCH-002 trên `/search`: bộ lọc kết hợp, Context/reducer store,
+Radix Dialog cho mobile và component loading/error/empty. `npm test` chạy cả Auth và Search.
+Hướng dẫn test PostgreSQL/Redis tạm và trình duyệt nằm ở mục 13.8–13.9 của báo cáo.
+Search vẫn trả mảng tối đa 50 kết quả; sorting/pagination API thuộc phần phân công khác.
+
 | Thư viện | Vai trò |
 |---|---|
 | Next.js 15 (App Router) | Framework React, SSR/ISR cho SEO |
 | TypeScript | Kiểu tĩnh, khớp DTO với backend |
 | Tailwind CSS | Styling utility-first |
+| @radix-ui/react-dialog 1.3.1 | Dialog bộ lọc mobile, focus trap và Escape |
 | Auth.js v5 (`next-auth`) | Đăng nhập email/password + Google OAuth |
 | TanStack Query | Cache & đồng bộ dữ liệu server (recipes, categories...) |
 | React Hook Form + Zod | Quản lý form + validate |
@@ -21,7 +30,7 @@ Cần **Node.js 20 trở lên** (khuyến nghị bản LTS mới nhất).
 ```bash
 git clone https://github.com/2314283-MVQuang/CulinaryBlog.git
 cd CulinaryBlog/frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -40,11 +49,36 @@ bình thường, chỉ kèm một dòng thông báo màu vàng "chưa kết nố
 | Biến | Ý nghĩa |
 |---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | URL backend .NET, mặc định `http://localhost:5000/api/v1`. Backend chạy cổng khác thì sửa dòng này |
+| `API_INTERNAL_BASE_URL` | URL backend để Next.js server gọi nội bộ, ví dụ `http://api:8080/api/v1`; để trống sẽ dùng URL public |
+| `AUTH_DEMO_ENABLED` | Mặc định `false`. Chỉ khi chạy `npm run dev` và đặt `true` mới bật tài khoản demo. Production luôn dùng backend thật |
 | `AUTH_SECRET` | Khoá ký cookie phiên đăng nhập của Auth.js v5. Script tự sinh; muốn sinh lại thủ công thì chạy `npx auth secret` |
 | `NEXTAUTH_URL` | URL của chính app này, để `http://localhost:3000` khi chạy local |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Lấy từ Google Cloud Console. Để trống cũng chạy được — nút "Đăng nhập với Google" sẽ tự ẩn |
 
 > Đừng bao giờ commit `.env.local` lên git — file này đã nằm trong `.gitignore` sẵn.
+
+Đăng nhập backend thật bằng **email**. Khi đăng ký, mật khẩu cần ít nhất 8 ký tự, có chữ hoa,
+số và ký tự đặc biệt, khớp validator backend. Auth.js giữ refresh token trong JWT cookie,
+không đưa refresh token ra session phía trình duyệt. Google chỉ hiển thị khi đủ cấu hình.
+
+Demo chỉ để xem thử giao diện: token `local-token-*` không được gửi sang API, không có quyền
+ghi dữ liệu backend. Muốn demo, thêm `AUTH_DEMO_ENABLED=true` vào `.env.local` và chạy lại
+`npm run dev`. Không dùng tài khoản demo để kiểm chứng Create/Update/Publish.
+
+Kiểm tra trước khi nộp bài:
+
+```bash
+npm run type-check
+npm run lint
+npm run test
+npm run build
+npm run test:production-auth
+```
+
+Build cần kết nối Google Fonts theo cấu hình `next/font/google` hiện có. Khi deploy, cấp
+`AUTH_SECRET` riêng qua môi trường chạy; cấu hình `NEXTAUTH_URL`/`AUTH_URL` đúng domain HTTPS.
+Không dùng secret của máy phát triển cho Production. URL `NEXT_PUBLIC_*` được đóng vào bundle
+lúc build; URL nội bộ và cờ demo được kiểm tra phía server.
 
 ### Cách khác: chạy bằng Docker
 

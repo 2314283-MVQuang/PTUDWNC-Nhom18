@@ -1,8 +1,8 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { apiFetch, ApiError } from "@/lib/api-client";
-import type { AuthTokenResponse, UserProfile } from "@/types/user";
+import { AUTH_ERROR, type AuthErrorCode } from "@/lib/auth-errors";
+import { BackendAuthError, loginWithBackend, revokeBackendSession } from "@/lib/backend-auth";
 
 /**
  * Cấu hình Auth.js v5 (mục 6.1, 6.3: đăng nhập email/password + Google OAuth).
@@ -15,8 +15,27 @@ import type { AuthTokenResponse, UserProfile } from "@/types/user";
  * - refreshToken: 7 ngày, dùng để xin accessToken mới khi hết hạn (FR-AUTH-004, có rotation).
  */
 import { findLocalUser } from "@/lib/local-users";
+import { authConfig } from "@/auth.config";
+import { isDemoAuthEnabled } from "@/lib/auth-mode";
+
+/** Auth.js chuyển `code` của lỗi này xuống client: `signIn(...)` trả `{ error, code }`. */
+class BackendCredentialsSignin extends CredentialsSignin {
+  constructor(code: AuthErrorCode) {
+    super();
+    this.code = code;
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  events: {
+    // Đăng xuất (Tuần 7): thu hồi refresh token ở backend (POST /auth/logout) — không để token cũ
+    // còn dùng được 7 ngày sau khi người dùng đã bấm "Đăng xuất".
+    async signOut(message) {
+      const token = "token" in message ? await message.token : null;
+      if (token) await revokeBackendSession(token.accessToken, token.refreshToken);
+    },
+  },
   providers: [
     Credentials({
       credentials: {
@@ -33,7 +52,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!identifier || !password) return null;
 
         // 1. Ưu tiên kiểm tra tài khoản mẫu trong đề & tài khoản vừa đăng ký (2312, admin, author...)
-        const localUser = findLocalUser(identifier, password);
+        const localUser = isDemoAuthEnabled() ? findLocalUser(identifier, password) : null;
         if (localUser) {
           return {
             id: localUser.id,
@@ -47,29 +66,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         }
 
-        // 2. Gọi backend .NET (nếu backend đang chạy)
+        // 2. Backend .NET là nguồn xác thực thật (Tuần 7 — FR-AUTH-002): POST /auth/login trả JWT
+        //    + refresh token + hồ sơ user trong CÙNG 1 response. Lỗi được đổi thành mã riêng
+        //    (sai mật khẩu / tài khoản khoá / quá giới hạn / máy chủ không phản hồi) để form hiển
+        //    thị đúng nguyên nhân thay vì luôn báo "sai mật khẩu".
         try {
-          // FR-AUTH-002: POST /auth/login
-          const tokens = await apiFetch<AuthTokenResponse>("/auth/login", {
-            method: "POST",
-            body: { email: identifier, password },
-          });
-          // Lấy hồ sơ user để hiển thị tên/avatar mà không cần gọi thêm lần nữa ở client.
-          const profile = await apiFetch<UserProfile>("/auth/me", { token: tokens.accessToken });
-
-          return {
-            id: profile.id,
-            email: profile.email,
-            name: profile.displayName,
-            image: profile.avatarUrl,
-            roles: profile.roles,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-            accessTokenExpires: Date.now() + tokens.expiresIn * 1000,
-          };
-        } catch {
-          // Khi backend chưa chạy hoặc thông tin đăng nhập sai -> trả null để NextAuth báo lỗi thân thiện
-          return null;
+          return await loginWithBackend(identifier, password);
+        } catch (error) {
+          throw new BackendCredentialsSignin(
+            error instanceof BackendAuthError ? error.code : AUTH_ERROR.backendUnavailable,
+          );
         }
       },
     }),
@@ -79,68 +85,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET })]
       : []),
   ],
-  pages: {
-    signIn: "/login",
-  },
-  session: { strategy: "jwt" },
-  callbacks: {
-    async jwt({ token, user, account }) {
-      // Lần đăng nhập đầu tiên bằng Credentials: `user` là object trả về từ `authorize()` ở trên.
-      if (user) {
-        token.accessToken = user.accessToken as string;
-        token.refreshToken = user.refreshToken as string;
-        token.accessTokenExpires = user.accessTokenExpires as number;
-        token.roles = user.roles as string[];
-      }
-
-      // Lần đăng nhập đầu tiên bằng Google: trao đổi id_token của Google lấy token của backend.
-      if (account?.provider === "google" && account.id_token) {
-        try {
-          const tokens = await apiFetch<AuthTokenResponse>("/auth/google", {
-            method: "POST",
-            body: { idToken: account.id_token },
-          });
-          const profile = await apiFetch<UserProfile>("/auth/me", { token: tokens.accessToken });
-          token.accessToken = tokens.accessToken;
-          token.refreshToken = tokens.refreshToken;
-          token.accessTokenExpires = Date.now() + tokens.expiresIn * 1000;
-          token.roles = profile.roles;
-          token.name = profile.displayName;
-          token.picture = profile.avatarUrl;
-        } catch {
-          // Backend từ chối Google token (AUTH_GOOGLE_TOKEN_INVALID) -> không set accessToken,
-          // middleware sẽ coi như chưa đăng nhập và điều hướng lại /auth/login.
-        }
-      }
-
-      // Access token còn hạn -> giữ nguyên, không cần refresh.
-      if (token.accessTokenExpires && Date.now() < (token.accessTokenExpires as number)) {
-        return token;
-      }
-
-      // Hết hạn -> thử refresh (FR-AUTH-004). Nếu fail, xoá accessToken để buộc đăng nhập lại.
-      if (token.refreshToken) {
-        try {
-          const tokens = await apiFetch<AuthTokenResponse>("/auth/refresh", {
-            method: "POST",
-            body: { refreshToken: token.refreshToken },
-          });
-          token.accessToken = tokens.accessToken;
-          token.refreshToken = tokens.refreshToken;
-          token.accessTokenExpires = Date.now() + tokens.expiresIn * 1000;
-        } catch {
-          token.accessToken = undefined;
-        }
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      // Đưa accessToken + roles ra ngoài session để client component đọc qua useSession().
-      session.accessToken = token.accessToken as string | undefined;
-      session.roles = (token.roles as string[] | undefined) ?? [];
-      if (session.user) session.user.id = token.sub ?? "";
-      return session;
-    },
-  },
 });

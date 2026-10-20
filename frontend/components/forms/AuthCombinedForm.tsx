@@ -6,15 +6,19 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
+import { safeCallbackUrl } from "@/lib/auth-mode";
+import type { RegistrationResponse } from "@/types/user";
 
 interface AuthCombinedFormProps {
   initialTab?: "login" | "register";
+  demoEnabled?: boolean;
+  googleEnabled?: boolean;
 }
 
-export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps) {
+export function AuthCombinedForm({ initialTab = "login", demoEnabled = false, googleEnabled = false }: AuthCombinedFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
 
   const [tab, setTab] = useState<"login" | "register">(initialTab);
 
@@ -109,7 +113,7 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
         }),
       });
 
-      const data = await res.json();
+      const data: RegistrationResponse = await res.json();
 
       if (!res.ok) {
         setRegError(data.error || "Đăng ký thất bại. Vui lòng thử lại!");
@@ -120,13 +124,13 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
       setRegSuccess(`Đăng ký tài khoản "${acc}" thành công! Đang chuyển hướng...`);
 
       // Lưu sẵn thông tin sang form Đăng nhập
-      setLoginAccount(acc);
+      setLoginAccount(demoEnabled ? acc : email);
       setLoginPassword(regPassword);
 
       // Tự động đăng nhập và chuyển trang
       setTimeout(async () => {
         const loginRes = await signIn("credentials", {
-          account: acc,
+          account: demoEnabled ? acc : email,
           email: email,
           password: regPassword,
           redirect: false,
@@ -149,6 +153,9 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
 
   return (
     <div className="flex flex-col gap-5">
+      {demoEnabled && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+        Chế độ demo: tài khoản chỉ dùng xem thử giao diện, không lưu thay đổi vào hệ thống.
+      </p>}
       {/* 2 Tab chuyển đổi Đăng nhập & Đăng ký trên cùng 1 màn hình */}
       <div className="grid grid-cols-2 rounded-xl bg-neutral-100 p-1">
         <button
@@ -199,7 +206,7 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
           )}
 
           <Input
-            label="Tài khoản"
+            label={demoEnabled ? "Tài khoản demo hoặc email" : "Email"}
             type="text"
             placeholder="Nhập tên đăng nhập hoặc email"
             value={loginAccount}
@@ -223,9 +230,9 @@ export function AuthCombinedForm({ initialTab = "login" }: AuthCombinedFormProps
             <div className="absolute inset-x-0 top-1/2 -z-0 border-t border-neutral-200" />
           </div>
 
-          <Button type="button" variant="outline" onClick={() => signIn("google", { callbackUrl })}>
+          {googleEnabled && <Button type="button" variant="outline" onClick={() => signIn("google", { callbackUrl })}>
             Đăng nhập với Google
-          </Button>
+          </Button>}
 
           <p className="text-center text-xs text-neutral-500 mt-1">
             Chưa có tài khoản?{" "}

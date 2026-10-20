@@ -29,6 +29,7 @@ public partial class RecipeApiTests
     [InlineData("difficulty=0")]
     [InlineData("difficulty=99")]
     [InlineData("categoryId=00000000-0000-0000-0000-000000000000")]
+    [InlineData("minServings=0")]
     public async Task Search_RejectsInvalidFiltersWithProblemDetails(string query)
     {
         using var response = await api.SendAsync(HttpMethod.Get, $"/api/v1/recipes/search?q=pho&{query}");
@@ -83,6 +84,8 @@ public partial class RecipeApiTests
             ("&minCookTime=30", r => r.CookTime >= 30),
             ("&maxCookTime=30", r => r.CookTime <= 30),
             ("&minCookTime=0&maxCookTime=0", r => r.CookTime == 0),
+            ("&minServings=2", r => r.Servings >= 2),
+            ("&minServings=3", r => r.Servings >= 3),
             ($"&categoryId={api.CategoryId}&difficulty=Easy&minPrepTime=20&maxPrepTime=20&minCookTime=30&maxCookTime=30",
                 r => r.CategoryId == api.CategoryId && r.Difficulty == RecipeDifficulty.Easy && r.PrepTime == 20 && r.CookTime == 30),
             ($"&categoryId={Guid.NewGuid()}", _ => false),

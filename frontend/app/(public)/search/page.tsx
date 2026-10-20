@@ -38,9 +38,9 @@ export default async function SearchPage({ searchParams }: {
           {activeFilters > 0 && <Link className="text-sm font-medium text-brand-700 underline underline-offset-4" href={searchHref({ ...EMPTY_SEARCH_FILTERS, q: draft.q })}>Xóa bộ lọc đang áp dụng</Link>}
         </div>
         {issues.length > 0 ? <ErrorState title="Bộ lọc chưa hợp lệ" message={issues.join(" ")} />
-          : !hasQuery ? <EmptyState title="Bạn muốn nấu món gì?" message="Nhập ít nhất 2 ký tự trong bộ lọc hoặc thanh tìm kiếm để bắt đầu. Bạn có thể thêm danh mục, độ khó và khoảng thời gian." />
+          : !hasQuery ? <EmptyState title="Bạn muốn nấu món gì?" message="Nhập ít nhất 2 ký tự trong bộ lọc hoặc thanh tìm kiếm để bắt đầu. Bạn có thể thêm danh mục, độ khó, khoảng thời gian và số khẩu phần." />
           : recipeResult.status === "rejected" ? <ErrorState message={apiErrorMessage(recipeResult.reason, "Không thể kết nối để tải công thức. Vui lòng thử lại sau.")}><RetryButton /></ErrorState>
-          : recipes?.length === 0 ? <EmptyState title="Chưa tìm thấy công thức phù hợp" message="Thử từ khóa khác hoặc nới rộng khoảng thời gian, danh mục và độ khó." />
+          : recipes?.length === 0 ? <EmptyState title="Chưa tìm thấy công thức phù hợp" message="Thử từ khóa khác hoặc nới rộng khoảng thời gian, số khẩu phần, danh mục và độ khó." />
           : recipes && <SearchResults recipes={recipes} />}
         {recipes && recipes.length >= 50 && <p className="text-sm text-neutral-600">Đang hiển thị tối đa 50 công thức. Hãy thêm điều kiện để thu hẹp kết quả.</p>}
       </section>

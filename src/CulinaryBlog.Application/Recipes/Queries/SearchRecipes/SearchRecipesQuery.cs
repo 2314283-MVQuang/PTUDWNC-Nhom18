@@ -11,4 +11,5 @@ public record SearchRecipesQuery(
     int? MinPrepTime = null,
     int? MaxPrepTime = null,
     int? MinCookTime = null,
-    int? MaxCookTime = null) : IRequest<IEnumerable<RecipeDto>>;
+    int? MaxCookTime = null,
+    int? MinServings = null) : IRequest<IEnumerable<RecipeDto>>;

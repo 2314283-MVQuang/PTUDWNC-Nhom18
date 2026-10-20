@@ -166,40 +166,47 @@ public static class RecipesEndpoints
             });
 
         // -----------------------------------------------------------
-        // GET /api/v1/recipes/search?q=   (FR-SRCH-001 — Thịnh, FR-SRCH-004 — Tiến)
+        // GET /api/v1/recipes/search?q=   (FR-SRCH-001/003 — Thịnh, FR-SRCH-002 — Ý, FR-SRCH-004 — Tiến)
         // -----------------------------------------------------------
-        // Full-text search tiếng Việt, bỏ dấu kèm phân trang. Cache 1 phút, vary theo query string
+        // Full-text search tiếng Việt, bỏ dấu. Cache 1 phút, vary theo query string
         // (policy "Search" trong Program.cs — NFR-PERF-003 / mâu thuẫn #4).
         group.MapGet(
             "/search",
             async (
                 [FromQuery(Name = "q")] string? q,
-                int? page,
-                int? pageSize,
                 Guid? categoryId,
                 RecipeDifficulty? difficulty,
+                int? minPrepTime,
+                int? maxPrepTime,
+                int? minCookTime,
                 int? maxCookTime,
                 int? minServings,
-                string? sort,
+                [FromQuery(Name = "sort")] string? sort,
+                int? page,
+                int? pageSize,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var query = new SearchRecipesQuery(
-                    Keyword: q ?? string.Empty,
-                    Page: page ?? 1,
-                    PageSize: pageSize ?? 12,
-                    CategoryId: categoryId,
-                    Difficulty: difficulty,
-                    MaxCookTime: maxCookTime,
-                    MinServings: minServings,
-                    Sort: sort);
+                var result =
+                    await sender.Send(
+                        new SearchRecipesQuery(q ?? string.Empty, categoryId, difficulty,
+                            minPrepTime, maxPrepTime, minCookTime, maxCookTime, minServings, sort,
+                            page ?? 1, pageSize ?? SearchRecipesQuery.DefaultPageSize),
+                        cancellationToken);
 
-                var result = await sender.Send(query, cancellationToken);
-
+                // FR-SRCH-004: { data: [...], meta: { page, pageSize, total, totalPages,
+                // hasNextPage, hasPreviousPage } } — cùng định dạng với GET /recipes.
                 return result.ToPagedResponse();
             })
             .WithName("SearchRecipes")
-            .WithSummary("Full-text Search Recipes with Pagination")
+            .WithSummary("Full-text Search Recipes")
+            .WithDescription(
+                "FR-SRCH-002: kết hợp danh mục, độ khó, khoảng phút chuẩn bị/nấu và số khẩu phần tối thiểu " +
+                "bằng AND; biên tính cả hai đầu, bỏ tham số để không lọc. FR-SRCH-003: sort theo createdAt, " +
+                "publishedAt, title, prepTime hoặc cookTime, thêm dấu '-' để giảm dần; bỏ trống = độ liên " +
+                "quan (ts_rank). FR-SRCH-004: page (mặc định 1), pageSize (mặc định 12, tối đa 50).")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .CacheOutput("Search");
 
         // -----------------------------------------------------------

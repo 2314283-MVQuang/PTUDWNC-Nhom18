@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Enums;
 using CulinaryBlog.Domain.Interfaces;
@@ -71,23 +72,12 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
             .OriginalValue = expectedRowVersion;
     }
 
-    public async Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
+    public async Task<(IReadOnlyList<Recipe> Items, int TotalCount)> SearchRecipesAsync(
         string keyword,
-        CancellationToken ct = default)
-    {
-        var (items, _) = await SearchRecipesPagedAsync(keyword, 1, 50, ct: ct);
-        return items;
-    }
-
-    public async Task<(IReadOnlyList<Recipe> Items, int TotalCount)> SearchRecipesPagedAsync(
-        string keyword,
+        RecipeSearchFilters? filters,
+        RecipeSearchSort? sort,
         int page,
         int pageSize,
-        Guid? categoryId = null,
-        RecipeDifficulty? difficulty = null,
-        int? maxCookTime = null,
-        int? minServings = null,
-        string? sort = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(keyword))
@@ -96,120 +86,158 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
         }
 
         var normalizedKeyword = keyword.Trim();
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize < 1 ? 12 : (pageSize > 50 ? 50 : pageSize);
-        var offset = (page - 1) * pageSize;
+        filters ??= new RecipeSearchFilters();
+        var offset = (Math.Max(page, 1) - 1) * pageSize;
 
-        // Fallback cho môi trường test (InMemory DbContext không hỗ trợ SqlQuery)
+        // InMemory (unit test) không chạy được SQL full-text của PostgreSQL — dùng bản LINQ tương
+        // đương (tìm chuỗi con trong tiêu đề/mô tả) để kiểm thử lọc, sắp xếp và phân trang.
         if (!DbContext.Database.IsRelational())
         {
-            var inMemQuery = DbSet
-                .AsNoTracking()
-                .Include(x => x.Category)
-                .Include(x => x.Author)
-                .Include(x => x.Images)
-                .Where(x => x.Status == RecipeStatus.Published);
-
-            inMemQuery = inMemQuery.Where(x =>
-                x.Title.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase) ||
-                (x.Description != null && x.Description.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase)));
-
-            if (categoryId.HasValue)
-            {
-                inMemQuery = inMemQuery.Where(x => x.CategoryId == categoryId.Value);
-            }
-
-            if (difficulty.HasValue)
-            {
-                inMemQuery = inMemQuery.Where(x => x.Difficulty == difficulty.Value);
-            }
-
-            if (maxCookTime.HasValue)
-            {
-                inMemQuery = inMemQuery.Where(x => x.CookTime <= maxCookTime.Value);
-            }
-
-            if (minServings.HasValue)
-            {
-                inMemQuery = inMemQuery.Where(x => x.Servings >= minServings.Value);
-            }
-
-            var inMemTotal = await inMemQuery.CountAsync(ct);
-
-            inMemQuery = sort?.Trim().ToLowerInvariant() switch
-            {
-                "title" => inMemQuery.OrderBy(x => x.Title).ThenByDescending(x => x.CreatedAt),
-                "-title" => inMemQuery.OrderByDescending(x => x.Title).ThenByDescending(x => x.CreatedAt),
-                "cooktime" => inMemQuery.OrderBy(x => x.CookTime).ThenByDescending(x => x.CreatedAt),
-                "-cooktime" => inMemQuery.OrderByDescending(x => x.CookTime).ThenByDescending(x => x.CreatedAt),
-                "createdat" => inMemQuery.OrderBy(x => x.CreatedAt),
-                _ => inMemQuery.OrderByDescending(x => x.CreatedAt)
-            };
-
-            var inMemItems = await inMemQuery.Skip(offset).Take(pageSize).ToListAsync(ct);
-            return (inMemItems, inMemTotal);
+            return await SearchInMemoryAsync(normalizedKeyword, filters, sort, offset, pageSize, ct);
         }
 
-        // Môi trường PostgreSQL: Full-Text Search qua GIN index và tsvector
-        int? difficultyInt = difficulty.HasValue ? (int)difficulty.Value : null;
+        // Cột "SearchVector" (tsvector) do trigger PostgreSQL quản lý và KHÔNG map vào model EF
+        // (xem ghi chú đầu CulinaryBlogDbContext.cs), nên truy vấn bằng SQL tham số hoá: bước 1 đếm
+        // tổng và lấy Id của đúng trang cần (dùng GIN index), bước 2 nạp entity bằng EF.
+        // Cấu hình text search "vietnamese" + extension unaccent được tạo cùng schema database.
+        //
+        // Mọi giá trị người dùng nhập đi qua tham số {0}..{n} (EF tự parameterize). Riêng mệnh đề
+        // ORDER BY không tham số hoá được nên lấy từ whitelist cố định ở SearchOrderBy() — không bao
+        // giờ ghép chuỗi người dùng vào SQL.
+        const string where = """
+            FROM "Recipes" AS r
+            WHERE r."IsDeleted" = FALSE
+              AND r."Status" = {1}
+              AND (CAST({2} AS uuid) IS NULL OR r."CategoryId" = CAST({2} AS uuid))
+              AND (CAST({3} AS integer) IS NULL OR r."Difficulty" = CAST({3} AS integer))
+              AND (CAST({4} AS integer) IS NULL OR r."PrepTime" >= CAST({4} AS integer))
+              AND (CAST({5} AS integer) IS NULL OR r."PrepTime" <= CAST({5} AS integer))
+              AND (CAST({6} AS integer) IS NULL OR r."CookTime" >= CAST({6} AS integer))
+              AND (CAST({7} AS integer) IS NULL OR r."CookTime" <= CAST({7} AS integer))
+              AND (CAST({8} AS integer) IS NULL OR r."Servings" >= CAST({8} AS integer))
+              AND r."SearchVector" @@ websearch_to_tsquery('vietnamese', unaccent({0}))
+            """;
+        object?[] args =
+        [
+            normalizedKeyword,
+            (int)RecipeStatus.Published,
+            filters.CategoryId,
+            (int?)filters.Difficulty,
+            filters.MinPrepTime,
+            filters.MaxPrepTime,
+            filters.MinCookTime,
+            filters.MaxCookTime,
+            filters.MinServings,
+            offset,
+            pageSize,
+        ];
 
         var totalCount = (await DbContext.Database
-            .SqlQuery<int>($"""
-                SELECT CAST(COUNT(*) AS integer) AS "Value"
-                FROM "Recipes" AS r
-                WHERE r."IsDeleted" = FALSE
-                  AND r."Status" = 1
-                  AND ({categoryId}::uuid IS NULL OR r."CategoryId" = {categoryId})
-                  AND ({difficultyInt}::integer IS NULL OR r."Difficulty" = {difficultyInt})
-                  AND ({maxCookTime}::integer IS NULL OR r."CookTime" <= {maxCookTime})
-                  AND ({minServings}::integer IS NULL OR r."Servings" >= {minServings})
-                  AND r."SearchVector" @@ websearch_to_tsquery('vietnamese', unaccent({normalizedKeyword}))
-                """)
-            .ToListAsync(ct)).FirstOrDefault();
+            .SqlQuery<int>(FormattableStringFactory.Create(
+                $"""SELECT CAST(COUNT(*) AS integer) AS "Value" {where}""", args[..9]))
+            .ToListAsync(ct)).SingleOrDefault();
 
-        if (totalCount == 0)
-        {
-            return ([], 0);
-        }
-
-        var rankedIds = await DbContext.Database
-            .SqlQuery<Guid>($"""
-                SELECT r."Id" AS "Value"
-                FROM "Recipes" AS r
-                WHERE r."IsDeleted" = FALSE
-                  AND r."Status" = 1
-                  AND ({categoryId}::uuid IS NULL OR r."CategoryId" = {categoryId})
-                  AND ({difficultyInt}::integer IS NULL OR r."Difficulty" = {difficultyInt})
-                  AND ({maxCookTime}::integer IS NULL OR r."CookTime" <= {maxCookTime})
-                  AND ({minServings}::integer IS NULL OR r."Servings" >= {minServings})
-                  AND r."SearchVector" @@ websearch_to_tsquery('vietnamese', unaccent({normalizedKeyword}))
-                ORDER BY ts_rank(r."SearchVector", websearch_to_tsquery('vietnamese', unaccent({normalizedKeyword}))) DESC
-                OFFSET {offset}
-                LIMIT {pageSize}
-                """)
-            .ToListAsync(ct);
-
-        if (rankedIds.Count == 0)
+        if (totalCount == 0 || offset >= totalCount)
         {
             return ([], totalCount);
         }
 
+        var pageIds = await DbContext.Database
+            .SqlQuery<Guid>(FormattableStringFactory.Create(
+                $$"""
+                SELECT r."Id" AS "Value" {{where}}
+                ORDER BY {{SearchOrderBy(sort)}}
+                OFFSET {9} LIMIT {10}
+                """,
+                args))
+            .ToListAsync(ct);
+
+        // Category/Author/Images để map RecipeSummaryDto (tên danh mục, tác giả, ảnh đại diện).
         var recipes = await DbSet
             .AsNoTracking()
             .Include(x => x.Category)
             .Include(x => x.Author)
             .Include(x => x.Images)
-            .Where(x => rankedIds.Contains(x.Id) && x.Status == RecipeStatus.Published)
+            .Where(x => pageIds.Contains(x.Id) && x.Status == RecipeStatus.Published)
             .ToListAsync(ct);
 
-        var order = rankedIds
+        var order = pageIds
             .Select((id, index) => (id, index))
             .ToDictionary(x => x.id, x => x.index);
 
-        var orderedRecipes = recipes
-            .OrderBy(x => order[x.Id])
-            .ToList();
+        return (recipes.OrderBy(x => order[x.Id]).ToList(), totalCount);
+    }
 
-        return (orderedRecipes, totalCount);
+    private async Task<(IReadOnlyList<Recipe> Items, int TotalCount)> SearchInMemoryAsync(
+        string keyword,
+        RecipeSearchFilters filters,
+        RecipeSearchSort? sort,
+        int offset,
+        int pageSize,
+        CancellationToken ct)
+    {
+        var query = DbSet
+            .AsNoTracking()
+            .Include(x => x.Category)
+            .Include(x => x.Author)
+            .Include(x => x.Images)
+            .Where(x => x.Status == RecipeStatus.Published)
+            .Where(x =>
+                x.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+                (x.Description != null && x.Description.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
+
+        if (filters.CategoryId is { } categoryId) query = query.Where(x => x.CategoryId == categoryId);
+        if (filters.Difficulty is { } difficulty) query = query.Where(x => x.Difficulty == difficulty);
+        if (filters.MinPrepTime is { } minPrep) query = query.Where(x => x.PrepTime >= minPrep);
+        if (filters.MaxPrepTime is { } maxPrep) query = query.Where(x => x.PrepTime <= maxPrep);
+        if (filters.MinCookTime is { } minCook) query = query.Where(x => x.CookTime >= minCook);
+        if (filters.MaxCookTime is { } maxCook) query = query.Where(x => x.CookTime <= maxCook);
+        if (filters.MinServings is { } minServings) query = query.Where(x => x.Servings >= minServings);
+
+        var totalCount = await query.CountAsync(ct);
+
+        // Không có ts_rank trong InMemory: "độ liên quan" tạm thay bằng mới nhất trước.
+        var ordered = sort switch
+        {
+            null => query.OrderByDescending(x => x.CreatedAt),
+            { Field: RecipeSearchSortField.CreatedAt, IsDescending: false } => query.OrderBy(x => x.CreatedAt),
+            { Field: RecipeSearchSortField.CreatedAt } => query.OrderByDescending(x => x.CreatedAt),
+            { Field: RecipeSearchSortField.PublishedAt, IsDescending: false } => query.OrderBy(x => x.PublishedAt),
+            { Field: RecipeSearchSortField.PublishedAt } => query.OrderByDescending(x => x.PublishedAt),
+            { Field: RecipeSearchSortField.Title, IsDescending: false } => query.OrderBy(x => x.Title),
+            { Field: RecipeSearchSortField.Title } => query.OrderByDescending(x => x.Title),
+            { Field: RecipeSearchSortField.PrepTime, IsDescending: false } => query.OrderBy(x => x.PrepTime),
+            { Field: RecipeSearchSortField.PrepTime } => query.OrderByDescending(x => x.PrepTime),
+            { Field: RecipeSearchSortField.CookTime, IsDescending: false } => query.OrderBy(x => x.CookTime),
+            { Field: RecipeSearchSortField.CookTime } => query.OrderByDescending(x => x.CookTime),
+            _ => throw new ArgumentOutOfRangeException(nameof(sort), "Field sắp xếp không hỗ trợ."),
+        };
+
+        var items = await ordered.ThenBy(x => x.Id).Skip(offset).Take(pageSize).ToListAsync(ct);
+        return (items, totalCount);
+    }
+
+    /// <summary>
+    /// FR-SRCH-003: ORDER BY lấy từ whitelist cố định. Luôn thêm r."Id" cuối cùng để thứ tự ổn định
+    /// khi nhiều công thức trùng giá trị (vd. cùng cookTime). {0} là từ khóa đã tham số hoá.
+    /// </summary>
+    private static string SearchOrderBy(RecipeSearchSort? sort)
+    {
+        if (sort is null)
+        {
+            return """ts_rank(r."SearchVector", websearch_to_tsquery('vietnamese', unaccent({0}))) DESC, r."CreatedAt" DESC, r."Id" """;
+        }
+
+        var column = sort.Field switch
+        {
+            RecipeSearchSortField.CreatedAt => "r.\"CreatedAt\"",
+            RecipeSearchSortField.PublishedAt => "r.\"PublishedAt\"",
+            RecipeSearchSortField.Title => "r.\"Title\"",
+            RecipeSearchSortField.PrepTime => "r.\"PrepTime\"",
+            RecipeSearchSortField.CookTime => "r.\"CookTime\"",
+            _ => throw new ArgumentOutOfRangeException(nameof(sort), sort.Field, "Field sắp xếp không hỗ trợ."),
+        };
+
+        return $"{column} {(sort.IsDescending ? "DESC NULLS LAST" : "ASC NULLS LAST")}, r.\"Id\"";
     }
 }

@@ -5,33 +5,26 @@ using MediatR;
 
 namespace CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
 
-/// <summary>
-/// Handler xử lý SearchRecipesQuery (FR-SRCH-001 & FR-SRCH-004).
-/// </summary>
-public sealed class SearchRecipesQueryHandler(IRecipeRepository recipeRepository)
+public class SearchRecipesQueryHandler(IRecipeRepository recipeRepository)
     : IRequestHandler<SearchRecipesQuery, PagedResult<RecipeSummaryDto>>
 {
     public async Task<PagedResult<RecipeSummaryDto>> Handle(
         SearchRecipesQuery request,
         CancellationToken cancellationToken)
     {
-        var (recipes, totalCount) = await recipeRepository.SearchRecipesPagedAsync(
-            keyword: request.Keyword,
-            page: request.Page,
-            pageSize: request.PageSize,
-            categoryId: request.CategoryId,
-            difficulty: request.Difficulty,
-            maxCookTime: request.MaxCookTime,
-            minServings: request.MinServings,
-            sort: request.Sort,
-            ct: cancellationToken);
+        // FR-SRCH-003: sort sai -> InvalidSortException (400) trước khi chạm database.
+        var sort = SortParser.Parse(request.Sort);
+        var filters = new RecipeSearchFilters(request.CategoryId, request.Difficulty,
+            request.MinPrepTime, request.MaxPrepTime, request.MinCookTime, request.MaxCookTime,
+            request.MinServings);
 
-        var items = recipes
-            .Select(x => x.ToSummaryDto())
-            .ToList();
+        // Lọc -> đếm tổng -> sắp xếp -> OFFSET/LIMIT đều chạy trong SQL (FR-SRCH-004), nên
+        // totalCount là số kết quả thật sau lọc, không còn giới hạn cứng 50 dòng như trước.
+        var (recipes, totalCount) = await recipeRepository.SearchRecipesAsync(
+            request.Keyword, filters, sort, request.Page, request.PageSize, cancellationToken);
 
         return PagedResult<RecipeSummaryDto>.Create(
-            items,
+            recipes.Select(recipe => recipe.ToSummaryDto()).ToList(),
             request.Page,
             request.PageSize,
             totalCount);

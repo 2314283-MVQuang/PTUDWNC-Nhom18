@@ -118,15 +118,18 @@ export function usePublishRecipe() {
   });
 }
 
-/** FR-RCP-005: PATCH /recipes/{id}/unpublish. */
+/** FR-RCP-006: Hủy xuất bản bằng cách lưu trữ, giữ nguyên dữ liệu. */
 export function useUnpublishRecipe() {
   const queryClient = useQueryClient();
   const { accessToken } = useCurrentUser();
 
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch<RecipeDetail>(`/recipes/${id}/unpublish`, { method: "PATCH", token: accessToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      apiFetch<RecipeDetail>(`/recipes/${id}/archive`, { method: "PATCH", token: accessToken }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }
 
@@ -138,11 +141,29 @@ export function useArchiveRecipe() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<RecipeDetail>(`/recipes/${id}/archive`, { method: "PATCH", token: accessToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }
 
-/** FR-RCP-007: DELETE /recipes/{id} — hard delete, cascade Steps/Ingredients/Images. */
+/** FR-RCP-006: Khôi phục trạng thái trước khi lưu trữ. */
+export function useUnarchiveRecipe() {
+  const queryClient = useQueryClient();
+  const { accessToken } = useCurrentUser();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<RecipeDetail>(`/recipes/${id}/unarchive`, { method: "PATCH", token: accessToken }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
+  });
+}
+
+/** FR-RCP-007: Xóa mềm; backend dọn dữ liệu sau 30 ngày. */
 export function useDeleteRecipe() {
   const queryClient = useQueryClient();
   const { accessToken } = useCurrentUser();
@@ -150,6 +171,9 @@ export function useDeleteRecipe() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<void>(`/recipes/${id}`, { method: "DELETE", token: accessToken }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all }),
+    ]),
   });
 }

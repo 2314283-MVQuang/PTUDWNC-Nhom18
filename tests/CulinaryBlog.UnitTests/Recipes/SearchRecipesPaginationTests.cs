@@ -237,13 +237,70 @@ public sealed class SearchRecipesPaginationTests
     }
 
     [Fact]
-    public void SearchRecipesQueryValidator_InvalidSort_HasError()
+    public async Task SearchRecipesPaged_WithSort_SortsBeforePaging()
     {
-        var validator = new SearchRecipesQueryValidator();
-        var query = new SearchRecipesQuery(Sort: "invalid_column_name");
+        await using var fixture = new RecipeTestFixture();
+        var category = new Category { Name = "Món sợi", Slug = "mon-soi-sort" };
+        var author = new ApplicationUser { Id = "author-sort", DisplayName = "Đầu bếp Sort" };
+        fixture.Db.Categories.Add(category);
+        fixture.Db.Users.Add(author);
+        foreach (var cookTime in new[] { 50, 10, 40, 20, 30 })
+        {
+            fixture.Db.Recipes.Add(new Recipe
+            {
+                Title = $"Phở nấu {cookTime} phút",
+                Slug = $"pho-nau-{cookTime}",
+                Description = "Món phở",
+                Category = category,
+                Author = author,
+                AuthorId = author.Id,
+                Status = RecipeStatus.Published,
+                CookTime = cookTime,
+                Servings = 2,
+                RowVersion = [1, 2]
+            });
+        }
+        await fixture.Db.SaveChangesAsync();
+        fixture.Db.ChangeTracker.Clear();
+        var handler = new SearchRecipesQueryHandler(fixture.Recipes);
 
-        var result = validator.TestValidate(query);
+        // Sắp xếp phải áp dụng cho TOÀN BỘ kết quả rồi mới cắt trang (FR-SRCH-003 + 004).
+        var page1 = await handler.Handle(
+            new SearchRecipesQuery(Keyword: "Phở", Sort: "cookTime", Page: 1, PageSize: 2), CancellationToken.None);
+        var page2 = await handler.Handle(
+            new SearchRecipesQuery(Keyword: "Phở", Sort: "cookTime", Page: 2, PageSize: 2), CancellationToken.None);
+        var lastPage = await handler.Handle(
+            new SearchRecipesQuery(Keyword: "Phở", Sort: "-cookTime", Page: 3, PageSize: 2), CancellationToken.None);
 
-        result.ShouldHaveValidationErrorFor(x => x.Sort);
+        Assert.Equal(new[] { 10, 20 }, page1.Items.Select(x => x.CookTime));
+        Assert.Equal(new[] { 30, 40 }, page2.Items.Select(x => x.CookTime));
+        Assert.Equal(new[] { 10 }, lastPage.Items.Select(x => x.CookTime));
+    }
+
+    [Fact]
+    public async Task SearchRecipesPaged_PageBeyondLastPage_ReturnsEmptyItemsWithTotal()
+    {
+        await using var fixture = new RecipeTestFixture();
+        await fixture.SeedAsync(status: RecipeStatus.Published); // 1 món "Phở bò"
+        var handler = new SearchRecipesQueryHandler(fixture.Recipes);
+
+        var result = await handler.Handle(
+            new SearchRecipesQuery(Keyword: "Phở", Page: 5, PageSize: 10), CancellationToken.None);
+
+        Assert.Empty(result.Items);
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal(1, result.TotalPages);
+        Assert.False(result.HasNextPage);
+    }
+
+    [Fact]
+    public void SearchRecipesQuery_DefaultsMatchSrs()
+    {
+        // SRS FR-SRCH-004: page mặc định 1, pageSize mặc định 12, tối đa 50.
+        var query = new SearchRecipesQuery("phở");
+
+        Assert.Equal(1, query.Page);
+        Assert.Equal(12, query.PageSize);
+        Assert.Equal(50, SearchRecipesQuery.MaxPageSize);
     }
 }

@@ -5,14 +5,20 @@ Next.js App Router + TypeScript, theo mục 6.1 và mục 9 (Sitemap Frontend) c
 
 ## Công nghệ dùng
 
-Phần việc tuần 1–5, các yêu cầu tối thiểu, cấu hình bảo mật và kết quả kiểm chứng được ghi tại
-[báo cáo tổng hợp Chung Thiện Ý tuần 1–5](../spec/bao_cao_tong_hop_ChungThienY_tuan_1_5.md).
+Phần việc tuần 1–6, các yêu cầu tối thiểu, cấu hình bảo mật và kết quả kiểm chứng được ghi tại
+[báo cáo tổng hợp Chung Thiện Ý tuần 1–6](../spec/bao_cao_tong_hop_ChungThienY_tuan_1_6.md).
+
+Tuần 6 bổ sung FR-SRCH-002 trên `/search`: bộ lọc kết hợp, Context/reducer store,
+Radix Dialog cho mobile và component loading/error/empty. `npm test` chạy cả Auth và Search.
+Hướng dẫn test PostgreSQL/Redis tạm và trình duyệt nằm ở mục 13.8–13.9 của báo cáo.
+Search vẫn trả mảng tối đa 50 kết quả; sorting/pagination API thuộc phần phân công khác.
 
 | Thư viện | Vai trò |
 |---|---|
 | Next.js 15 (App Router) | Framework React, SSR/ISR cho SEO |
 | TypeScript | Kiểu tĩnh, khớp DTO với backend |
 | Tailwind CSS | Styling utility-first |
+| @radix-ui/react-dialog 1.3.1 | Dialog bộ lọc mobile, focus trap và Escape |
 | Auth.js v5 (`next-auth`) | Đăng nhập email/password + Google OAuth |
 | TanStack Query | Cache & đồng bộ dữ liệu server (recipes, categories...) |
 | React Hook Form + Zod | Quản lý form + validate |

@@ -166,7 +166,7 @@ public static class RecipesEndpoints
             });
 
         // -----------------------------------------------------------
-        // GET /api/v1/recipes/search?q=   (FR-SRCH-001 — Thịnh)
+        // GET /api/v1/recipes/search?q=   (FR-SRCH-001/003 — Thịnh, FR-SRCH-002 — Ý)
         // -----------------------------------------------------------
         // Full-text search tiếng Việt, bỏ dấu. Cache 1 phút, vary theo query string
         // (policy "Search" trong Program.cs — NFR-PERF-003 / mâu thuẫn #4).
@@ -181,20 +181,26 @@ public static class RecipesEndpoints
                 int? minCookTime,
                 int? maxCookTime,
                 int? minServings,
+                [FromQuery(Name = "sort")] string? sort,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
                 var recipes =
                     await sender.Send(
                         new SearchRecipesQuery(q ?? string.Empty, categoryId, difficulty,
-                            minPrepTime, maxPrepTime, minCookTime, maxCookTime, minServings),
+                            minPrepTime, maxPrepTime, minCookTime, maxCookTime, minServings, sort),
                         cancellationToken);
 
                 return recipes.ToOkResponse();
             })
             .WithName("SearchRecipes")
             .WithSummary("Full-text Search Recipes")
-            .WithDescription("FR-SRCH-002: kết hợp danh mục, độ khó, khoảng phút chuẩn bị/nấu và số khẩu phần tối thiểu bằng AND. Biên được tính cả hai đầu; bỏ tham số để không lọc. Giữ thứ tự liên quan và giới hạn 50 kết quả hiện có.")
+            .WithDescription(
+                "FR-SRCH-002: kết hợp danh mục, độ khó, khoảng phút chuẩn bị/nấu và số khẩu phần tối thiểu " +
+                "bằng AND; biên tính cả hai đầu, bỏ tham số để không lọc. FR-SRCH-003: sort theo createdAt, " +
+                "publishedAt, title, prepTime hoặc cookTime, thêm dấu '-' để giảm dần; bỏ trống = độ liên " +
+                "quan (ts_rank). Giới hạn 50 kết quả.")
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .CacheOutput("Search");
 

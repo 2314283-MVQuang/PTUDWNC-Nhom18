@@ -25,7 +25,7 @@ export default async function SearchPage({ searchParams }: {
   ]);
   const recipes = recipeResult.status === "fulfilled" ? recipeResult.value : null;
   const categories = categoryResult.status === "fulfilled" ? categoryResult.value : [];
-  const activeFilters = Object.entries(searchFilterParams(draft)).filter(([key]) => key !== "q").length;
+  const activeFilters = Object.entries(searchFilterParams(draft)).filter(([key]) => key !== "q" && key !== "sort").length;
 
   return <>
     <PageHero title={hasQuery ? `Kết quả cho “${draft.q}”` : "Tìm kiếm công thức"}
@@ -35,7 +35,7 @@ export default async function SearchPage({ searchParams }: {
       <section aria-label="Kết quả tìm kiếm" className="min-w-0 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-100 pb-4">
           <p className="text-sm text-neutral-600">{recipes ? `${recipes.length} công thức hiển thị` : "Khám phá món ngon mỗi ngày"}{activeFilters > 0 && ` · ${activeFilters} điều kiện đang áp dụng`}</p>
-          {activeFilters > 0 && <Link className="text-sm font-medium text-brand-700 underline underline-offset-4" href={searchHref({ ...EMPTY_SEARCH_FILTERS, q: draft.q })}>Xóa bộ lọc đang áp dụng</Link>}
+          {activeFilters > 0 && <Link className="text-sm font-medium text-brand-700 underline underline-offset-4" href={searchHref({ ...EMPTY_SEARCH_FILTERS, q: draft.q, sort: draft.sort })}>Xóa bộ lọc đang áp dụng</Link>}
         </div>
         {issues.length > 0 ? <ErrorState title="Bộ lọc chưa hợp lệ" message={issues.join(" ")} />
           : !hasQuery ? <EmptyState title="Bạn muốn nấu món gì?" message="Nhập ít nhất 2 ký tự trong bộ lọc hoặc thanh tìm kiếm để bắt đầu. Bạn có thể thêm danh mục, độ khó, khoảng thời gian và số khẩu phần." />

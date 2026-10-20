@@ -13,10 +13,10 @@ const client = await loadTs("../lib/api-client.ts");
 const empty = filters.EMPTY_SEARCH_FILTERS;
 
 test("URL round-trip giữ tiếng Việt, dấu &, số 0 và bỏ tham số ngoài phạm vi", () => {
-  const draft = { ...empty, q: "phở & bò", difficulty: "Easy", minCookTime: "0", maxPrepTime: "20", minServings: "4" };
+  const draft = { ...empty, q: "phở & bò", difficulty: "Easy", minCookTime: "0", maxPrepTime: "20", minServings: "4", sort: "-createdAt" };
   const href = filters.searchHref(draft);
   const params = Object.fromEntries(new URL(href, "http://localhost").searchParams);
-  assert.deepEqual(filters.readSearchFilters({ ...params, page: "999", sort: "title" }), draft);
+  assert.deepEqual(filters.readSearchFilters({ ...params, page: "999", unknown: "x" }), draft);
   assert.equal(params.minCookTime, "0");
   assert.equal(params.categoryId, undefined);
 });
@@ -28,8 +28,9 @@ test("chặn khoảng ngược, số âm/lẻ/quá lớn và danh mục/độ kh
     { minPrepTime: "1e3" }, { difficulty: "Unknown" }, { categoryId: "invalid" },
     { categoryId: "00000000-0000-0000-0000-000000000000" },
     { minServings: "0" }, { minServings: "-2" }, { minServings: "2.5" },
+    { sort: "authorId" }, { sort: "-password" },
   ]) assert.ok(filters.validateSearchFilters({ ...empty, ...patch }).length > 0, JSON.stringify(patch));
-  assert.deepEqual(filters.validateSearchFilters({ ...empty, minCookTime: "0", maxCookTime: "0", minPrepTime: "20", maxPrepTime: "20", minServings: "1" }), []);
+  assert.deepEqual(filters.validateSearchFilters({ ...empty, minCookTime: "0", maxCookTime: "0", minPrepTime: "20", maxPrepTime: "20", minServings: "1", sort: "-cookTime" }), []);
 });
 
 test("store giữ draft độc lập, reset giữ từ khóa, sync phục hồi URL Back/Forward", () => {

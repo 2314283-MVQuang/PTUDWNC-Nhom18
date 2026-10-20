@@ -497,7 +497,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 ---
 
-### Buổi 7 (Tuần 7) — Module Tệp tin + Job nền còn lại + nối Frontend Auth ⬜ Chưa làm (cả nhóm)
+### Buổi 7 (Tuần 7) — Module Tệp tin + Job nền còn lại + nối Frontend Auth ✅ Quang xong · còn lại chưa làm
 
 > ⚠️ **Đã cập nhật:** FR-FILE-001 (upload MinIO) Tiến đã làm ở Tuần 3–4 nên **không giao lại**; Tiến nhận FR-JOB-002 (chưa ai làm). Quang nhận việc nối frontend đăng ký/đăng nhập với backend thật.
 
@@ -507,7 +507,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 1. Bốn việc độc lập nhau, làm song song; Ý và Tiến dùng lại Hangfire đã cài từ Buổi 5.
 2. Cuối buổi: cả nhóm rà lại 34 FR theo cột "Trạng thái", lập danh sách còn thiếu để xử lý đầu Buổi 8.
 
-**Mai Văn Quang · FR-AUTH-001/002 (frontend) Nối đăng ký/đăng nhập với backend** — ⬜ Chưa làm
+**Mai Văn Quang · FR-AUTH-001/002 (frontend) Nối đăng ký/đăng nhập với backend** — ✅ Đã hoàn thành
 
 - **Cách làm:** frontend hiện kiểm tra danh sách user cục bộ (`frontend/data/users.json`, `lib/local-users.ts`) trước rồi mới gọi backend, và cấp token giả `local-token-...`; chuyển `auth.ts` và form đăng ký sang gọi thẳng `POST /auth/register`, `POST /auth/login`; form đăng ký nhập email và mật khẩu theo đúng policy của backend.
 
@@ -516,6 +516,8 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 - **Xong khi:** tài khoản đăng ký trên giao diện xuất hiện trong bảng `AspNetUsers`; đăng nhập xong gọi được API cần quyền bằng JWT thật.
 
 - **Commit:** `feat(auth): wire frontend register/login to backend API`
+
+- **Đã làm:** `lib/backend-auth.ts` gom mọi lời gọi `/auth` (đăng nhập `POST /auth/login` dùng luôn `user` trong response — 1 request thay vì 2, đỡ tốn rate limit 10/phút; đăng ký `POST /auth/register` lưu vào PostgreSQL; đăng xuất `POST /auth/logout` thu hồi refresh token qua `events.signOut` trong `auth.ts`). `lib/auth-errors.ts` phân biệt lỗi 401 sai mật khẩu / 423 tài khoản khoá / 429 quá giới hạn / backend không chạy để form hiện đúng nguyên nhân. Danh sách user cục bộ và token `local-token-...` chỉ còn chạy khi bật `AUTH_DEMO_ENABLED=true` ở Development. Kiểm thử: `npm test` (13 test, `tests/backend-auth.test.mjs` giả lập backend bằng fetch giả).
 
 **Chung Thiện Ý · FR-JOB-001 Welcome Email + bổ sung health check MinIO** — ⬜ Chưa làm
 

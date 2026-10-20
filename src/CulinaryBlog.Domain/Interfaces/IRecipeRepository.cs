@@ -55,11 +55,14 @@ public interface IRecipeRepository : IRepository<Recipe>
     /// FR-SRCH-001: tìm công thức ĐÃ XUẤT BẢN bằng full-text search tiếng Việt (bỏ dấu).
     /// FR-SRCH-002: lọc kết hợp AND theo <paramref name="filters"/>.
     /// FR-SRCH-003: sắp xếp theo <paramref name="sort"/>; null = độ liên quan giảm dần (ts_rank).
-    /// Lọc và sắp xếp đều chạy trong SQL TRƯỚC khi giới hạn số dòng. Từ khóa rỗng trả danh sách rỗng.
+    /// FR-SRCH-004: phân trang offset — trả về trang <paramref name="page"/> và tổng số kết quả
+    /// sau lọc. Lọc, đếm, sắp xếp và OFFSET/LIMIT đều chạy trong SQL. Từ khóa rỗng trả ([], 0).
     /// </summary>
-    Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
+    Task<(IReadOnlyList<Recipe> Items, int TotalCount)> SearchRecipesAsync(
         string keyword,
-        CancellationToken ct = default,
-        RecipeSearchFilters? filters = null,
-        RecipeSearchSort? sort = null);
+        RecipeSearchFilters? filters,
+        RecipeSearchSort? sort,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
 }

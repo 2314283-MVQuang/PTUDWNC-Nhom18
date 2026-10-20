@@ -21,6 +21,18 @@ test("URL round-trip giữ tiếng Việt, dấu &, số 0 và bỏ tham số ng
   assert.equal(params.categoryId, undefined);
 });
 
+test("phân trang: đọc ?page= an toàn và giữ bộ lọc khi chuyển trang", () => {
+  assert.equal(filters.readSearchPage({ page: "3" }), 3);
+  for (const bad of [undefined, "", "0", "-1", "1.5", "abc", "999999999"]) assert.equal(filters.readSearchPage({ page: bad }), 1);
+  assert.equal(filters.readSearchPage({ page: ["2", "5"] }), 2);
+  const draft = { ...empty, q: "phở", difficulty: "Easy", sort: "-cookTime" };
+  const params = new URL(filters.searchHref(draft, 2), "http://localhost").searchParams;
+  assert.equal(params.get("page"), "2");
+  assert.equal(params.get("difficulty"), "Easy");
+  assert.equal(params.get("sort"), "-cookTime");
+  assert.equal(new URL(filters.searchHref(draft, 1), "http://localhost").searchParams.has("page"), false);
+});
+
 test("chặn khoảng ngược, số âm/lẻ/quá lớn và danh mục/độ khó không hợp lệ", () => {
   for (const patch of [
     { minPrepTime: "30", maxPrepTime: "20" }, { minCookTime: "1", maxCookTime: "0" },

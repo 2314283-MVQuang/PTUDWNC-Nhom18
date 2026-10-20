@@ -18,14 +18,14 @@ public class SearchRecipesSortHandlerTests
         public RecipeSearchFilters? Filters { get; private set; }
         public bool Called { get; private set; }
 
-        public Task<IReadOnlyList<Recipe>> SearchRecipesAsync(
-            string keyword, CancellationToken ct = default,
-            RecipeSearchFilters? filters = null, RecipeSearchSort? sort = null)
+        public Task<(IReadOnlyList<Recipe> Items, int TotalCount)> SearchRecipesAsync(
+            string keyword, RecipeSearchFilters? filters, RecipeSearchSort? sort,
+            int page, int pageSize, CancellationToken ct = default)
         {
             Called = true;
             Filters = filters;
             Sort = sort;
-            return Task.FromResult<IReadOnlyList<Recipe>>([]);
+            return Task.FromResult<(IReadOnlyList<Recipe>, int)>(([], 0));
         }
 
         // Các thành viên khác không dùng trong test này.

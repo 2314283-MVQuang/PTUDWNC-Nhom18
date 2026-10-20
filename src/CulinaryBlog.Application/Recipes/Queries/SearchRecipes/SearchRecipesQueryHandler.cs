@@ -1,13 +1,14 @@
+using CulinaryBlog.Application.Common.Models;
+using CulinaryBlog.Application.Features.Recipes.Dtos;
 using CulinaryBlog.Domain.Interfaces;
-using CulinaryBlog.Application.Recipes.Dtos;
 using MediatR;
 
 namespace CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
 
 public class SearchRecipesQueryHandler(IRecipeRepository recipeRepository)
-    : IRequestHandler<SearchRecipesQuery, IEnumerable<RecipeDto>>
+    : IRequestHandler<SearchRecipesQuery, PagedResult<RecipeSummaryDto>>
 {
-    public async Task<IEnumerable<RecipeDto>> Handle(
+    public async Task<PagedResult<RecipeSummaryDto>> Handle(
         SearchRecipesQuery request,
         CancellationToken cancellationToken)
     {
@@ -17,21 +18,15 @@ public class SearchRecipesQueryHandler(IRecipeRepository recipeRepository)
             request.MinPrepTime, request.MaxPrepTime, request.MinCookTime, request.MaxCookTime,
             request.MinServings);
 
-        // Sắp xếp được làm NGAY TRONG SQL (ORDER BY trước LIMIT) — nếu sắp xếp trên danh sách đã cắt
-        // 50 dòng theo độ liên quan thì "-createdAt" sẽ không trả đúng các món mới nhất.
-        var recipes = await recipeRepository.SearchRecipesAsync(
-            request.Keyword, cancellationToken, filters, sort);
+        // Lọc -> đếm tổng -> sắp xếp -> OFFSET/LIMIT đều chạy trong SQL (FR-SRCH-004), nên
+        // totalCount là số kết quả thật sau lọc, không còn giới hạn cứng 50 dòng như trước.
+        var (recipes, totalCount) = await recipeRepository.SearchRecipesAsync(
+            request.Keyword, filters, sort, request.Page, request.PageSize, cancellationToken);
 
-        return recipes.Select(recipe => new RecipeDto(
-            recipe.Id,
-            recipe.Slug,
-            recipe.Title,
-            recipe.Description,
-            recipe.PrepTime,
-            recipe.CookTime,
-            recipe.Servings,
-            recipe.Difficulty,
-            recipe.Status,
-            recipe.PublishedAt));
+        return PagedResult<RecipeSummaryDto>.Create(
+            recipes.Select(recipe => recipe.ToSummaryDto()).ToList(),
+            request.Page,
+            request.PageSize,
+            totalCount);
     }
 }

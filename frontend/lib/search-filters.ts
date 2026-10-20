@@ -60,8 +60,18 @@ export function searchFilterParams(draft: SearchFilterDraft): Record<string, str
     .map(key => [key, draft[key].trim()] as const).filter(([, value]) => value !== ""));
 }
 
-export function searchHref(draft: SearchFilterDraft): string {
-  const query = new URLSearchParams(searchFilterParams(draft)).toString();
+/** FR-SRCH-004: đọc ?page= trên URL; giá trị lạ (0, âm, chữ, số lẻ) quay về trang 1. */
+export function readSearchPage(params: Record<string, string | string[] | undefined>): number {
+  const raw = params.page;
+  const value = (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? "";
+  return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 100000 ? Number(value) : 1;
+}
+
+/** Link tới trang tìm kiếm; `page` > 1 mới thêm vào URL (đổi bộ lọc luôn quay về trang 1). */
+export function searchHref(draft: SearchFilterDraft, page = 1): string {
+  const params = searchFilterParams(draft);
+  if (page > 1) params.page = String(page);
+  const query = new URLSearchParams(params).toString();
   return query ? `/search?${query}` : "/search";
 }
 

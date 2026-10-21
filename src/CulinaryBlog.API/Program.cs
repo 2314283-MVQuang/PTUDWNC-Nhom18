@@ -29,8 +29,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------
 // FR-OBS-002 (Tuần 3): Serilog thay Microsoft.Extensions.Logging mặc định — đọc cấu hình từ
-// section "Serilog" trong appsettings.json (sink Console + Seq, xem docker-compose.yml service
-// "seq"). ReadFrom.Services(services) cho phép Serilog dùng Enricher đăng ký qua DI nếu cần sau.
+// section "Serilog" trong appsettings.json (sink Console + Seq + File rolling theo ngày, xem
+// docker-compose.yml service "seq"). ReadFrom.Services(services) cho phép Serilog dùng Enricher
+// đăng ký qua DI nếu cần sau.
 // ---------------------------------------------------------------------------
 builder.Host.UseSerilog((context, services, configuration) => configuration
     .ReadFrom.Configuration(context.Configuration)

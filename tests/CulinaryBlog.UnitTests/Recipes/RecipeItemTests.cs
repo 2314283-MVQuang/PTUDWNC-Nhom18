@@ -41,6 +41,27 @@ public class TestCacheInvalidator : ICacheInvalidator
     }
 }
 
+public class TestRecipeFileStorageService : IFileStorageService
+{
+    public string BucketName => "recipe-images";
+    public List<string> DeletedObjects { get; } = [];
+
+    public Task<string> GeneratePresignedUploadUrlAsync(
+        string key,
+        string contentType,
+        int expirySeconds = 900,
+        CancellationToken ct = default) =>
+        Task.FromResult($"http://minio:9000/{BucketName}/{key}");
+
+    public string GetPublicUrl(string key) => $"http://minio:9000/{BucketName}/{key}";
+
+    public Task DeleteAsync(string objectName, CancellationToken cancellationToken = default)
+    {
+        DeletedObjects.Add(objectName);
+        return Task.CompletedTask;
+    }
+}
+
 public class RecipeItemTests
 {
     private CulinaryBlogDbContext CreateDbContext()
@@ -350,22 +371,43 @@ public class RecipeItemTests
         var recipe = await SeedRecipeAsync(db);
         var currentUser = new TestCurrentUser { UserId = recipe.AuthorId };
 
-        var img1 = new RecipeImage { Id = Guid.NewGuid(), RecipeId = recipe.Id, OriginalUrl = "url1", IsPrimary = true, OrderIndex = 0 };
-        var img2 = new RecipeImage { Id = Guid.NewGuid(), RecipeId = recipe.Id, OriginalUrl = "url2", IsPrimary = false, OrderIndex = 1 };
+        var img1 = new RecipeImage
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipe.Id,
+            OriginalUrl = $"http://minio:9000/recipe-images/recipes/{recipe.Id}/original.jpg",
+            MediumUrl = $"http://minio:9000/recipe-images/recipes/{recipe.Id}/medium.jpg",
+            ThumbnailUrl = $"http://minio:9000/recipe-images/recipes/{recipe.Id}/thumbnail.jpg",
+            IsPrimary = true,
+            OrderIndex = 0
+        };
+        var img2 = new RecipeImage
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipe.Id,
+            OriginalUrl = "url2",
+            IsPrimary = false,
+            OrderIndex = 1
+        };
         await db.RecipeImages.AddRangeAsync(img1, img2);
         await db.SaveChangesAsync();
 
+        var storage = new TestRecipeFileStorageService();
         var handler = new DeleteRecipeImageCommandHandler(
             new RepositoryBase<Recipe>(db),
             new RepositoryBase<RecipeImage>(db),
             db,
-            currentUser);
+            currentUser,
+            storage);
 
         await handler.Handle(new DeleteRecipeImageCommand(recipe.Id, img1.Id), CancellationToken.None);
 
         var reloadedImg1 = await db.RecipeImages.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.Id == img1.Id);
         var reloadedImg2 = await db.RecipeImages.FindAsync(img2.Id);
 
+        Assert.Equal(
+            [$"recipes/{recipe.Id}/original.jpg", $"recipes/{recipe.Id}/medium.jpg", $"recipes/{recipe.Id}/thumbnail.jpg"],
+            storage.DeletedObjects);
         Assert.True(reloadedImg1!.IsDeleted);
         Assert.False(reloadedImg1.IsPrimary);
         Assert.True(reloadedImg2!.IsPrimary);

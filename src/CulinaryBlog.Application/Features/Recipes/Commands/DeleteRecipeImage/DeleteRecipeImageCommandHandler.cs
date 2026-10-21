@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
@@ -12,6 +13,7 @@ public class DeleteRecipeImageCommandHandler(
     IRepository<RecipeImage> images,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
+    IFileStorageService fileStorageService,
     ICacheInvalidator? cacheInvalidator = null)
     : IRequestHandler<DeleteRecipeImageCommand>
 {
@@ -36,6 +38,21 @@ public class DeleteRecipeImageCommandHandler(
         if (image is null)
         {
             throw new NotFoundException(nameof(RecipeImage), request.ImageId);
+        }
+
+        var objectNames = new[]
+            {
+                FileStorageObjectNameResolver.FromPublicUrl(image.OriginalUrl, fileStorageService.BucketName),
+                FileStorageObjectNameResolver.FromPublicUrl(image.MediumUrl, fileStorageService.BucketName),
+                FileStorageObjectNameResolver.FromPublicUrl(image.ThumbnailUrl, fileStorageService.BucketName),
+            }
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        foreach (var objectName in objectNames)
+        {
+            await fileStorageService.DeleteAsync(objectName, ct);
         }
 
         bool wasPrimary = image.IsPrimary;

@@ -57,6 +57,32 @@ public class MinioFileStorageService : IFileStorageService
         }
     }
 
+    public async Task DeleteAsync(string objectName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+        {
+            throw new ArgumentException("Tên object cần xóa không được để trống.", nameof(objectName));
+        }
+
+        try
+        {
+            var args = new RemoveObjectArgs()
+                .WithBucket(_options.BucketName)
+                .WithObject(objectName);
+
+            await _minioClient.RemoveObjectAsync(args, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Lỗi khi xóa object '{ObjectName}' khỏi bucket MinIO '{Bucket}'",
+                objectName,
+                _options.BucketName);
+            throw;
+        }
+    }
+
     public string GetPublicUrl(string key)
     {
         var baseEndpoint = !string.IsNullOrWhiteSpace(_options.PublicEndpoint)

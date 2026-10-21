@@ -5,19 +5,19 @@ import { useRef, useState } from "react";
 import { ImageUp, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { apiErrorMessage } from "@/lib/api-client";
-import { useDeleteImage, useUpdateImage, useUploadImage } from "@/hooks/useRecipeParts";
+import { useDeleteImage, useSetPrimaryImage, useUploadImage } from "@/hooks/useRecipeParts";
+import { ACCEPTED_IMAGE_TYPES, StorageUploadError, validateImageFile } from "@/lib/recipe-images";
 import { resolveMediaUrl } from "@/lib/utils";
 import type { RecipeImage } from "@/types/recipe";
 
-/** Khớp danh sách trong UploadRecipeImageCommandValidator ở backend. */
-const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp,image/avif";
+/** Khớp danh sách loại ảnh backend cho phép khi cấp presigned URL (FR-FILE-001). */
+const ACCEPTED_TYPES = ACCEPTED_IMAGE_TYPES.join(",");
 
 /**
- * FR-RCP-008 — upload, đặt ảnh đại diện, xoá ảnh.
+ * FR-RCP-008 — upload (presigned URL MinIO), đặt ảnh đại diện, xoá ảnh.
  *
- * Backend kiểm magic bytes nên file đổi đuôi sẽ bị từ chối; thông báo lỗi trả về được hiển thị
- * nguyên văn cho người dùng, đừng thay bằng câu chung chung — đó là lúc duy nhất họ biết vì sao
- * một file trông "đúng đuôi .png" lại không lên được.
+ * Thông báo lỗi trả về (sai loại, quá dung lượng, MinIO không phản hồi) được hiển thị nguyên văn
+ * cho người dùng, đừng thay bằng câu chung chung — đó là lúc duy nhất họ biết vì sao ảnh không lên.
  */
 export function ImagesEditor({ recipeId, images }: { recipeId: string; images: RecipeImage[] }) {
   const uploadImage = useUploadImage(recipeId);
@@ -31,10 +31,16 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
     if (!file) return;
 
     setError(null);
+    const invalid = validateImageFile(file);
+    if (invalid) {
+      setError(invalid);
+      event.target.value = "";
+      return;
+    }
     try {
       await uploadImage.mutateAsync({ file });
     } catch (err) {
-      setError(apiErrorMessage(err, "Không upload được ảnh."));
+      setError(err instanceof StorageUploadError ? err.message : apiErrorMessage(err, "Không upload được ảnh."));
     } finally {
       // Xoá giá trị input để chọn lại ĐÚNG file vừa rồi vẫn kích hoạt onChange (trình duyệt bỏ
       // qua sự kiện khi giá trị không đổi) — cần khi người dùng sửa file rồi thử lại.
@@ -80,7 +86,7 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
           Tải ảnh lên
         </Button>
         <p className="mt-1 text-xs text-neutral-500">
-          JPEG, PNG, WebP hoặc AVIF, tối đa 5MB. Ảnh đầu tiên tự động thành ảnh đại diện.
+          JPEG, PNG, WebP hoặc GIF, tối đa 10MB. Ảnh đầu tiên tự động thành ảnh đại diện.
         </p>
       </div>
     </div>
@@ -88,7 +94,7 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
 }
 
 function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }) {
-  const updateImage = useUpdateImage(recipeId);
+  const setPrimary = useSetPrimaryImage(recipeId);
   const deleteImage = useDeleteImage(recipeId);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,7 +103,7 @@ function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }
   async function handleSetPrimary() {
     setError(null);
     try {
-      await updateImage.mutateAsync({ imageId: image.id, input: { isPrimary: true } });
+      await setPrimary.mutateAsync(image.id);
     } catch (err) {
       setError(apiErrorMessage(err, "Không đặt được ảnh đại diện."));
     }
@@ -142,7 +148,7 @@ function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }
         ) : (
           <button
             type="button"
-            disabled={updateImage.isPending}
+            disabled={setPrimary.isPending}
             className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-50"
             onClick={handleSetPrimary}
           >

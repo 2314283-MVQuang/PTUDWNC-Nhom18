@@ -51,3 +51,52 @@ export const updateProfileSchema = z.object({
   avatarUrl: z.string().url("URL ảnh không hợp lệ").optional().or(z.literal("")),
 });
 export type UpdateProfileFormValues = z.infer<typeof updateProfileSchema>;
+
+// ---------------------------------------------------------------------------
+// Auth nâng cao (Tuần 3 backend, Tuần 8 frontend — Quang): quên/đặt lại/đổi mật khẩu, xác nhận
+// email. Chính sách mật khẩu khớp RegisterCommandValidator/ChangePassword/ResetPassword ở backend.
+// ---------------------------------------------------------------------------
+
+const strongPassword = z.string().min(8, "Mật khẩu cần ít nhất 8 ký tự")
+  .regex(/[A-Z]/, "Mật khẩu cần chữ hoa").regex(/[0-9]/, "Mật khẩu cần chữ số")
+  .regex(/[!@#$%^&*(),.?":{}|<>_\-+=\[\]/\;'~`]/, "Mật khẩu cần ký tự đặc biệt");
+
+/**
+ * Token Identity là base64 nên có thể chứa "+"; khi dán từ link không mã hoá, "+" trong query
+ * string bị đọc thành dấu cách — đổi lại cho đúng trước khi gửi.
+ */
+export function normalizeAuthToken(token: string): string {
+  return token.trim().replace(/ /g, "+");
+}
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Email không hợp lệ"),
+});
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  email: z.string().trim().email("Email không hợp lệ"),
+  token: z.string().trim().min(1, "Vui lòng nhập mã đặt lại mật khẩu"),
+  newPassword: strongPassword,
+  confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp", path: ["confirmPassword"],
+});
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
+  newPassword: strongPassword,
+  confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp", path: ["confirmPassword"],
+}).refine(data => data.newPassword !== data.currentPassword, {
+  message: "Mật khẩu mới phải khác mật khẩu hiện tại", path: ["newPassword"],
+});
+export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
+
+export const confirmEmailSchema = z.object({
+  userId: z.string().trim().min(1, "Vui lòng nhập mã người dùng"),
+  token: z.string().trim().min(1, "Vui lòng nhập mã xác nhận"),
+});
+export type ConfirmEmailFormValues = z.infer<typeof confirmEmailSchema>;

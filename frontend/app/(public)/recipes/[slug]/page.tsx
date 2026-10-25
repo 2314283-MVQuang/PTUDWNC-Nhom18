@@ -7,7 +7,7 @@ import { DifficultyBadge } from "@/components/recipe/DifficultyBadge";
 import { IngredientList } from "@/components/recipe/IngredientList";
 import { StepList } from "@/components/recipe/StepList";
 import { NutritionTable } from "@/components/recipe/NutritionTable";
-import { formatMinutes, resolveMediaUrl } from "@/lib/utils";
+import { cn, formatDecimal, formatMinutes, resolveMediaUrl } from "@/lib/utils";
 import type { RecipeDetail } from "@/types/recipe";
 import type { Category } from "@/types/category";
 import type { Metadata } from "next";
@@ -93,23 +93,23 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
     cookTime: `PT${recipe.cookTime}M`,
     totalTime: `PT${totalTime}M`,
     recipeYield: `${recipe.servings} khẩu phần`,
-    recipeIngredient: recipe.ingredients.map((i) => `${i.quantity ?? ""} ${i.unit ?? ""} ${i.name}`.trim()),
+    recipeIngredient: recipe.ingredients.map((i) => `${formatDecimal(i.quantity)} ${i.unit ?? ""} ${i.name}`.trim()),
     recipeInstructions: recipe.steps.map((s) => ({
       "@type": "HowToStep",
       name: s.title,
       text: s.description,
     })),
     ...(recipe.nutrition.calories != null && {
-      nutrition: { "@type": "NutritionInformation", calories: `${recipe.nutrition.calories} kcal` },
+      nutrition: { "@type": "NutritionInformation", calories: `${formatDecimal(recipe.nutrition.calories)} kcal` },
     }),
   };
 
   /** Các chỉ số hiện thành dải thẻ nhỏ ngay dưới ảnh bìa. */
   const metaTiles = [
-    { icon: Timer, label: "Sơ chế", value: formatMinutes(recipe.prepTime) },
-    { icon: Flame, label: "Nấu", value: formatMinutes(recipe.cookTime) },
-    { icon: Clock, label: "Tổng cộng", value: formatMinutes(totalTime) },
-    { icon: Users, label: "Khẩu phần", value: `${recipe.servings} phần` },
+    { icon: Timer, label: "Sơ chế", description: "Thời gian sơ chế", value: formatMinutes(recipe.prepTime) },
+    { icon: Flame, label: "Nấu", description: "Thời gian nấu", value: formatMinutes(recipe.cookTime) },
+    { icon: Clock, label: "Tổng cộng", description: "Tổng thời gian", value: formatMinutes(totalTime) },
+    { icon: Users, label: "Khẩu phần", description: "Khẩu phần ăn", value: `${recipe.servings} phần` },
   ];
 
   return (
@@ -191,20 +191,43 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
       </header>
 
       {/* ---------- Dải thẻ chỉ số, nhô lên đè mép ảnh bìa ---------- */}
-      <div className="container-page -mt-8 sm:-mt-10">
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card-lg bg-brand-100 shadow-lift lg:grid-cols-4">
-          {metaTiles.map(({ icon: Icon, label, value }) => (
+      <div className="container-page relative z-20 -mt-8 sm:-mt-10">
+        <div className="grid grid-cols-2 gap-px rounded-card-lg bg-brand-100 p-px shadow-lift lg:grid-cols-4">
+          {metaTiles.map(({ icon: Icon, label, description, value }, idx) => (
             <div
               key={label}
-              className="group flex items-center gap-3 bg-white px-5 py-5 transition-colors duration-300 hover:bg-brand-50"
+              className={cn(
+                "group relative flex items-center gap-3.5 bg-white px-5 py-5 transition-all duration-300 hover:bg-brand-50/80",
+                idx === 0 && "rounded-tl-card-lg lg:rounded-l-card-lg lg:rounded-tr-none",
+                idx === 1 && "rounded-tr-card-lg lg:rounded-none",
+                idx === 2 && "rounded-bl-card-lg lg:rounded-none",
+                idx === 3 && "rounded-br-card-lg lg:rounded-r-card-lg lg:rounded-bl-none"
+              )}
+              title={`${label}: ${value} (${description})`}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-all duration-300 ease-springy group-hover:scale-110 group-hover:bg-brand-gradient group-hover:text-white">
-                <Icon className="h-5 w-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-xs text-neutral-500">{label}</span>
-                <span className="block truncate font-semibold text-neutral-900">{value}</span>
-              </span>
+              <div className="group/icon relative flex shrink-0 items-center justify-center">
+                <span
+                  className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-all duration-300 ease-springy group-hover/icon:scale-110 group-hover/icon:bg-brand-gradient group-hover/icon:text-white group-hover/icon:shadow-soft"
+                  aria-label={label}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                {/* Tooltip nổi bật khi di chuột vào biểu tượng */}
+                <div className="pointer-events-none absolute -top-10 left-1/2 z-30 -translate-x-1/2 opacity-0 transition-all duration-200 ease-springy group-hover/icon:-top-12 group-hover/icon:opacity-100">
+                  <div className="relative rounded-lg bg-neutral-900 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-white shadow-xl">
+                    <span>{label}</span>
+                    <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-neutral-900" />
+                  </div>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <span className="block text-xs font-medium text-neutral-500 transition-colors group-hover:text-brand-700">
+                  {label}
+                </span>
+                <span className="block truncate text-base font-bold text-neutral-900 sm:text-lg">
+                  {value}
+                </span>
+              </div>
             </div>
           ))}
         </div>

@@ -90,5 +90,26 @@ public static class RoleSeeder
                 await userManager.AddToRoleAsync(user, role);
             }
         }
+
+        // Tạo sẵn tài khoản dev cho Tien để test ngay từ frontend
+        var devEmail = "tien.test@culinaryblog.local";
+        var devUser = await userManager.FindByEmailAsync(devEmail);
+        if (devUser is null)
+        {
+            devUser = new ApplicationUser
+            {
+                UserName = devEmail,
+                Email = devEmail,
+                DisplayName = "Ho Quoc Tien",
+                EmailConfirmed = true,
+            };
+            var createDev = await userManager.CreateAsync(devUser, "Password123@");
+            if (createDev.Succeeded)
+            {
+                await userManager.AddToRoleAsync(devUser, "Author");
+                await userManager.AddToRoleAsync(devUser, "Admin");
+                logger.LogInformation("RoleSeeder: đã tạo tài khoản dev {Email}.", devEmail);
+            }
+        }
     }
 }

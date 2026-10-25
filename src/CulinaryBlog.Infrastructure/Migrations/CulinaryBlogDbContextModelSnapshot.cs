@@ -189,7 +189,6 @@ namespace CulinaryBlog.Infrastructure.Migrations
                         .HasColumnType("smallint");
 
                     b.Property<string>("Instructions")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")

@@ -13,7 +13,8 @@ public class AddRecipeImageCommandHandler(
     IRepository<RecipeImage> images,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    ICacheInvalidator? cacheInvalidator = null)
+    ICacheInvalidator? cacheInvalidator = null,
+    IThumbnailJobScheduler? thumbnailJobScheduler = null)
     : IRequestHandler<AddRecipeImageCommand, RecipeImageItemDto>
 {
     public async Task<RecipeImageItemDto> Handle(AddRecipeImageCommand request, CancellationToken ct)
@@ -70,6 +71,9 @@ public class AddRecipeImageCommandHandler(
 
         await images.AddAsync(newImage, ct);
         await unitOfWork.SaveChangesAsync(ct);
+
+        // FR-JOB-002: Enqueue background job sinh Medium và Thumbnail qua Hangfire
+        thumbnailJobScheduler?.EnqueueThumbnailGeneration(newImage.Id);
 
         if (cacheInvalidator is not null)
         {

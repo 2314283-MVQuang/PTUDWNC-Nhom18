@@ -20,7 +20,7 @@ public static class DependencyInjection
     {
         // --- Database (CONS-006: PostgreSQL duy nhất, EF Core Code-First) ---
         services.AddDbContext<CulinaryBlogDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
 
@@ -122,6 +122,11 @@ public static class DependencyInjection
         services.AddTransient<GenerateSitemapJob>();
         // FR-RCP-007 / FR-JOB-004 (Thịnh): xoá hẳn công thức đã xoá mềm quá 30 ngày.
         services.AddTransient<PurgeDeletedRecipesJob>();
+
+        // --- FR-JOB-002 (Tuần 7 — Tiến): Sinh Thumbnail & Background Job ---
+        services.AddSingleton<IImageProcessor, ImageSharpProcessor>();
+        services.AddScoped<IThumbnailJobScheduler, ThumbnailJobScheduler>();
+        services.AddTransient<GenerateThumbnailJob>();
 
         return services;
     }

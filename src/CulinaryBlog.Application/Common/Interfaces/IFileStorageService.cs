@@ -11,6 +11,16 @@ public interface IFileStorageService
     Task<string> GeneratePresignedUploadUrlAsync(string key, string contentType, int expirySeconds = 900, CancellationToken ct = default);
 
     /// <summary>
+    /// Tải dữ liệu tệp tin từ kho lưu trữ MinIO theo storage key.
+    /// </summary>
+    Task<Stream> GetFileStreamAsync(string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Tải tệp tin trực tiếp lên kho lưu trữ MinIO theo storage key.
+    /// </summary>
+    Task<string> UploadFileAsync(string key, Stream content, string contentType, CancellationToken ct = default);
+
+    /// <summary>
     /// Lấy đường dẫn truy cập công khai của tệp tin.
     /// </summary>
     string GetPublicUrl(string key);

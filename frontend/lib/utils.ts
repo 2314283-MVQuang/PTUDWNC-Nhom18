@@ -59,3 +59,14 @@ export function resolveMediaUrl(url: string | null | undefined): string | null {
   if (/^https?:\/\//i.test(url)) return url;
   return `${API_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
 }
+
+/**
+ * Làm tròn số đến 1 chữ số thập phân (ví dụ: 1.4, 494.6).
+ * Bỏ .0 nếu là số nguyên (ví dụ: 2 thay vì 2.0).
+ */
+export function formatDecimal(val: number | string | null | undefined): string {
+  if (val === null || val === undefined || val === "") return "";
+  const num = typeof val === "number" ? val : parseFloat(val);
+  if (isNaN(num)) return "";
+  return (Math.round(num * 10) / 10).toString();
+}

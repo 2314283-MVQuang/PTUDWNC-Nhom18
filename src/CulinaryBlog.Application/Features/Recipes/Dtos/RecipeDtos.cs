@@ -124,12 +124,12 @@ public static class RecipeDtoMapping
             recipe.PublishedAt,
 
             new RecipeNutritionDto(
-                recipe.Nutrition.Calories,
-                recipe.Nutrition.Protein,
-                recipe.Nutrition.Carbohydrates,
-                recipe.Nutrition.Fat,
-                recipe.Nutrition.Fiber,
-                recipe.Nutrition.Sodium),
+                recipe.Nutrition.Calories.HasValue ? Math.Round(recipe.Nutrition.Calories.Value, 1) : null,
+                recipe.Nutrition.Protein.HasValue ? Math.Round(recipe.Nutrition.Protein.Value, 1) : null,
+                recipe.Nutrition.Carbohydrates.HasValue ? Math.Round(recipe.Nutrition.Carbohydrates.Value, 1) : null,
+                recipe.Nutrition.Fat.HasValue ? Math.Round(recipe.Nutrition.Fat.Value, 1) : null,
+                recipe.Nutrition.Fiber.HasValue ? Math.Round(recipe.Nutrition.Fiber.Value, 1) : null,
+                recipe.Nutrition.Sodium.HasValue ? Math.Round(recipe.Nutrition.Sodium.Value, 1) : null),
 
             recipe.Steps
                 .OrderBy(x => x.StepNumber)
@@ -147,7 +147,7 @@ public static class RecipeDtoMapping
                 .Select(x => new RecipeIngredientDto(
                     x.Id,
                     x.Name,
-                    x.Quantity,
+                    x.Quantity.HasValue ? Math.Round(x.Quantity.Value, 1) : null,
                     x.Unit,
                     x.Notes,
                     x.OrderIndex))

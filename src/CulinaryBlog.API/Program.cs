@@ -56,15 +56,36 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // EvictByTagAsync("categories"|"recipes"|"search", ct) trong Command Handler tương ứng (tag đặt
 // sẵn trong policy dưới đây).
 // ---------------------------------------------------------------------------
-var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
-    ?? throw new InvalidOperationException(
-        "Thiếu cấu hình Redis:ConnectionString (xem appsettings.json / docker-compose.yml service \"redis\").");
-
-builder.Services.AddStackExchangeRedisOutputCache(options =>
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
+var canConnectRedis = false;
+if (!string.IsNullOrEmpty(redisConnectionString))
 {
-    options.Configuration = redisConnectionString;
-    options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "culinaryblog:";
-});
+    try
+    {
+        using var tcpClient = new System.Net.Sockets.TcpClient();
+        var parts = redisConnectionString.Split(',')[0].Split(':');
+        var host = parts[0];
+        var port = parts.Length > 1 && int.TryParse(parts[1], out var p) ? p : 6379;
+        var connectTask = tcpClient.ConnectAsync(host, port);
+        if (connectTask.Wait(TimeSpan.FromMilliseconds(400)) && tcpClient.Connected)
+        {
+            canConnectRedis = true;
+        }
+    }
+    catch
+    {
+        canConnectRedis = false;
+    }
+}
+
+if (canConnectRedis)
+{
+    builder.Services.AddStackExchangeRedisOutputCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "culinaryblog:";
+    });
+}
 
 // FR-CAT-003/004 (Tiến): Handler ở Application layer xoá cache theo tag qua interface này
 // (cài đặt bằng IOutputCacheStore.EvictByTagAsync — mâu thuẫn #3/#4: evict tag khi Create/Update).
@@ -194,30 +215,9 @@ var app = builder.Build();
 try
 {
     using var roleSeedScope = app.Services.CreateScope();
-    // FR-FILE-001 (Tiến): bảng metadata file upload. Database của nhóm có máy tạo bằng script SQL,
-    // có máy tạo bằng migration, nên tạo bảng bằng lệnh idempotent (IF NOT EXISTS) lúc khởi động để
-    // máy nào cũng chạy được module Files. Khi nhóm chốt dùng EF Migrations thì thay bằng
-    // "dotnet ef migrations add AddUploadedFiles" rồi xoá khối này.
     var filesDb = roleSeedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-    await filesDb.Database.ExecuteSqlRawAsync("""
-        CREATE TABLE IF NOT EXISTS "UploadedFiles" (
-            "Id" uuid NOT NULL,
-            "FileName" character varying(255) NOT NULL,
-            "ContentType" character varying(100) NOT NULL,
-            "Size" bigint NOT NULL,
-            "StorageKey" character varying(500) NOT NULL,
-            "Url" character varying(1000) NOT NULL,
-            "BucketName" character varying(100) NOT NULL,
-            "UploadedBy" character varying(256) NULL,
-            "CreatedAt" timestamp with time zone NOT NULL,
-            "UpdatedAt" timestamp with time zone NULL,
-            "IsDeleted" boolean NOT NULL DEFAULT FALSE,
-            "DeletedAt" timestamp with time zone NULL,
-            "RowVersion" bytea NOT NULL DEFAULT '\x'::bytea,
-            CONSTRAINT "PK_UploadedFiles" PRIMARY KEY ("Id")
-        );
-        """);
-
+    if (filesDb.Database.IsRelational())
+    {
     // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job purge
     // 30 ngày). db/init/02-schema.sql chỉ chạy khi tạo database MỚI, nên database đã có sẵn trên máy
     // các thành viên phải được thêm cột ở đây — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
@@ -229,6 +229,7 @@ try
         ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
         ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
         """);
+    }
 
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
@@ -256,12 +257,12 @@ if (app.Environment.IsDevelopment())
     try
     {
         using var seedScope = app.Services.CreateScope();
-        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
-
         // Tài khoản Admin THẬT trong DB (chỉ Development) để test API cần quyền Admin.
         var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         await RoleSeeder.SeedDevAdminAsync(userManager, app.Logger);
+
+        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
+        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
     }
     catch (Exception ex)
     {

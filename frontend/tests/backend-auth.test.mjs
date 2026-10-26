@@ -14,7 +14,8 @@ const cache = new Map();
 async function loadTs(relativePath) {
   if (cache.has(relativePath)) return cache.get(relativePath);
   const source = await readFile(new URL(relativePath, import.meta.url), "utf8");
-  let code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+  // target ES2022: TypeScript 5.x mặc định ES5 làm `class ApiError extends Error` mất instanceof.
+  let code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
   for (const [, dep] of code.matchAll(/from "@\/lib\/([\w-]+)"/g)) {
     const url = (await loadTs(`../lib/${dep}.ts`)).url;
     code = code.replaceAll(`from "@/lib/${dep}"`, `from "${url}"`);

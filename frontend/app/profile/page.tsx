@@ -1,6 +1,7 @@
 "use client";
 
 import { ProfileForm } from "@/components/forms/ProfileForm";
+import { ChangePasswordForm } from "@/components/forms/AccountForms";
 import { ErrorBlock, LoadingBlock } from "@/components/ui/Spinner";
 import { useMyProfile } from "@/hooks/useProfile";
 
@@ -16,6 +17,13 @@ export default function ProfilePage() {
         {isLoading && <LoadingBlock />}
         {isError && <ErrorBlock message="Không tải được hồ sơ." onRetry={() => refetch()} />}
         {profile && <ProfileForm user={profile} />}
+
+        {profile && (
+          <section aria-labelledby="change-password" className="mt-10 border-t border-neutral-200 pt-8">
+            <h2 id="change-password" className="mb-4 text-lg font-semibold text-neutral-900">Đổi mật khẩu</h2>
+            <ChangePasswordForm />
+          </section>
+        )}
       </div>
     </div>
   );

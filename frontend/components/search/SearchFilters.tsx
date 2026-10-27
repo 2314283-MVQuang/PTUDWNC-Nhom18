@@ -6,7 +6,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { SearchFilterProvider, useSearchFilterStore } from "@/stores/search-filter-store";
-import { searchHref, validateSearchFilters } from "@/lib/search-filters";
+import { EMPTY_SEARCH_FILTERS, searchHref, validateSearchFilters } from "@/lib/search-filters";
 import { DIFFICULTY_LABEL } from "@/lib/utils";
 import type { SearchFilterDraft } from "@/types/search";
 import type { Category } from "@/types/category";
@@ -67,6 +67,9 @@ function FilterForm({ categories, categoriesUnavailable, onApplied }: {
         </label>)}
       </div>
     </fieldset>)}
+    <label className="block text-sm font-medium" htmlFor={`${id}-minServings`}>Khẩu phần tối thiểu
+      <input id={`${id}-minServings`} name="minServings" type="number" min="1" max="2147483647" step="1" value={draft.minServings} onChange={e => update("minServings", e.target.value)} placeholder="Không giới hạn" className={inputClass} />
+    </label>
     <p className="text-xs leading-relaxed text-neutral-500">Các điều kiện được áp dụng đồng thời. Để trống thời gian nếu không muốn giới hạn; 0 phút nấu phù hợp món không cần nấu.</p>
     {errors.length > 0 && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{errors.map(error => <p key={error}>{error}</p>)}</div>}
     <div className="flex flex-wrap gap-2">
@@ -74,7 +77,7 @@ function FilterForm({ categories, categoriesUnavailable, onApplied }: {
       <Button type="button" variant="outline" disabled={pending} onClick={() => {
         dispatch({ type: "reset" });
         setErrors([]);
-        navigate({ q: draft.q, categoryId: "", difficulty: "", minPrepTime: "", maxPrepTime: "", minCookTime: "", maxCookTime: "" });
+        navigate({ ...EMPTY_SEARCH_FILTERS, q: draft.q });
       }}>Xóa bộ lọc</Button>
     </div>
   </form>;

@@ -1,8 +1,8 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { apiFetch } from "@/lib/api-client";
-import type { AuthTokenResponse, UserProfile } from "@/types/user";
+import { AUTH_ERROR, type AuthErrorCode } from "@/lib/auth-errors";
+import { BackendAuthError, loginWithBackend, revokeBackendSession } from "@/lib/backend-auth";
 
 /**
  * Cấu hình Auth.js v5 (mục 6.1, 6.3: đăng nhập email/password + Google OAuth).
@@ -18,28 +18,34 @@ import { findLocalUser } from "@/lib/local-users";
 import { authConfig } from "@/auth.config";
 import { isDemoAuthEnabled, isLocalAccessToken } from "@/lib/auth-mode";
 
+/** Auth.js chuyển `code` của lỗi này xuống client: `signIn(...)` trả `{ error, code }`. */
+class BackendCredentialsSignin extends CredentialsSignin {
+  constructor(code: AuthErrorCode) {
+    super();
+    this.code = code;
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   events: {
+    // Đăng xuất (Tuần 7): thu hồi refresh token ở backend (POST /auth/logout) — không để token cũ
+    // còn dùng được 7 ngày sau khi người dùng đã bấm "Đăng xuất".
     async signOut(message) {
-      // Refresh token chỉ đọc từ JWT cookie phía server, không đưa ra session trình duyệt.
-      if (!("token" in message) || typeof message.token?.refreshToken !== "string" || typeof message.token.accessToken !== "string"
-        || isLocalAccessToken(message.token.accessToken)) return;
-      try {
-        let { accessToken, refreshToken } = message.token;
-        if (typeof message.token.accessTokenExpires !== "number" || Date.now() >= message.token.accessTokenExpires) {
-          const renewed = await apiFetch<AuthTokenResponse>("/auth/refresh", {
-            method: "POST", body: { refreshToken },
-          });
-          accessToken = renewed.accessToken;
-          refreshToken = renewed.refreshToken;
+      if (!("token" in message) || !message.token) return;
+      
+      const { accessToken, refreshToken } = message.token;
+      
+      if (
+        typeof accessToken === "string" && 
+        typeof refreshToken === "string" && 
+        !isLocalAccessToken(accessToken)
+      ) {
+        try {
+          await revokeBackendSession(accessToken, refreshToken);
+        } catch (error) {
+          console.error("Không thể thu hồi phiên backend khi đăng xuất:", error);
         }
-        await apiFetch<void>("/auth/logout", {
-          method: "POST", token: accessToken, body: { refreshToken },
-        });
-      } catch {
-        // Backend gián đoạn vẫn cho xóa cookie đăng nhập; không ghi token vào log.
-        console.error("Không thể thu hồi phiên backend khi đăng xuất.");
       }
     },
   },
@@ -73,29 +79,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         }
 
-        // 2. Gọi backend .NET (nếu backend đang chạy)
+        // 2. Backend .NET là nguồn xác thực thật (Tuần 7 — FR-AUTH-002): POST /auth/login trả JWT
+        //    + refresh token + hồ sơ user trong CÙNG 1 response. Lỗi được đổi thành mã riêng
+        //    (sai mật khẩu / tài khoản khoá / quá giới hạn / máy chủ không phản hồi) để form hiển
+        //    thị đúng nguyên nhân thay vì luôn báo "sai mật khẩu".
         try {
-          // FR-AUTH-002: POST /auth/login
-          const tokens = await apiFetch<AuthTokenResponse>("/auth/login", {
-            method: "POST",
-            body: { email: identifier, password },
-          });
-          // Lấy hồ sơ user để hiển thị tên/avatar mà không cần gọi thêm lần nữa ở client.
-          const profile = await apiFetch<UserProfile>("/auth/me", { token: tokens.accessToken });
-
-          return {
-            id: profile.id,
-            email: profile.email,
-            name: profile.displayName,
-            image: profile.avatarUrl,
-            roles: profile.roles,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-            accessTokenExpires: Date.now() + tokens.expiresIn * 1000,
-          };
-        } catch {
-          // Khi backend chưa chạy hoặc thông tin đăng nhập sai -> trả null để NextAuth báo lỗi thân thiện
-          return null;
+          return await loginWithBackend(identifier, password);
+        } catch (error) {
+          throw new BackendCredentialsSignin(
+            error instanceof BackendAuthError ? error.code : AUTH_ERROR.backendUnavailable,
+          );
         }
       },
     }),

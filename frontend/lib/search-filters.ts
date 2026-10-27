@@ -1,7 +1,7 @@
 import type { SearchFilterDraft } from "../types/search";
 
 export const EMPTY_SEARCH_FILTERS: SearchFilterDraft = {
-  q: "", categoryId: "", difficulty: "", minPrepTime: "", maxPrepTime: "", minCookTime: "", maxCookTime: "",
+  q: "", categoryId: "", difficulty: "", minPrepTime: "", maxPrepTime: "", minCookTime: "", maxCookTime: "", minServings: "",
 };
 export const SEARCH_FILTER_KEYS = Object.keys(EMPTY_SEARCH_FILTERS) as (keyof SearchFilterDraft)[];
 const TIME_KEYS = ["minPrepTime", "maxPrepTime", "minCookTime", "maxCookTime"] as const;
@@ -27,6 +27,9 @@ export function validateSearchFilters(draft: SearchFilterDraft): string[] {
     if (draft[key] && (!/^\d+$/.test(draft[key]) || Number(draft[key]) > 2147483647))
       errors.push("Thời gian phải là số nguyên từ 0 đến 2147483647 phút.");
   }
+  if (draft.minServings && (!/^\d+$/.test(draft.minServings) || Number(draft.minServings) < 1
+    || Number(draft.minServings) > 2147483647))
+    errors.push("Số khẩu phần tối thiểu phải là số nguyên từ 1 trở lên.");
   for (const [min, max, label] of [
     ["minPrepTime", "maxPrepTime", "chuẩn bị"],
     ["minCookTime", "maxCookTime", "nấu"],

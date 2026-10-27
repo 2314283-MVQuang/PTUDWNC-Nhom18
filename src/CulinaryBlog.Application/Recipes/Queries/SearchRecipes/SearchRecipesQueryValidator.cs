@@ -14,6 +14,8 @@ public sealed class SearchRecipesQueryValidator : AbstractValidator<SearchRecipe
         RuleFor(x => x.MaxPrepTime).GreaterThanOrEqualTo(0);
         RuleFor(x => x.MinCookTime).GreaterThanOrEqualTo(0);
         RuleFor(x => x.MaxCookTime).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.MinServings).GreaterThanOrEqualTo(1)
+            .WithMessage("Số khẩu phần tối thiểu phải từ 1 trở lên.");
         RuleFor(x => x.MaxPrepTime).GreaterThanOrEqualTo(x => x.MinPrepTime)
             .When(x => x.MinPrepTime.HasValue && x.MaxPrepTime.HasValue)
             .WithMessage("Thời gian chuẩn bị tối đa phải lớn hơn hoặc bằng tối thiểu.");

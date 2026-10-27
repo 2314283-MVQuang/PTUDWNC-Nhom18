@@ -23,4 +23,5 @@ export interface SearchFilterDraft {
   maxPrepTime: string;
   minCookTime: string;
   maxCookTime: string;
+  minServings: string;
 }

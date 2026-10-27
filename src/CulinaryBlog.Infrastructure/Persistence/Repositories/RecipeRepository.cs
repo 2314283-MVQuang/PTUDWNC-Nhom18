@@ -104,6 +104,7 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
                   AND (CAST({filters.MaxPrepTime} AS integer) IS NULL OR r."PrepTime" <= CAST({filters.MaxPrepTime} AS integer))
                   AND (CAST({filters.MinCookTime} AS integer) IS NULL OR r."CookTime" >= CAST({filters.MinCookTime} AS integer))
                   AND (CAST({filters.MaxCookTime} AS integer) IS NULL OR r."CookTime" <= CAST({filters.MaxCookTime} AS integer))
+                  AND (CAST({filters.MinServings} AS integer) IS NULL OR r."Servings" >= CAST({filters.MinServings} AS integer))
                   AND r."SearchVector" @@ websearch_to_tsquery('vietnamese', unaccent({normalizedKeyword}))
                 ORDER BY ts_rank(r."SearchVector", websearch_to_tsquery('vietnamese', unaccent({normalizedKeyword}))) DESC
                 LIMIT 50

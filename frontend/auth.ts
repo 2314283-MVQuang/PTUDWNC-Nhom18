@@ -16,10 +16,33 @@ import type { AuthTokenResponse, UserProfile } from "@/types/user";
  */
 import { findLocalUser } from "@/lib/local-users";
 import { authConfig } from "@/auth.config";
-import { isDemoAuthEnabled } from "@/lib/auth-mode";
+import { isDemoAuthEnabled, isLocalAccessToken } from "@/lib/auth-mode";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  events: {
+    async signOut(message) {
+      // Refresh token chỉ đọc từ JWT cookie phía server, không đưa ra session trình duyệt.
+      if (!("token" in message) || typeof message.token?.refreshToken !== "string" || typeof message.token.accessToken !== "string"
+        || isLocalAccessToken(message.token.accessToken)) return;
+      try {
+        let { accessToken, refreshToken } = message.token;
+        if (typeof message.token.accessTokenExpires !== "number" || Date.now() >= message.token.accessTokenExpires) {
+          const renewed = await apiFetch<AuthTokenResponse>("/auth/refresh", {
+            method: "POST", body: { refreshToken },
+          });
+          accessToken = renewed.accessToken;
+          refreshToken = renewed.refreshToken;
+        }
+        await apiFetch<void>("/auth/logout", {
+          method: "POST", token: accessToken, body: { refreshToken },
+        });
+      } catch {
+        // Backend gián đoạn vẫn cho xóa cookie đăng nhập; không ghi token vào log.
+        console.error("Không thể thu hồi phiên backend khi đăng xuất.");
+      }
+    },
+  },
   providers: [
     Credentials({
       credentials: {

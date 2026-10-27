@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { connection } from "next/server";
 import { apiFetch, apiFetchPaged } from "@/lib/api-client";
 import { RecipeGrid } from "@/components/recipe/RecipeGrid";
 import { CategoryGrid } from "@/components/category/CategoryGrid";
@@ -8,11 +8,13 @@ import { FeatureCards } from "@/components/home/FeatureCards";
 import { CtaBanner } from "@/components/home/CtaBanner";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Reveal } from "@/components/ui/Reveal";
+import { CategorySidebar } from "@/components/category/CategorySidebar";
+import { ErrorState } from "@/components/ui/Feedback";
+import { RetryButton } from "@/components/ui/RetryButton";
 import type { Category } from "@/types/category";
 import type { RecipeSummary } from "@/types/recipe";
 
-// Mục 9: "/" — ISR revalidate=3600 (1 giờ). Next.js tự cache HTML và chỉ render lại
-// sau khi hết thời gian này, giúp trang chủ tải cực nhanh mà vẫn không quá cũ.
+// Dựng HTML theo request để không giữ trang lỗi từ lúc build; dữ liệu API cache 1 giờ.
 export const revalidate = 3600;
 
 /**
@@ -22,8 +24,7 @@ export const revalidate = 3600;
  * màn hình đỏ của Next.js thay vì hiển thị UI bình thường kèm thông báo nhẹ nhàng.
  */
 async function getHomeData() {
-  try {
-    const [recipesPage, categories] = await Promise.all([
+    const [recipesResult, categoriesResult] = await Promise.allSettled([
       apiFetchPaged<RecipeSummary>("/recipes", {
         params: { page: 1, pageSize: 8, sort: "-createdAt" },
         next: { revalidate },
@@ -31,47 +32,30 @@ async function getHomeData() {
       apiFetch<Category[]>("/categories", { next: { revalidate } }),
     ]);
     return {
-      recipes: recipesPage.items,
-      totalRecipes: recipesPage.meta.total,
-      categories,
-      backendError: false,
+      recipes: recipesResult.status === "fulfilled" ? recipesResult.value.items : [],
+      totalRecipes: recipesResult.status === "fulfilled" ? recipesResult.value.meta.total : 0,
+      categories: categoriesResult.status === "fulfilled" ? categoriesResult.value : [],
+      recipesUnavailable: recipesResult.status === "rejected",
+      categoriesUnavailable: categoriesResult.status === "rejected",
     };
-  } catch {
-    return {
-      recipes: [] as RecipeSummary[],
-      totalRecipes: 0,
-      categories: [] as Category[],
-      backendError: true,
-    };
-  }
 }
 
 /** Trang chủ: hero + thống kê + công thức nổi bật + danh mục. */
 export default async function HomePage() {
-  const { recipes, totalRecipes, categories, backendError } = await getHomeData();
+  await connection();
+  const { recipes, totalRecipes, categories, recipesUnavailable, categoriesUnavailable } = await getHomeData();
 
   return (
     <div className="flex flex-col gap-16 pb-20 sm:gap-20">
       <HeroSection />
 
-      <StatsBar recipeCount={totalRecipes} categoryCount={categories.length} />
-
-      {backendError && (
-        <div className="container-page">
-          <p className="flex items-start gap-3 rounded-card border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-            <span>
-              Chưa kết nối được tới backend ({process.env.NEXT_PUBLIC_API_BASE_URL}) — kiểm tra API .NET đã
-              chạy chưa. Giao diện vẫn hiển thị bình thường, dữ liệu công thức/danh mục sẽ tự lên khi backend
-              sẵn sàng.
-            </span>
-          </p>
-        </div>
-      )}
+      {!recipesUnavailable && !categoriesUnavailable && <StatsBar recipeCount={totalRecipes} categoryCount={categories.length} />}
 
       <FeatureCards />
 
-      <section className="container-page">
+      <div className="container-page grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <CategorySidebar categories={categories} unavailable={categoriesUnavailable} />
+      <section className="min-w-0">
         <Reveal>
           <SectionHeading
             eyebrow="Mới nhất"
@@ -80,8 +64,10 @@ export default async function HomePage() {
             moreHref="/recipes"
           />
         </Reveal>
-        <RecipeGrid recipes={recipes} />
+        {recipesUnavailable ? <ErrorState message="Chưa tải được công thức mới. Vui lòng thử lại."><RetryButton /></ErrorState>
+          : <RecipeGrid recipes={recipes} />}
       </section>
+      </div>
 
       <section className="container-page">
         <Reveal>
@@ -92,7 +78,8 @@ export default async function HomePage() {
             moreHref="/categories"
           />
         </Reveal>
-        <CategoryGrid categories={categories} />
+        {categoriesUnavailable ? <ErrorState message="Chưa tải được danh mục. Vui lòng thử lại."><RetryButton /></ErrorState>
+          : <CategoryGrid categories={categories} />}
       </section>
 
       <CtaBanner />

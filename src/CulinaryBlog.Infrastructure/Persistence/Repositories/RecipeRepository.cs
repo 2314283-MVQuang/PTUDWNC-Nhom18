@@ -25,6 +25,8 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
         CancellationToken ct = default) =>
         DbSet
             .AsNoTracking()
+            // Tách 3 collection để tránh nhân số dòng Steps × Ingredients × Images.
+            .AsSplitQuery()
             .Include(x => x.Category)
             .Include(x => x.Author)
             .Include(x => x.Steps.OrderBy(x => x.StepNumber))
@@ -37,6 +39,7 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
         CancellationToken ct = default) =>
         DbSet
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(x => x.Category)
             .Include(x => x.Author)
             .Include(x => x.Steps.OrderBy(x => x.StepNumber))

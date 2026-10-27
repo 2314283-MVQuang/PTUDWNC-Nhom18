@@ -46,8 +46,30 @@ export const loginSchema = z.object({
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const updateProfileSchema = z.object({
-  displayName: z.string().min(1, "Vui lòng nhập tên hiển thị"),
-  bio: z.string().max(500, "Giới thiệu tối đa 500 ký tự").optional(),
-  avatarUrl: z.string().url("URL ảnh không hợp lệ").optional().or(z.literal("")),
+  displayName: z.string().trim().min(1, "Vui lòng nhập tên hiển thị").max(100),
+  bio: z.string().trim().max(1000, "Giới thiệu tối đa 1000 ký tự").optional(),
+  avatarUrl: z.string().trim().max(500).refine(value => {
+    if (value === "" || (value.startsWith("/") && !value.startsWith("//"))) return true;
+    try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
+  }, "URL ảnh không hợp lệ").optional(),
 });
 export type UpdateProfileFormValues = z.infer<typeof updateProfileSchema>;
+
+const newPasswordSchema = z.string().min(8, "Mật khẩu cần ít nhất 8 ký tự")
+  .regex(/[A-Z]/, "Mật khẩu cần chữ hoa").regex(/[0-9]/, "Mật khẩu cần chữ số")
+  .refine(value => /[^a-zA-Z0-9]/.test(value), "Mật khẩu cần ký tự đặc biệt");
+export const forgotPasswordSchema = z.object({ email: z.string().trim().email("Email không hợp lệ") });
+export const resetPasswordSchema = forgotPasswordSchema.extend({
+  token: z.string().min(1, "Liên kết đặt lại mật khẩu không hợp lệ"),
+  newPassword: newPasswordSchema,
+  confirmPassword: z.string(),
+}).refine(value => value.newPassword === value.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp", path: ["confirmPassword"],
+});
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
+  newPassword: newPasswordSchema,
+  confirmPassword: z.string(),
+}).refine(value => value.newPassword === value.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp", path: ["confirmPassword"],
+});

@@ -22,10 +22,7 @@ public sealed class GetRecipesQueryHandler(
     {
         IQueryable<Recipe> query = recipeRepository
             .Query()
-            .AsNoTracking()
-            .Include(x => x.Category)
-            .Include(x => x.Author)
-            .Include(x => x.Images);
+            .AsNoTracking();
 
         // Guest:
         // chỉ Published.
@@ -72,18 +69,14 @@ public sealed class GetRecipesQueryHandler(
         var totalCount =
             await query.CountAsync(ct);
 
-        var entities =
+        var items =
             await query
                 .Skip(
                     (request.Page - 1) *
                     request.PageSize)
                 .Take(request.PageSize)
+                .Select(RecipeDtoMapping.SummaryProjection)
                 .ToListAsync(ct);
-
-        var items =
-            entities
-                .Select(x => x.ToSummaryDto())
-                .ToList();
 
         return PagedResult<RecipeSummaryDto>.Create(
             items,

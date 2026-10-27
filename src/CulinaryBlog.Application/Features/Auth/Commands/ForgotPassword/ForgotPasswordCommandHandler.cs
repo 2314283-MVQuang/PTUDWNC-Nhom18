@@ -2,6 +2,7 @@ using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 namespace CulinaryBlog.Application.Features.Auth.Commands.ForgotPassword;
 
@@ -13,7 +14,8 @@ namespace CulinaryBlog.Application.Features.Auth.Commands.ForgotPassword;
 /// </summary>
 public class ForgotPasswordCommandHandler(
     UserManager<ApplicationUser> userManager,
-    IEmailService emailService)
+    IEmailService emailService,
+    ILogger<ForgotPasswordCommandHandler> logger)
     : IRequestHandler<ForgotPasswordCommand>
 {
     public async Task Handle(ForgotPasswordCommand request, CancellationToken ct)
@@ -21,14 +23,22 @@ public class ForgotPasswordCommandHandler(
         var user = await userManager.FindByEmailAsync(request.Email);
 
         // Không throw NotFoundException ở đây — im lặng return coi như đã "gửi email" thành công,
-        // để response giống hệt trường hợp email tồn tại (chống dò email qua thời gian phản hồi
-        // hoặc mã lỗi khác nhau).
+        // để giữ cùng mã phản hồi; không bảo đảm thời gian xử lý giống nhau.
         if (user is null)
         {
             return;
         }
 
         var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-        await emailService.SendPasswordResetEmailAsync(user.Email!, user.DisplayName, resetToken, ct);
+        try
+        {
+            await emailService.SendPasswordResetEmailAsync(user.Email!, user.DisplayName, resetToken, ct);
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // Giữ phản hồi chung kể cả khi SMTP lỗi, tránh tiết lộ email qua mã trạng thái.
+            // Không ghi token/link reset hoặc nội dung thư vào log. Người dùng có thể gửi lại.
+            logger.LogWarning("Password reset email could not be delivered for user {UserId}.", user.Id);
+        }
     }
 }

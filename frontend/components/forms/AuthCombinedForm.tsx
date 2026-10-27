@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -206,6 +207,7 @@ export function AuthCombinedForm({ initialTab = "login", demoEnabled = false, go
           )}
 
           <Input
+            name="loginAccount"
             label={demoEnabled ? "Tài khoản demo hoặc email" : "Email"}
             type="text"
             placeholder="Nhập tên đăng nhập hoặc email"
@@ -214,12 +216,15 @@ export function AuthCombinedForm({ initialTab = "login", demoEnabled = false, go
           />
 
           <Input
+            name="loginPassword"
             label="Mật khẩu"
             type="password"
             placeholder="Nhập mật khẩu"
             value={loginPassword}
             onChange={(e) => setLoginPassword(e.target.value)}
           />
+
+          <Link href="/forgot-password" className="self-end text-sm text-brand-700 underline">Quên mật khẩu?</Link>
 
           <Button type="submit" isLoading={isLoggingIn} className="mt-2 text-base">
             Đăng nhập
@@ -267,6 +272,7 @@ export function AuthCombinedForm({ initialTab = "login", demoEnabled = false, go
 
           <Input
             label="Tên tài khoản"
+            name="account"
             type="text"
             placeholder="Nhập tên tài khoản"
             value={regAccount}
@@ -275,6 +281,7 @@ export function AuthCombinedForm({ initialTab = "login", demoEnabled = false, go
 
           <Input
             label="Email đăng ký"
+            name="registrationEmail"
             type="email"
             placeholder="Nhập địa chỉ email"
             value={regEmail}
@@ -283,6 +290,7 @@ export function AuthCombinedForm({ initialTab = "login", demoEnabled = false, go
 
           <Input
             label="Mật khẩu"
+            name="registrationPassword"
             type="password"
             placeholder="Nhập mật khẩu"
             value={regPassword}
@@ -291,6 +299,7 @@ export function AuthCombinedForm({ initialTab = "login", demoEnabled = false, go
 
           <Input
             label="Xác nhận lại mật khẩu"
+            name="registrationConfirmPassword"
             type="password"
             placeholder="Nhập lại mật khẩu ở trên"
             value={regConfirmPassword}

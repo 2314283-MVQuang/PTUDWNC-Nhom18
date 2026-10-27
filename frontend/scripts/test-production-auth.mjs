@@ -17,6 +17,8 @@ const backend = createServer(async (request, response) => {
   if (request.url === "/api/v1/auth/register" || (request.url === "/api/v1/auth/login" && body.email === profile.email))
     response.end(JSON.stringify({ data: tokens }));
   else if (request.url === "/api/v1/auth/me") response.end(JSON.stringify({ data: profile }));
+  else if (request.url === "/api/v1/auth/logout") { response.statusCode = 204; response.end(); }
+  else if (request.url === "/api/v1/auth/refresh") response.end(JSON.stringify({ data: { ...tokens, accessToken: "rotated-access", refreshToken: "rotated-refresh", expiresIn: 900 } }));
   else { response.statusCode = 401; response.end(JSON.stringify({ type: "UNAUTHORIZED", title: "Unauthorized", status: 401 })); }
 });
 await new Promise(resolve => backend.listen(0, "127.0.0.1", resolve));
@@ -82,12 +84,35 @@ try {
   assert.equal(session.isDemo, false);
   assert.equal(session.refreshToken, undefined);
   assert.deepEqual(session.roles, ["Author"]);
+  profile.displayName = "Tên hồ sơ mới";
+  const updateCsrf = await (await call("/api/auth/csrf")).json();
+  const update = await call("/api/auth/session", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ csrfToken: updateCsrf.csrfToken, data: { user: { name: "Tên giả" }, roles: ["Admin"] } }) });
+  const updated = await update.json();
+  assert.equal(updated.user.name, profile.displayName);
+  assert.deepEqual(updated.roles, ["Author"]);
   const adminPage = await call("/dashboard/categories");
   assert.equal(adminPage.status, 307);
   assert.ok(adminPage.headers.get("location").endsWith("/dashboard"));
+  for (const path of ["/forgot-password", "/reset-password?email=test%2Bauthor%40example.test&token=a%2Bb%2Fc%3D%3D", "/profile/change-password"])
+    assert.equal((await call(path)).status, 200, path);
+  async function logout() {
+    const csrf = await (await call("/api/auth/csrf")).json();
+    await call("/api/auth/signout", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Auth-Return-Redirect": "1" },
+      body: new URLSearchParams({ csrfToken: csrf.csrfToken, callbackUrl: base }) });
+    assert.equal(await (await call("/api/auth/session")).json(), null);
+  }
+  await logout();
+  assert.ok(calls.some(call => call.path === "/api/v1/auth/logout" && call.body.refreshToken === tokens.refreshToken));
+  // Khi cookie chứa access token hết hạn, event phải rotate rồi thu hồi token mới.
+  tokens.expiresIn = 1;
+  await login(profile.email);
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  await logout();
+  assert.ok(calls.some(call => call.path === "/api/v1/auth/logout" && call.body.refreshToken === "rotated-refresh"));
   const after = createHash("sha256").update(await readFile(new URL("../data/users.json", import.meta.url))).digest("hex");
   assert.equal(after, before);
-  console.log("PASS: Production tắt demo dù cờ=true; đăng ký/login đi backend; session không lộ refresh token; route bảo vệ đúng; users.json giữ nguyên.");
+  console.log("PASS: Production tắt demo; đăng ký/login đi backend; cập nhật session lấy hồ sơ thật, không nhận role giả; trang mật khẩu truy cập đúng; logout thu hồi refresh token kể cả khi access token hết hạn; session không lộ refresh token; route bảo vệ đúng; users.json giữ nguyên.");
 } catch (error) {
   console.error(output);
   throw error;

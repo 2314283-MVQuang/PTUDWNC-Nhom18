@@ -1,5 +1,7 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
+using CulinaryBlog.Application.Features.Files.Commands.DeleteFile;
 using CulinaryBlog.Application.Features.Files.Commands.GeneratePresignedUrl;
 using CulinaryBlog.Application.Features.Files.Queries.GetUploadedFileById;
 using CulinaryBlog.Domain.Entities;
@@ -12,6 +14,8 @@ namespace CulinaryBlog.UnitTests.Files;
 
 public class TestFileStorageService : IFileStorageService
 {
+    public List<string> DeletedObjects { get; } = [];
+
     public string BucketName => "test-bucket";
 
     public Task<string> GeneratePresignedUploadUrlAsync(string key, string contentType, int expirySeconds = 900, CancellationToken ct = default)
@@ -22,6 +26,12 @@ public class TestFileStorageService : IFileStorageService
     public string GetPublicUrl(string key)
     {
         return $"https://minio.test.local/{BucketName}/{key}";
+    }
+
+    public Task DeleteAsync(string objectName, CancellationToken cancellationToken = default)
+    {
+        DeletedObjects.Add(objectName);
+        return Task.CompletedTask;
     }
 }
 
@@ -42,6 +52,42 @@ public class FileTests
             .Options;
 
         return new CulinaryBlogDbContext(options);
+    }
+
+    [Fact]
+    public async Task DeleteFile_ShouldDeleteObjectFromStorage()
+    {
+        var storage = new TestFileStorageService();
+        var handler = new DeleteFileCommandHandler(storage);
+
+        await handler.Handle(new DeleteFileCommand("recipes/pho.jpg"), CancellationToken.None);
+
+        Assert.Equal(["recipes/pho.jpg"], storage.DeletedObjects);
+    }
+
+    [Fact]
+    public async Task DeleteFile_ShouldRejectEmptyObjectName()
+    {
+        var handler = new DeleteFileCommandHandler(new TestFileStorageService());
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => handler.Handle(new DeleteFileCommand(" "), CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("http://minio:9000/test-bucket/recipes/pho%20bo.jpg", "recipes/pho bo.jpg")]
+    [InlineData("https://cdn.example.com/assets/test-bucket/uploads/photo.png", "uploads/photo.png")]
+    public void FileStorageObjectNameResolver_ShouldExtractKeyFromBucketUrl(string url, string expectedKey)
+    {
+        Assert.Equal(expectedKey, FileStorageObjectNameResolver.FromPublicUrl(url, "test-bucket"));
+    }
+
+    [Fact]
+    public void FileStorageObjectNameResolver_ShouldIgnoreUrlsFromOtherBuckets()
+    {
+        Assert.Null(FileStorageObjectNameResolver.FromPublicUrl(
+            "http://minio:9000/another-bucket/photo.jpg",
+            "test-bucket"));
     }
 
     [Fact]

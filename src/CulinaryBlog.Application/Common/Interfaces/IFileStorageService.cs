@@ -11,6 +11,11 @@ public interface IFileStorageService
     Task<string> GeneratePresignedUploadUrlAsync(string key, string contentType, int expirySeconds = 900, CancellationToken ct = default);
 
     /// <summary>
+    /// Xóa object khỏi bucket MinIO.
+    /// </summary>
+    Task DeleteAsync(string objectName, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lấy đường dẫn truy cập công khai của tệp tin.
     /// </summary>
     string GetPublicUrl(string key);

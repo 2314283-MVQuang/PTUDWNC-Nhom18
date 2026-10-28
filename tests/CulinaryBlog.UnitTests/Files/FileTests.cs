@@ -122,7 +122,10 @@ public class FileTests
         // Assert
         Assert.NotNull(result);
         Assert.NotEqual(Guid.Empty, result.FileId);
-        Assert.Contains("pho-bo-ha-noi.jpg", result.StorageKey);
+        // Tuần 8: object name chỉ gồm GUID + đuôi (không chứa tên file người dùng gửi).
+        Assert.StartsWith("recipes/", result.StorageKey);
+        Assert.EndsWith(".jpg", result.StorageKey);
+        Assert.DoesNotContain("pho-bo-ha-noi", result.StorageKey);
         Assert.Contains("test-sig", result.UploadUrl);
         Assert.Equal("image/jpeg", result.ContentType);
         Assert.Equal(2 * 1024 * 1024, result.Size);
@@ -179,7 +182,7 @@ public class FileTests
     }
 
     [Fact]
-    public async Task GeneratePresignedUrl_ShouldThrowInvalidFileException_WhenSizeExceeds10MB()
+    public async Task GeneratePresignedUrl_ShouldThrowInvalidFileException_WhenSizeExceeds5MB()
     {
         // Arrange
         using var db = CreateDbContext();
@@ -191,12 +194,35 @@ public class FileTests
         var command = new GeneratePresignedUrlCommand(
             "large-image.png",
             "image/png",
-            11 * 1024 * 1024 // 11MB > 10MB
+            5 * 1024 * 1024 + 1 // vượt 5MB (CONS-007)
         );
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidFileException>(() => handler.Handle(command, CancellationToken.None));
-        Assert.Contains("vượt quá giới hạn cho phép tối đa 10 MB", ex.Message);
+        Assert.Contains("vượt quá giới hạn cho phép tối đa 5 MB", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("anh.gif", "image/gif")]
+    [InlineData("anh.svg", "image/svg+xml")]
+    public async Task GeneratePresignedUrl_ShouldRejectTypesOutsideSrs(string fileName, string contentType)
+    {
+        using var db = CreateDbContext();
+        var handler = new GeneratePresignedUrlCommandHandler(new TestFileStorageService(), new UploadedFileRepository(db), new TestCurrentUser());
+
+        await Assert.ThrowsAsync<InvalidFileException>(() =>
+            handler.Handle(new GeneratePresignedUrlCommand(fileName, contentType, 1024), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GeneratePresignedUrl_ShouldAcceptAvif()
+    {
+        using var db = CreateDbContext();
+        var handler = new GeneratePresignedUrlCommandHandler(new TestFileStorageService(), new UploadedFileRepository(db), new TestCurrentUser());
+
+        var result = await handler.Handle(new GeneratePresignedUrlCommand("pho.avif", "image/avif", 1024), CancellationToken.None);
+
+        Assert.EndsWith(".avif", result.StorageKey);
     }
 
     [Theory]

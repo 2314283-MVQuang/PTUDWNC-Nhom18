@@ -17,7 +17,7 @@ public class GeneratePresignedUrlCommandHandler(
         "image/jpeg",
         "image/png",
         "image/webp",
-        "image/gif"
+        "image/avif"
     };
 
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -26,10 +26,11 @@ public class GeneratePresignedUrlCommandHandler(
         ".jpeg",
         ".png",
         ".webp",
-        ".gif"
+        ".avif"
     };
 
-    private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10MB
+    // Tuần 8 (Thịnh): đúng CONS-007 / FR-FILE-001 — tối đa 5MB, chỉ JPEG/PNG/WebP/AVIF.
+    public const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5MB
     private const int PresignedUrlExpirySeconds = 900; // 15 phút
 
     public async Task<PresignedUploadUrlDto> Handle(GeneratePresignedUrlCommand request, CancellationToken cancellationToken)
@@ -46,7 +47,7 @@ public class GeneratePresignedUrlCommandHandler(
 
         if (request.Size > MaxFileSizeBytes)
         {
-            throw new InvalidFileException($"Kích thước tệp ({request.Size / 1024 / 1024.0:F2} MB) vượt quá giới hạn cho phép tối đa 10 MB.");
+            throw new InvalidFileException($"Kích thước tệp ({request.Size / 1024 / 1024.0:F2} MB) vượt quá giới hạn cho phép tối đa 5 MB.");
         }
 
         var extension = Path.GetExtension(request.FileName).ToLowerInvariant();
@@ -62,7 +63,9 @@ public class GeneratePresignedUrlCommandHandler(
         }
 
         var sanitizedFileName = Path.GetFileName(request.FileName);
-        var storageKey = $"uploads/{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}_{sanitizedFileName}";
+        // FR-FILE-001: tên object chỉ gồm GUID + đuôi chuẩn hoá (không dùng tên file người dùng gửi)
+        // để chặn path traversal và ký tự lạ trong URL ảnh; tên gốc vẫn lưu ở cột FileName.
+        var storageKey = $"recipes/{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}{extension}";
 
         var uploadUrl = await fileStorageService.GeneratePresignedUploadUrlAsync(
             storageKey,

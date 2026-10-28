@@ -225,6 +225,28 @@ public sealed class SearchRecipesPaginationTests
         result.ShouldHaveValidationErrorFor(x => x.PageSize);
     }
 
+    [Theory]
+    [InlineData("p")]
+    [InlineData(" b ")]
+    public void SearchRecipesQueryValidator_KeywordShorterThan2_HasError(string keyword)
+    {
+        var result = new SearchRecipesQueryValidator().TestValidate(new SearchRecipesQuery(Keyword: keyword));
+
+        result.ShouldHaveValidationErrorFor(x => x.Keyword);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    [InlineData("bo")]
+    [InlineData("phở bò")]
+    public void SearchRecipesQueryValidator_KeywordMissingOrLongEnough_IsValid(string? keyword)
+    {
+        var result = new SearchRecipesQueryValidator().TestValidate(new SearchRecipesQuery(Keyword: keyword));
+
+        result.ShouldNotHaveValidationErrorFor(x => x.Keyword);
+    }
+
     [Fact]
     public void SearchRecipesQueryValidator_NegativeCookTime_HasError()
     {

@@ -31,10 +31,11 @@ const png = new File([new Uint8Array([137, 80, 78, 71])], "pho-bo.png", { type: 
 test("kiểm tra file ảnh trước khi upload khớp giới hạn backend", () => {
   assert.equal(images.validateImageFile({ name: "a.png", type: "image/png", size: 100 }), null);
   assert.equal(images.validateImageFile({ name: "a.JPG", type: "image/jpeg", size: 100 }), null);
-  assert.match(images.validateImageFile({ name: "a.avif", type: "image/avif", size: 100 }), /JPEG/);
+  assert.equal(images.validateImageFile({ name: "a.avif", type: "image/avif", size: 100 }), null);
+  assert.match(images.validateImageFile({ name: "a.gif", type: "image/gif", size: 100 }), /JPEG/);
   assert.match(images.validateImageFile({ name: "virus.png.exe", type: "image/png", size: 100 }), /JPEG/);
   assert.match(images.validateImageFile({ name: "a.png", type: "image/png", size: 0 }), /rỗng/);
-  assert.match(images.validateImageFile({ name: "a.png", type: "image/png", size: 10 * 1024 * 1024 + 1 }), /10MB/);
+  assert.match(images.validateImageFile({ name: "a.png", type: "image/png", size: 5 * 1024 * 1024 + 1 }), /5MB/);
 });
 
 test("upload ảnh: xin presigned URL → PUT lên MinIO → gắn ảnh vào công thức", async t => {

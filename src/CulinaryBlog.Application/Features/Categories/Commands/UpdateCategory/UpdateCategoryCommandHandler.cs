@@ -10,7 +10,6 @@ namespace CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 public class UpdateCategoryCommandHandler(
     IRepository<Category> categories,
     IUnitOfWork unitOfWork,
-    ISlugGenerator slugGenerator,
     ICacheInvalidator? cacheInvalidator = null)
     : IRequestHandler<UpdateCategoryCommand, Category>
 {
@@ -43,9 +42,8 @@ public class UpdateCategoryCommandHandler(
 
             category.Name = trimmedName;
 
-            // Áp đúng nghị quyết MT-06: nếu đổi tên khiến slug trùng danh mục khác
-            // thì gọi lại ISlugGenerator.GenerateUniqueAsync để tự thêm hậu tố (-2, -3...) thay vì trả lỗi 409.
-            category.Slug = await slugGenerator.GenerateUniqueAsync(trimmedName, request.Id, ct);
+            // SRS FR-CAT-004: "Slug KHÔNG thay đổi khi đổi tên" — giữ slug cũ để không làm hỏng
+            // URL /categories/{slug} đã chia sẻ, sitemap và SEO. (Tuần 8 - Thịnh: bỏ sinh lại slug.)
         }
 
         category.Description = NullIfBlank(request.Description);

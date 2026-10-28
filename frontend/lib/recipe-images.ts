@@ -16,10 +16,10 @@ import type { RecipeImage } from "@/types/recipe";
  */
 
 /** Khớp AllowedContentTypes / AllowedExtensions trong GeneratePresignedUrlCommandHandler. */
-export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
-const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
-/** Khớp MaxFileSizeBytes (10MB) ở backend. */
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
+const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".avif"];
+/** Khớp MaxFileSizeBytes (5MB, CONS-007) ở backend. */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export interface PresignedUpload {
   fileId: string;
@@ -45,9 +45,9 @@ export function validateImageFile(file: { name: string; type: string; size: numb
   const dot = file.name.lastIndexOf(".");
   const extension = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
   if (!ACCEPTED_EXTENSIONS.includes(extension) || !(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type))
-    return "Chỉ nhận ảnh JPEG, PNG, WebP hoặc GIF.";
+    return "Chỉ nhận ảnh JPEG, PNG, WebP hoặc AVIF.";
   if (file.size <= 0) return "File ảnh rỗng.";
-  if (file.size > MAX_IMAGE_BYTES) return "Ảnh vượt quá dung lượng tối đa 10MB.";
+  if (file.size > MAX_IMAGE_BYTES) return "Ảnh vượt quá dung lượng tối đa 5MB.";
   return null;
 }
 

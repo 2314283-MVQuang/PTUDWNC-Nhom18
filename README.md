@@ -199,7 +199,7 @@ Chi tiết endpoint và các hàm/lớp cần cài đặt cho từng FR trong m�
 | Mã FR | Chức năng | Endpoint | Các hàm / lớp cần cài đặt |
 | :-: | :--- | :--- | :--- |
 | FR-FILE-001 | Upload file lên MinIO | `POST /files/presigned-url` | `GetPresignedUploadUrlQuery`, `GetPresignedUploadUrlQueryHandler`, `IFileStorageService.GeneratePresignedUploadUrlAsync`, kiểm tra MIME (magic bytes) |
-| FR-FILE-002 | Xóa file khỏi MinIO | `DELETE /files/{key}` | `DeleteFileCommand`, `DeleteFileCommandHandler`, `IFileStorageService.DeleteAsync` |
+| FR-FILE-002 | Xóa file khỏi MinIO | Khi gỡ ảnh công thức và khi purge recipe quá hạn | `DeleteFileCommand`, `DeleteFileCommandHandler`, `IFileStorageService.DeleteAsync` |
 
 ### FR-JOB — Background Jobs
 
@@ -531,13 +531,13 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Bổ sung (OBS-001):** thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready` — tắt MinIO thì `/health/ready` trả 503.
 
-**Nguyễn Ngọc Bảo Thịnh · FR-FILE-002 Xóa file khỏi MinIO + bổ sung log ra file** — ⬜ Chưa làm
+**Nguyễn Ngọc Bảo Thịnh · FR-FILE-002 Xóa file khỏi MinIO + bổ sung log ra file** — ✅ Đã hoàn thành
 
-- **Cách làm:** `DeleteFileCommand`/`IFileStorageService.DeleteAsync` xóa object theo key; gọi từ 3 nơi: khi ảnh bị gỡ khỏi Recipe/Category (FR-RCP-008), và khi `PurgeDeletedRecipesJob` (MT-01, Buổi 5) chạy dọn recipe quá hạn.
+- **Cách làm:** `DeleteFileCommand`/`IFileStorageService.DeleteAsync` xóa object theo key; gọi khi ảnh bị gỡ khỏi Recipe (FR-RCP-008) và khi `PurgeDeletedRecipesJob` (MT-01, Buổi 5) chạy dọn recipe quá hạn. Serilog File sink ghi vào `logs/` theo ngày.
 
 - **Vì sao:** gom logic xóa file vào một service duy nhất (`IFileStorageService`) để không có chỗ nào gọi thẳng SDK MinIO riêng lẻ — dễ audit và dễ đổi provider lưu trữ sau này nếu cần.
 
-- **Xong khi:** gỡ ảnh khỏi recipe thì file cũng biến mất khỏi bucket; chạy thử `PurgeDeletedRecipesJob` xóa đúng ảnh của các recipe đã hết hạn 30 ngày.
+- **Xong khi:** gỡ ảnh khỏi recipe thì file cũng biến mất khỏi bucket; `PurgeDeletedRecipesJob` xóa ảnh của recipe đã hết hạn 30 ngày; log được xoay vòng theo ngày trong `logs/`.
 
 - **Commit:** `feat(files): implement FR-FILE-002 delete wired into recipe cleanup and purge job`
 

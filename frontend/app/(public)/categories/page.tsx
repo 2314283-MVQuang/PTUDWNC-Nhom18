@@ -1,13 +1,18 @@
-import { AlertTriangle, BookOpen, Grid3X3, LayoutList } from "lucide-react";
+import { BookOpen, Grid3X3, LayoutList } from "lucide-react";
+import { connection } from "next/server";
 import { apiFetch } from "@/lib/api-client";
 import { CategoryGrid } from "@/components/category/CategoryGrid";
 import { PageHero } from "@/components/layout/PageHero";
 import type { Category } from "@/types/category";
+import { ErrorState } from "@/components/ui/Feedback";
+import { RetryButton } from "@/components/ui/RetryButton";
 
-// Mục 9: "/categories" — ISR revalidate=3600.
+// HTML theo request; dữ liệu danh mục thành công vẫn cache 1 giờ.
 export const revalidate = 3600;
 
 export default async function CategoriesPage() {
+  await connection();
+  // Bọc try-catch để backend chưa chạy thì trang vẫn render được (xem chú thích ở trang chủ).
   let categories: Category[] = [];
   let backendError = false;
 
@@ -47,10 +52,7 @@ export default async function CategoriesPage() {
 
       <div className="container-page flex flex-col gap-10 pb-20 pt-10">
         {backendError && (
-          <p className="flex items-start gap-3 rounded-card border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-            <span>Chưa kết nối được tới backend — danh mục sẽ hiện khi API .NET chạy.</span>
-          </p>
+          <ErrorState message="Không tải được danh mục. Vui lòng thử lại."><RetryButton /></ErrorState>
         )}
 
         {/* Danh mục nổi bật (top 3) */}
@@ -85,14 +87,14 @@ export default async function CategoriesPage() {
         )}
 
         {/* Toàn bộ danh mục dạng lưới */}
-        <section>
+        {!backendError && <section>
           <div className="mb-4 flex items-center gap-2">
             <LayoutList className="h-5 w-5 text-neutral-400" />
             <h2 className="text-lg font-bold text-neutral-900">Tất cả danh mục</h2>
             <span className="ml-1 text-sm text-neutral-400">({categories.length})</span>
           </div>
           <CategoryGrid categories={sorted} />
-        </section>
+        </section>}
       </div>
     </div>
   );

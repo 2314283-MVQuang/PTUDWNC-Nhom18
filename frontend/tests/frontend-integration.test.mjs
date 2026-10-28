@@ -72,9 +72,12 @@ test("upload ảnh: MinIO từ chối thì dừng, không gắn ảnh hỏng và
     if (String(url).endsWith("/files/presigned-url"))
       return json(200, { data: { uploadUrl: "http://localhost:9000/u", publicUrl: "http://localhost:9000/p", contentType: "image/png" } });
     if (String(url).endsWith("/images")) attached = true;
-    return new Response("<Error/>", { status: 403 });
+    return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
   });
-  await assert.rejects(images.uploadRecipeImage("r1", png), images.StorageUploadError);
+  await assert.rejects(
+    images.uploadRecipeImage("r1", png),
+    error => error instanceof images.StorageUploadError && /HTTP 403, AccessDenied/.test(error.message),
+  );
   assert.equal(attached, false);
 });
 

@@ -41,12 +41,57 @@ public class TestCacheInvalidator : ICacheInvalidator
     }
 }
 
+public class TestRecipeFileStorageService : IFileStorageService
+{
+    public string BucketName => "recipe-images";
+    public List<string> DeletedObjects { get; } = [];
+
+    public Task<string> GeneratePresignedUploadUrlAsync(
+        string key,
+        string contentType,
+        int expirySeconds = 900,
+        CancellationToken ct = default) =>
+        Task.FromResult($"http://minio:9000/{BucketName}/{key}");
+
+    public string GetPublicUrl(string key) => $"http://minio:9000/{BucketName}/{key}";
+
+    public Task<Stream> GetFileStreamAsync(string key, CancellationToken ct = default) =>
+        Task.FromResult<Stream>(new MemoryStream());
+
+    public Task<string> UploadFileAsync(string key, Stream content, string contentType, CancellationToken ct = default) =>
+        Task.FromResult(GetPublicUrl(key));
+
+    public Task DeleteAsync(string objectName, CancellationToken cancellationToken = default)
+    {
+        DeletedObjects.Add(objectName);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// FR-FILE-002: ghi lại object được lên lịch xoá, kèm trạng thái DB lúc đó để kiểm chứng việc xoá
+/// file chỉ được lên lịch SAU khi SaveChanges thành công.
+/// </summary>
+public class TestFileDeletionScheduler(Func<bool>? isCommitted = null) : IFileDeletionScheduler
+{
+    public List<string> Scheduled { get; } = [];
+    public bool? CommittedWhenScheduled { get; private set; }
+
+    public int Enqueue(IEnumerable<string> objectNames)
+    {
+        CommittedWhenScheduled = isCommitted?.Invoke();
+        var names = objectNames.ToList();
+        Scheduled.AddRange(names);
+        return names.Count;
+    }
+}
+
 public class RecipeItemTests
 {
-    private CulinaryBlogDbContext CreateDbContext()
+    private CulinaryBlogDbContext CreateDbContext(string? databaseName = null)
     {
         var options = new DbContextOptionsBuilder<CulinaryBlogDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(databaseName ?? Guid.NewGuid().ToString())
             .Options;
 
         return new CulinaryBlogDbContext(options);
@@ -346,26 +391,59 @@ public class RecipeItemTests
     [Fact]
     public async Task DeleteImage_ShouldDesignateNextPrimary_WhenDeletedWasPrimary()
     {
-        using var db = CreateDbContext();
+        var databaseName = Guid.NewGuid().ToString();
+        using var db = CreateDbContext(databaseName);
         var recipe = await SeedRecipeAsync(db);
         var currentUser = new TestCurrentUser { UserId = recipe.AuthorId };
 
-        var img1 = new RecipeImage { Id = Guid.NewGuid(), RecipeId = recipe.Id, OriginalUrl = "url1", IsPrimary = true, OrderIndex = 0 };
-        var img2 = new RecipeImage { Id = Guid.NewGuid(), RecipeId = recipe.Id, OriginalUrl = "url2", IsPrimary = false, OrderIndex = 1 };
+        var img1 = new RecipeImage
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipe.Id,
+            OriginalUrl = $"http://minio:9000/recipe-images/recipes/{recipe.Id}/original.jpg",
+            MediumUrl = $"http://minio:9000/recipe-images/recipes/{recipe.Id}/medium.jpg",
+            ThumbnailUrl = $"http://minio:9000/recipe-images/recipes/{recipe.Id}/thumbnail.jpg",
+            IsPrimary = true,
+            OrderIndex = 0
+        };
+        var img2 = new RecipeImage
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipe.Id,
+            OriginalUrl = "url2",
+            IsPrimary = false,
+            OrderIndex = 1
+        };
         await db.RecipeImages.AddRangeAsync(img1, img2);
         await db.SaveChangesAsync();
 
+        var storage = new TestRecipeFileStorageService();
+        // Đọc DB bằng context RIÊNG: chỉ thấy IsDeleted = true nếu handler đã SaveChanges.
+        var scheduler = new TestFileDeletionScheduler(() =>
+        {
+            using var check = new CulinaryBlogDbContext(
+                new DbContextOptionsBuilder<CulinaryBlogDbContext>().UseInMemoryDatabase(databaseName).Options);
+            return check.RecipeImages.IgnoreQueryFilters().Single(i => i.Id == img1.Id).IsDeleted;
+        });
         var handler = new DeleteRecipeImageCommandHandler(
             new RepositoryBase<Recipe>(db),
             new RepositoryBase<RecipeImage>(db),
             db,
-            currentUser);
+            currentUser,
+            storage,
+            scheduler);
 
         await handler.Handle(new DeleteRecipeImageCommand(recipe.Id, img1.Id), CancellationToken.None);
 
         var reloadedImg1 = await db.RecipeImages.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.Id == img1.Id);
         var reloadedImg2 = await db.RecipeImages.FindAsync(img2.Id);
 
+        // Không xoá trực tiếp trong request — chỉ lên lịch Hangfire, và chỉ sau khi đã lưu DB.
+        Assert.Empty(storage.DeletedObjects);
+        Assert.Equal(
+            [$"recipes/{recipe.Id}/original.jpg", $"recipes/{recipe.Id}/medium.jpg", $"recipes/{recipe.Id}/thumbnail.jpg"],
+            scheduler.Scheduled);
+        Assert.True(scheduler.CommittedWhenScheduled);
         Assert.True(reloadedImg1!.IsDeleted);
         Assert.False(reloadedImg1.IsPrimary);
         Assert.True(reloadedImg2!.IsPrimary);

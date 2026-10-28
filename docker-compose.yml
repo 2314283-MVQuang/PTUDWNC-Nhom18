@@ -11,7 +11,7 @@
 #    docker compose down                 # dừng tất cả, GIỮ LẠI dữ liệu
 #    docker compose down -v              # dừng và XOÁ SẠCH dữ liệu database
 #
-#  Các service khác trong tài liệu đặc tả (minio, nginx, mailhog — mục 6.4) sẽ thêm sau khi
+  #  Các service khác trong tài liệu đặc tả (nginx — mục 6.4) sẽ thêm sau khi
 #  backend cần đến. Redis đã thêm ở Tuần 4 cho Output Cache (mâu thuẫn #3).
 # =============================================================================
 
@@ -135,6 +135,14 @@ services:
       # Trong container, "localhost" trỏ về chính container này chứ không phải máy thật, nên phải
       # gọi Redis bằng tên service "redis" (giống lý do ConnectionStrings__DefaultConnection ở trên).
       Redis__ConnectionString: "redis:6379,abortConnect=false"
+      # FR-JOB-001: SMTP dev nhận vào MailHog, không gửi thư tới người dùng bên ngoài.
+      WelcomeEmail__Host: mailhog
+      WelcomeEmail__Port: 1025
+      WelcomeEmail__Security: None
+      # API kết nối MinIO qua mạng Compose; URL công khai vẫn trỏ tới cổng trên máy host
+      # vì trình duyệt tải ảnh trực tiếp từ MinIO.
+      MinIO__Endpoint: "minio:9000"
+      MinIO__PublicEndpoint: "http://localhost:9000"
       # Jwt:Secret bình thường nằm trong User Secrets của máy dev, mà User Secrets
       # KHÔNG được copy vào image — không truyền vào đây thì API chết lúc đăng nhập.
       # Giá trị mặc định dưới đây CHỈ để chạy thử trên máy cá nhân; deploy thật thì
@@ -149,6 +157,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -181,8 +191,15 @@ services:
   # Cổng 9000: S3 API / Presigned URL
   # Cổng 9001: Web Console quản trị MinIO (minioadmin / minioadmin)
   # ---------------------------------------------------------------------------
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+
   minio:
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest-dev
     container_name: culinaryblog-minio
     command: server /data --console-address ":9001"
     environment:

@@ -1,195 +1,115 @@
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
-using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure.Persistence;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace CulinaryBlog.Infrastructure.Jobs;
 
 /// <summary>
-/// FR-JOB-002 (Tuần 7 — Tiến): Hangfire Background Job sinh bản Medium (800x600) và Thumbnail (300x300)
-/// sau khi ảnh được upload, lưu lại MediumUrl và ThumbnailUrl vào CSDL.
+/// FR-JOB-002 (Tuần 7 — Tiến), SRS trang 38: sau khi upload ảnh công thức (FR-RCP-008), sinh bản
+/// thumbnail 300×300 và medium 800×600 từ ảnh gốc, lưu cả lên MinIO rồi cập nhật
+/// <c>MediumUrl</c>/<c>ThumbnailUrl</c>. Retry 3 lần; vẫn lỗi thì ảnh gốc tiếp tục hiển thị.
+///
+/// Chỉ đọc ảnh gốc từ bucket của hệ thống qua <see cref="IFileStorageService"/> — KHÔNG tải ảnh qua
+/// HTTP theo URL do người dùng gửi (tránh SSRF: server bị lợi dụng gọi tới địa chỉ nội bộ).
 /// </summary>
 public class GenerateThumbnailJob(
-    IServiceScopeFactory scopeFactory,
+    CulinaryBlogDbContext db,
     IImageProcessor imageProcessor,
     IFileStorageService fileStorageService,
     ILogger<GenerateThumbnailJob> logger,
-    IHttpClientFactory? httpClientFactory = null)
+    ICacheInvalidator? cacheInvalidator = null)
 {
     public const int MediumMaxWidth = 800;
     public const int MediumMaxHeight = 600;
     public const int ThumbnailMaxWidth = 300;
     public const int ThumbnailMaxHeight = 300;
 
-    public async Task ExecuteAsync(Guid imageOrFileId, CancellationToken ct = default)
+    [AutomaticRetry(Attempts = 3, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
+    public async Task ExecuteAsync(Guid recipeImageId, CancellationToken ct = default)
     {
-        logger.LogInformation("[GenerateThumbnailJob] Bắt đầu sinh thumbnail cho ID={Id}...", imageOrFileId);
-
-        using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-
-        // 1. Tìm RecipeImage hoặc UploadedFile
-        var recipeImage = await db.RecipeImages.FirstOrDefaultAsync(x => x.Id == imageOrFileId, ct);
-        var uploadedFile = await db.UploadedFiles.FirstOrDefaultAsync(x => x.Id == imageOrFileId, ct);
-
-        if (recipeImage == null && uploadedFile == null)
+        var image = await db.RecipeImages.FirstOrDefaultAsync(x => x.Id == recipeImageId, ct);
+        if (image is null)
         {
-            logger.LogWarning("[GenerateThumbnailJob] Không tìm thấy RecipeImage hoặc UploadedFile với Id={Id}", imageOrFileId);
+            // Ảnh đã bị xoá trước khi job chạy — không có gì để làm, không retry.
+            logger.LogWarning("GenerateThumbnailJob: không tìm thấy ảnh {ImageId}, bỏ qua.", recipeImageId);
             return;
         }
 
-        var originalUrl = recipeImage?.OriginalUrl ?? uploadedFile?.Url ?? string.Empty;
-        var storageKey = uploadedFile?.StorageKey;
-
-        // Nếu có recipeImage mà chưa có storageKey, tìm thử trong UploadedFiles theo Url
-        UploadedFile? matchingUploadedFile = uploadedFile;
-        if (matchingUploadedFile == null && recipeImage != null && !string.IsNullOrWhiteSpace(originalUrl))
+        var storageKey = FileStorageObjectNameResolver.FromPublicUrl(image.OriginalUrl, fileStorageService.BucketName);
+        if (storageKey is null)
         {
-            matchingUploadedFile = await db.UploadedFiles
-                .FirstOrDefaultAsync(f => f.Url == originalUrl, ct);
-
-            if (matchingUploadedFile != null)
-            {
-                storageKey = matchingUploadedFile.StorageKey;
-            }
-        }
-
-        // Nếu vẫn chưa có storageKey, thử bóc tách từ originalUrl nếu chứa bucket name
-        if (string.IsNullOrEmpty(storageKey) && !string.IsNullOrWhiteSpace(originalUrl))
-        {
-            var bucket = fileStorageService.BucketName;
-            var bucketToken = $"/{bucket}/";
-            var idx = originalUrl.IndexOf(bucketToken, StringComparison.OrdinalIgnoreCase);
-            if (idx >= 0)
-            {
-                storageKey = originalUrl[(idx + bucketToken.Length)..];
-            }
-        }
-
-        // 2. Lấy dữ liệu file gốc (thử MinIO trước, fallback HTTP nếu có URL hợp lệ)
-        byte[]? originalBytes = null;
-
-        if (!string.IsNullOrEmpty(storageKey))
-        {
-            try
-            {
-                using var stream = await fileStorageService.GetFileStreamAsync(storageKey, ct);
-                using var ms = new MemoryStream();
-                await stream.CopyToAsync(ms, ct);
-                originalBytes = ms.ToArray();
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "[GenerateThumbnailJob] Không đọc được trực tiếp từ MinIO key={Key}", storageKey);
-            }
-        }
-
-        if (originalBytes == null || originalBytes.Length == 0)
-        {
-            if (!string.IsNullOrWhiteSpace(originalUrl) && Uri.TryCreate(originalUrl, UriKind.Absolute, out var uri))
-            {
-                try
-                {
-                    var httpClient = httpClientFactory?.CreateClient() ?? new HttpClient();
-                    httpClient.Timeout = TimeSpan.FromSeconds(15);
-                    var response = await httpClient.GetAsync(uri, ct);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        originalBytes = await response.Content.ReadAsByteArrayAsync(ct);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "[GenerateThumbnailJob] Không tải được ảnh qua HTTP từ {Url}", originalUrl);
-                }
-            }
-        }
-
-        if (originalBytes == null || originalBytes.Length == 0)
-        {
-            logger.LogError("[GenerateThumbnailJob] Không thể lấy dữ liệu ảnh nguồn cho Id={Id}", imageOrFileId);
+            logger.LogWarning(
+                "GenerateThumbnailJob: ảnh {ImageId} không nằm trong bucket {Bucket} ({Url}), bỏ qua.",
+                recipeImageId, fileStorageService.BucketName, image.OriginalUrl);
             return;
         }
 
-        // 3. Thực hiện Resize bằng IImageProcessor
+        // Lỗi đọc/ghi MinIO được ném ra để Hangfire retry. Không ghi URL "dự kiến" khi upload thất
+        // bại — URL trỏ tới file không tồn tại sẽ làm ảnh trên giao diện bị vỡ.
+        byte[] originalBytes;
+        await using (var source = await fileStorageService.GetFileStreamAsync(storageKey, ct))
+        using (var buffer = new MemoryStream())
+        {
+            await source.CopyToAsync(buffer, ct);
+            originalBytes = buffer.ToArray();
+        }
+
         byte[] mediumBytes;
-        byte[] thumbBytes;
+        byte[] thumbnailBytes;
         try
         {
             mediumBytes = imageProcessor.Resize(originalBytes, MediumMaxWidth, MediumMaxHeight);
-            thumbBytes = imageProcessor.Resize(originalBytes, ThumbnailMaxWidth, ThumbnailMaxHeight);
+            thumbnailBytes = imageProcessor.Resize(originalBytes, ThumbnailMaxWidth, ThumbnailMaxHeight);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "[GenerateThumbnailJob] Lỗi khi xử lý resize ảnh cho Id={Id}", imageOrFileId);
-            throw;
+            // File không phải ảnh hợp lệ — thử lại cũng không khác, nên không retry.
+            logger.LogError(ex, "GenerateThumbnailJob: không đọc được ảnh {Key} để resize, giữ ảnh gốc.", storageKey);
+            return;
         }
 
-        // 4. Upload bản medium và thumb lên MinIO
-        var baseKey = !string.IsNullOrEmpty(storageKey)
-            ? (storageKey.Contains('.') ? storageKey[..storageKey.LastIndexOf('.')] : storageKey)
-            : $"uploads/thumbnails/{imageOrFileId:N}";
-
-        var ext = !string.IsNullOrEmpty(storageKey) && storageKey.Contains('.')
-            ? storageKey[storageKey.LastIndexOf('.')..]
-            : ".jpg";
-
-        var mediumKey = $"{baseKey}_medium{ext}";
-        var thumbKey = $"{baseKey}_thumb{ext}";
+        // Bản resize luôn lưu dạng JPEG nên đuôi file là .jpg (không giữ đuôi .png/.webp của ảnh gốc).
+        var dot = storageKey.LastIndexOf('.');
+        var baseKey = dot > storageKey.LastIndexOf('/') ? storageKey[..dot] : storageKey;
+        var mediumKey = $"{baseKey}_medium.jpg";
+        var thumbnailKey = $"{baseKey}_thumb.jpg";
 
         string mediumUrl;
         string thumbnailUrl;
-
-        try
+        using (var mediumStream = new MemoryStream(mediumBytes))
         {
-            using var mediumStream = new MemoryStream(mediumBytes);
-            using var thumbStream = new MemoryStream(thumbBytes);
-
             mediumUrl = await fileStorageService.UploadFileAsync(mediumKey, mediumStream, "image/jpeg", ct);
-            thumbnailUrl = await fileStorageService.UploadFileAsync(thumbKey, thumbStream, "image/jpeg", ct);
         }
-        catch (Exception ex)
+        using (var thumbnailStream = new MemoryStream(thumbnailBytes))
         {
-            logger.LogWarning(ex, "[GenerateThumbnailJob] Không upload được lên MinIO, sử dụng public URL dự kiến");
-            mediumUrl = fileStorageService.GetPublicUrl(mediumKey);
-            thumbnailUrl = fileStorageService.GetPublicUrl(thumbKey);
+            thumbnailUrl = await fileStorageService.UploadFileAsync(thumbnailKey, thumbnailStream, "image/jpeg", ct);
         }
 
-        // 5. Cập nhật vào Database
-        if (recipeImage != null)
-        {
-            recipeImage.MediumUrl = mediumUrl;
-            recipeImage.ThumbnailUrl = thumbnailUrl;
-        }
+        image.MediumUrl = mediumUrl;
+        image.ThumbnailUrl = thumbnailUrl;
 
-        if (uploadedFile != null)
+        // Metadata upload (FR-FILE-001) của cùng file gốc cũng ghi lại 2 bản resize.
+        var uploadedFile = await db.UploadedFiles.FirstOrDefaultAsync(x => x.StorageKey == storageKey, ct);
+        if (uploadedFile is not null)
         {
             uploadedFile.MediumUrl = mediumUrl;
             uploadedFile.ThumbnailUrl = thumbnailUrl;
         }
 
-        if (matchingUploadedFile != null && matchingUploadedFile.Id != uploadedFile?.Id)
-        {
-            matchingUploadedFile.MediumUrl = mediumUrl;
-            matchingUploadedFile.ThumbnailUrl = thumbnailUrl;
-        }
-
         await db.SaveChangesAsync(ct);
 
-        // 6. Xoá cache nếu là ảnh của Recipe
-        if (recipeImage != null)
+        // ICacheInvalidator đăng ký ở API (Output Cache); host không có Output Cache thì bỏ qua.
+        if (cacheInvalidator is not null)
         {
-            var cacheInvalidator = scope.ServiceProvider.GetService<ICacheInvalidator>();
-            if (cacheInvalidator != null)
-            {
-                await cacheInvalidator.EvictByTagAsync($"recipe-{recipeImage.RecipeId}", ct);
-                await cacheInvalidator.EvictByTagAsync("recipes", ct);
-            }
+            await cacheInvalidator.EvictByTagAsync($"recipe-{image.RecipeId}", ct);
+            await cacheInvalidator.EvictByTagAsync("recipes", ct);
         }
 
-        logger.LogInformation("[GenerateThumbnailJob] Sinh thumbnail thành công cho Id={Id}: Medium={Medium}, Thumb={Thumb}",
-            imageOrFileId, mediumUrl, thumbnailUrl);
+        logger.LogInformation(
+            "GenerateThumbnailJob: ảnh {ImageId} có medium {MediumUrl} và thumbnail {ThumbnailUrl}.",
+            recipeImageId, mediumUrl, thumbnailUrl);
     }
 }

@@ -1,9 +1,10 @@
 namespace CulinaryBlog.Application.Common.Interfaces;
 
 /// <summary>
-/// Interface lập lịch sinh thumbnail bất đồng bộ (FR-JOB-002).
+/// FR-JOB-002: lên lịch sinh bản medium/thumbnail cho 1 ảnh công thức (Hangfire fire-and-forget),
+/// gọi SAU khi ảnh đã lưu vào database.
 /// </summary>
 public interface IThumbnailJobScheduler
 {
-    void EnqueueThumbnailGeneration(Guid imageOrFileId);
+    void EnqueueThumbnailGeneration(Guid recipeImageId);
 }

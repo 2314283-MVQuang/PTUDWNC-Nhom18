@@ -1,29 +1,26 @@
 using CulinaryBlog.Application.Common.Interfaces;
 using Hangfire;
+using Microsoft.Extensions.Logging;
 
 namespace CulinaryBlog.Infrastructure.Jobs;
 
 /// <summary>
-/// Triển khai lập lịch sinh thumbnail qua Hangfire (FR-JOB-002).
+/// FR-JOB-002: enqueue <see cref="GenerateThumbnailJob"/>. SRS: thumbnail lỗi thì ảnh gốc vẫn hiển
+/// thị — nên nếu không enqueue được (Hangfire storage tạm lỗi) chỉ ghi log, KHÔNG làm request
+/// upload ảnh (đã lưu xong) trả 500.
 /// </summary>
-public class ThumbnailJobScheduler(IBackgroundJobClient? backgroundJobs = null) : IThumbnailJobScheduler
+public class ThumbnailJobScheduler(IBackgroundJobClient backgroundJobs, ILogger<ThumbnailJobScheduler> logger)
+    : IThumbnailJobScheduler
 {
-    public void EnqueueThumbnailGeneration(Guid imageOrFileId)
+    public void EnqueueThumbnailGeneration(Guid recipeImageId)
     {
         try
         {
-            if (backgroundJobs != null)
-            {
-                backgroundJobs.Enqueue<GenerateThumbnailJob>(job => job.ExecuteAsync(imageOrFileId, CancellationToken.None));
-            }
-            else
-            {
-                BackgroundJob.Enqueue<GenerateThumbnailJob>(job => job.ExecuteAsync(imageOrFileId, CancellationToken.None));
-            }
+            backgroundJobs.Enqueue<GenerateThumbnailJob>(job => job.ExecuteAsync(recipeImageId, CancellationToken.None));
         }
-        catch
+        catch (Exception ex)
         {
-            // Bỏ qua nếu môi trường test không kích hoạt Hangfire JobStorage
+            logger.LogError(ex, "Không enqueue được GenerateThumbnailJob cho ảnh {ImageId}; ảnh gốc vẫn hiển thị.", recipeImageId);
         }
     }
 }

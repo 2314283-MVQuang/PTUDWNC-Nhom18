@@ -1,5 +1,6 @@
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Enums;
+using System.Linq.Expressions;
 
 namespace CulinaryBlog.Application.Features.Recipes.Dtos;
 
@@ -86,8 +87,9 @@ public sealed record RecipeImageDto(
 /// </summary>
 public static class RecipeDtoMapping
 {
-    public static RecipeSummaryDto ToSummaryDto(this Recipe recipe) =>
-        new(
+    /// <summary>Biểu thức để EF chỉ SELECT các trường của danh sách, không tải toàn bộ entity/ảnh.</summary>
+    public static Expression<Func<Recipe, RecipeSummaryDto>> SummaryProjection { get; } = recipe =>
+        new RecipeSummaryDto(
             recipe.Id,
             recipe.Slug,
             recipe.Title,
@@ -104,6 +106,11 @@ public static class RecipeDtoMapping
                 .Select(x => x.OriginalUrl)
                 .FirstOrDefault(),
             recipe.PublishedAt);
+
+    // Dùng cùng một định nghĩa mapping cho các caller đã tải entity vào bộ nhớ.
+    private static readonly Func<Recipe, RecipeSummaryDto> MapSummary = SummaryProjection.Compile();
+
+    public static RecipeSummaryDto ToSummaryDto(this Recipe recipe) => MapSummary(recipe);
 
     public static RecipeDetailDto ToDetailDto(this Recipe recipe) =>
         new(

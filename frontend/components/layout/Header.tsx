@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { ChefHat, LayoutDashboard, LogOut, Menu, Search, User, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
+import { cn, resolveMediaUrl } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/recipes", label: "Công thức" },
@@ -18,7 +19,7 @@ const NAV_LINKS = [
  * Header hiển thị ở mọi trang (đặt trong app/layout.tsx).
  *
  * Điểm đáng chú ý về UI:
- *  - Dính trên đỉnh (sticky) và ĐỔI HÌNH DẠNG khi cuộn: ở đầu trang thì trong suốt để hoà
+ *  - Dính trên đỉnh (sticky) và ĐỔI HÌNH DẠNG khi cuộn: ở đầu trang chủ có nền cam,
  *    vào hero màu cam, cuộn xuống thì chuyển sang nền kính mờ + đổ bóng cho dễ đọc.
  *  - Link menu có gạch chân trượt từ trái sang khi hover (class `.link-underline`),
  *    link của trang đang mở thì gạch chân luôn hiện (`data-active`).
@@ -30,8 +31,9 @@ export function Header() {
   const [query, setQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const avatar = resolveMediaUrl(user?.image);
 
-  // Trang chủ có hero màu cam đậm → header để trong suốt, chữ trắng cho đẹp.
+  // Header nằm trước hero trong layout: cần nền cam để chữ trắng đọc được ở đầu trang.
   // Các trang khác nền sáng → header nền trắng ngay từ đầu.
   const overHero = pathname === "/" && !scrolled;
 
@@ -61,7 +63,7 @@ export function Header() {
       className={cn(
         "sticky top-0 z-50 transition-all duration-500 ease-springy",
         overHero
-          ? "bg-transparent"
+          ? "bg-brand-gradient"
           : "border-b border-brand-100 bg-white/80 shadow-soft backdrop-blur-xl",
       )}
     >
@@ -158,7 +160,8 @@ export function Header() {
                 className="group flex items-center gap-2 rounded-full border border-transparent p-1 pr-3 transition-all duration-300 hover:border-brand-200 hover:bg-white"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-white shadow-soft transition-transform duration-300 ease-springy group-hover:scale-110">
-                  <User className="h-4 w-4" />
+                  {avatar ? <Image src={avatar} alt="" width={32} height={32} unoptimized className="h-8 w-8 rounded-full object-cover" />
+                    : <User className="h-4 w-4" />}
                 </span>
                 <span
                   className={cn(

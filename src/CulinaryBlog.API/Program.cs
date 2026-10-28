@@ -29,8 +29,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------
 // FR-OBS-002 (Tuần 3): Serilog thay Microsoft.Extensions.Logging mặc định — đọc cấu hình từ
-// section "Serilog" trong appsettings.json (sink Console + Seq, xem docker-compose.yml service
-// "seq"). ReadFrom.Services(services) cho phép Serilog dùng Enricher đăng ký qua DI nếu cần sau.
+// section "Serilog" trong appsettings.json (sink Console + Seq + File rolling theo ngày, xem
+// docker-compose.yml service "seq"). ReadFrom.Services(services) cho phép Serilog dùng Enricher
+// đăng ký qua DI nếu cần sau.
 // ---------------------------------------------------------------------------
 builder.Host.UseSerilog((context, services, configuration) => configuration
     .ReadFrom.Configuration(context.Configuration)
@@ -56,36 +57,15 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // EvictByTagAsync("categories"|"recipes"|"search", ct) trong Command Handler tương ứng (tag đặt
 // sẵn trong policy dưới đây).
 // ---------------------------------------------------------------------------
-var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
-var canConnectRedis = false;
-if (!string.IsNullOrEmpty(redisConnectionString))
-{
-    try
-    {
-        using var tcpClient = new System.Net.Sockets.TcpClient();
-        var parts = redisConnectionString.Split(',')[0].Split(':');
-        var host = parts[0];
-        var port = parts.Length > 1 && int.TryParse(parts[1], out var p) ? p : 6379;
-        var connectTask = tcpClient.ConnectAsync(host, port);
-        if (connectTask.Wait(TimeSpan.FromMilliseconds(400)) && tcpClient.Connected)
-        {
-            canConnectRedis = true;
-        }
-    }
-    catch
-    {
-        canConnectRedis = false;
-    }
-}
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
+    ?? throw new InvalidOperationException(
+        "Thiếu cấu hình Redis:ConnectionString (xem appsettings.json / docker-compose.yml service \"redis\").");
 
-if (canConnectRedis)
+builder.Services.AddStackExchangeRedisOutputCache(options =>
 {
-    builder.Services.AddStackExchangeRedisOutputCache(options =>
-    {
-        options.Configuration = redisConnectionString;
-        options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "culinaryblog:";
-    });
-}
+    options.Configuration = redisConnectionString;
+    options.InstanceName = builder.Configuration["Redis:InstanceName"] ?? "culinaryblog:";
+});
 
 // FR-CAT-003/004 (Tiến): Handler ở Application layer xoá cache theo tag qua interface này
 // (cài đặt bằng IOutputCacheStore.EvictByTagAsync — mâu thuẫn #3/#4: evict tag khi Create/Update).
@@ -216,19 +196,24 @@ try
 {
     using var roleSeedScope = app.Services.CreateScope();
     var filesDb = roleSeedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
+    // FR-FILE-001/FR-JOB-002 (Tiến, Tuần 7): bảng "UploadedFiles" KHÔNG còn tạo ở đây nữa — database
+    // mới có bảng từ db/init/02-schema.sql (Docker) hoặc EF migration AddUploadedFiles
+    // ("dotnet ef database update"). Khối dưới chỉ bổ sung cột cho database ĐÃ có sẵn trên máy các
+    // thành viên (db/init chỉ chạy khi tạo database mới) — mọi lệnh đều idempotent.
     if (filesDb.Database.IsRelational())
     {
-    // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job purge
-    // 30 ngày). db/init/02-schema.sql chỉ chạy khi tạo database MỚI, nên database đã có sẵn trên máy
-    // các thành viên phải được thêm cột ở đây — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
-    await filesDb.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE "Categories"        ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "Recipes"           ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeSteps"       ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeIngredients" ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        """);
+        // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job
+        // purge 30 ngày) — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
+        await filesDb.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE "Categories"        ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "Recipes"           ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeSteps"       ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeIngredients" ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "MediumUrl" character varying(1000) NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "ThumbnailUrl" character varying(1000) NULL;
+            """);
     }
 
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();

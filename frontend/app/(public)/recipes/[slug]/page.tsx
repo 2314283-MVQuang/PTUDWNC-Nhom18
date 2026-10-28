@@ -11,6 +11,7 @@ import { cn, formatDecimal, formatMinutes, resolveMediaUrl } from "@/lib/utils";
 import type { RecipeDetail } from "@/types/recipe";
 import type { Category } from "@/types/category";
 import type { Metadata } from "next";
+import { serializeJsonLd } from "@/lib/structured-data";
 
 // Mục 9: "/recipes/[slug]" — ISR revalidate=300 (5 phút).
 export const revalidate = 300;
@@ -115,7 +116,7 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
   return (
     <article className="flex flex-col pb-20">
       {/* JSON-LD bắt buộc phải bơm bằng dangerouslySetInnerHTML — đây là cách Next.js khuyến nghị. */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
       {/* ---------- Ảnh bìa + tiêu đề đè lên ảnh ---------- */}
       <header className="relative isolate overflow-hidden bg-brand-gradient">
@@ -236,6 +237,10 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
       {/* ---------- Nội dung chính ---------- */}
       <div className="container-page mt-12 grid grid-cols-1 gap-10 lg:grid-cols-3">
         <div className="flex flex-col gap-8 lg:col-span-2">
+          {recipe.instructions && <section aria-label="Hướng dẫn bổ sung">
+            <h2 className="mb-4 text-xl font-bold">Hướng dẫn bổ sung</h2>
+            <p className="whitespace-pre-line leading-relaxed text-neutral-700">{recipe.instructions}</p>
+          </section>}
           <section>
             <h2 className="mb-5 flex items-center gap-3 text-xl font-bold sm:text-2xl">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-soft">

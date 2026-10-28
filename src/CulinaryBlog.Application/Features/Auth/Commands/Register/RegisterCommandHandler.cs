@@ -5,6 +5,7 @@ using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 namespace CulinaryBlog.Application.Features.Auth.Commands.Register;
 
@@ -13,14 +14,16 @@ namespace CulinaryBlog.Application.Features.Auth.Commands.Register;
 /// trước "@" của email nếu client không gửi — RegisterCommand.UserName là optional) →
 /// UserManager.CreateAsync (Identity tự hash PBKDF2, CONS-004) → gán role mặc định "Author" →
 /// sinh cặp token (đăng ký xong đăng nhập luôn, không bắt gọi thêm /login) → lưu RefreshToken →
-/// gửi email chào mừng + email xác nhận địa chỉ.
+/// lên lịch WelcomeEmailJob + giữ luồng email xác nhận địa chỉ hiện có.
 /// </summary>
 public class RegisterCommandHandler(
     UserManager<ApplicationUser> userManager,
     IJwtService jwtService,
     IRefreshTokenRepository refreshTokenRepository,
     IUnitOfWork unitOfWork,
-    IEmailService emailService)
+    IEmailService emailService,
+    IWelcomeEmailScheduler welcomeEmails,
+    ILogger<RegisterCommandHandler> logger)
     : IRequestHandler<RegisterCommand, AuthResponseDto>
 {
     private const string DefaultRole = "Author";
@@ -80,20 +83,27 @@ public class RegisterCommandHandler(
 
         await unitOfWork.SaveChangesAsync(ct);
 
-        // Không để lỗi gửi email (welcome/xác nhận) làm hỏng kết quả đăng ký — user đã có tài
-        // khoản + token hợp lệ dù bước gửi email tạm thời lỗi (ConsoleEmailService hiện chỉ log
-        // nên hầu như không lỗi, nhưng giữ try/catch để an toàn khi thay bằng MailKit/SMTP thật).
+        // FR-JOB-001: chỉ enqueue SAU SaveChanges; worker gửi SMTP ngoài request đăng ký.
         try
         {
-            await emailService.SendWelcomeEmailAsync(user.Email!, user.DisplayName, ct);
+            var jobId = welcomeEmails.Enqueue(user.Id);
+            logger.LogInformation("Welcome email job {JobId} queued for user {UserId}.", jobId, user.Id);
+        }
+        catch (Exception ex)
+        {
+            // Tài khoản đã được lưu. Ghi lỗi để có thể lên lịch lại; không báo đăng ký thất bại giả.
+            logger.LogError(ex, "Could not enqueue welcome email for user {UserId}.", user.Id);
+        }
 
+        try
+        {
             // Tuần 3: gửi kèm email xác nhận địa chỉ (ConfirmEmailCommand xử lý lúc user bấm link).
             var confirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
             await emailService.SendEmailConfirmationAsync(user.Email!, user.DisplayName, confirmationToken, ct);
         }
-        catch
+        catch (Exception ex)
         {
-            // Không để lỗi gửi email ảnh hưởng kết quả đăng ký.
+            logger.LogWarning(ex, "Could not send confirmation email for user {UserId}.", user.Id);
         }
 
         return new AuthResponseDto(

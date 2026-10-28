@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Minio;
 
 namespace CulinaryBlog.Infrastructure;
 
@@ -77,12 +79,36 @@ public static class DependencyInjection
         // --- Email: FR-AUTH-001 (Register) gửi email chào mừng qua service này; Tuần 3 thêm
         // reset mật khẩu + xác nhận email (cùng interface IEmailService) ---
         // IFileStorageService đã gỡ cùng module Recipe (upload ảnh công thức, không thuộc FR-AUTH).
-        services.AddScoped<IEmailService, ConsoleEmailService>();
+        services.AddScoped<ConsoleEmailService>();
+        services.AddScoped<IEmailService, MailKitAuthEmailService>();
+        // Welcome và đặt lại mật khẩu dùng cùng cấu hình SMTP; xác nhận email giữ adapter cũ.
+        services.AddOptions<WelcomeEmailOptions>()
+            .Bind(configuration.GetSection(WelcomeEmailOptions.SectionName))
+            .Validate(options => options.IsValid(), "WelcomeEmail SMTP configuration is invalid.")
+            .ValidateOnStart();
+        services.AddScoped<IWelcomeEmailSender, MailKitWelcomeEmailSender>();
+        services.AddScoped<IWelcomeEmailScheduler, HangfireWelcomeEmailScheduler>();
+        services.AddTransient<WelcomeEmailJob>();
 
         // --- UploadedFile Repository & MinIO Storage (FR-FILE-001, Tiến) ---
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
+        services.AddSingleton<IMinioClient>(serviceProvider =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<MinioOptions>>().Value;
+            var client = new MinioClient()
+                .WithEndpoint(options.Endpoint)
+                .WithCredentials(options.AccessKey, options.SecretKey);
+
+            if (options.UseSsl)
+            {
+                client = client.WithSSL();
+            }
+
+            return client.Build();
+        });
         services.AddScoped<IFileStorageService, MinioFileStorageService>();
+        services.AddHostedService<MinioBucketInitializer>();
 
         // --- Redis (Tuần 4) ---
         // Mâu thuẫn #3 (xem phan-tich-mau-thuan-SRS): chỉ dùng 1 tầng cache duy nhất — ASP.NET Core
@@ -101,7 +127,7 @@ public static class DependencyInjection
                 "Thiếu cấu hình Redis:ConnectionString (xem appsettings.json / docker-compose.yml service \"redis\").");
 
         // --- Health checks (FR-OBS-001, Tuần 3 + Tuần 4) ---
-        // "postgresql"/"redis" gắn tag "ready" — dùng cho /health/ready (app đã sẵn sàng nhận
+        // "postgresql"/"redis"/"minio" gắn tag "ready" — dùng cho /health/ready (app đã sẵn sàng nhận
         // traffic chưa, CÓ kiểm tra dependency ngoài). /health/live KHÔNG chạy check nào (xem
         // API/Endpoints/HealthEndpoints.cs) nên không cần đăng ký gì thêm ở đây cho liveness.
         //
@@ -114,7 +140,8 @@ public static class DependencyInjection
 
         services.AddHealthChecks()
             .AddNpgSql(connectionString, name: "postgresql", tags: ["ready"])
-            .AddRedis(redisConnectionString, name: "redis", tags: ["ready"]);
+            .AddRedis(redisConnectionString, name: "redis", tags: ["ready"])
+            .AddCheck<MinioHealthCheck>("minio", tags: ["ready"], timeout: TimeSpan.FromSeconds(5));
 
         // --- FR-JOB-003 (Tuần 5 — Tiến): Sitemap & Background Job ---
         services.AddScoped<ISitemapBuilder, SitemapBuilder>();
@@ -127,6 +154,10 @@ public static class DependencyInjection
         services.AddSingleton<IImageProcessor, ImageSharpProcessor>();
         services.AddScoped<IThumbnailJobScheduler, ThumbnailJobScheduler>();
         services.AddTransient<GenerateThumbnailJob>();
+
+        // FR-FILE-002 (Thịnh): xoá file MinIO bằng Hangfire job, retry 3 lần.
+        services.AddScoped<IFileDeletionScheduler, HangfireFileDeletionScheduler>();
+        services.AddTransient<DeleteFileJob>();
 
         return services;
     }

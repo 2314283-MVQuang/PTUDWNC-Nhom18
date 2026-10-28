@@ -1,13 +1,14 @@
-# Báo cáo tổng hợp công việc Chung Thiện Ý — Tuần 1 đến Tuần 6
+# Báo cáo tổng hợp công việc Chung Thiện Ý — Tuần 1 đến Tuần 7
+
 
 - **Môn học:** Phát triển ứng dụng web nâng cao.
 - **Sinh viên:** Chung Thiện Ý — **2312804**, Nhóm 18.
 - **Dự án:** Culinary Blog — ứng dụng chia sẻ công thức nấu ăn.
 - **Nhánh làm việc:** `2312804_ChungThienY_nhom18`.
-- **Ngày cập nhật:** 14/10/2026. Số liệu tuần 1–5 giữ theo lần tổng hợp 13/10; kiểm chứng bổ sung tuần 6 ở mục 13.
+- **Ngày cập nhật:** 27/10/2026. Số liệu tuần 1–5 giữ theo lần tổng hợp 13/10; tuần 6 ở mục 13; tuần 7 ngày 21/10 ở mục 14. Phần áp dụng kỹ thuật tham khảo ở mục 15; đợt hoàn thiện yêu cầu Auth, hồ sơ và giao diện theo xác nhận bổ sung ở mục 16.
 - **Căn cứ:** [SRS v1.0.0, 71 trang](SRS_Culinary_Blog_v1.0.0.pdf), [phân công chi tiết](phan_cong_chi_tiet_theo_buoi.md), [quyết định giải quyết mâu thuẫn SRS](phan-tich-mau-thuan-SRS-v1.0.0.md) và mã nguồn hiện có.
 
-Tài liệu này gộp nội dung báo cáo Recipe tuần 1–5, yêu cầu tối thiểu tuần 5 và phần tuần 6 đã được sinh viên xác nhận mở rộng. Mục đích là giải thích **đã thực hiện gì, vì sao cần thực hiện, mã nằm ở đâu và đã kiểm chứng bằng cách nào**, để sinh viên đọc hiểu và trình bày được phần việc của mình. Báo cáo Word tuần 6: [Lab6_2312804_ChungThienY.docx](Lab6_2312804_ChungThienY.docx); bản Lab 5 đã nộp được giữ nguyên.
+Tài liệu này gộp nội dung báo cáo Recipe tuần 1–5, yêu cầu tối thiểu tuần 5, phần frontend/tìm kiếm tuần 6 và Welcome Email/health check MinIO tuần 7. Mục đích là giải thích **đã thực hiện gì, vì sao cần thực hiện, mã nằm ở đâu và đã kiểm chứng bằng cách nào**, để thuận tiện đọc hiểu và trình bày phần việc được phân công. Đợt hoàn thiện bổ sung theo yêu cầu ngày 27/10 được ghi riêng tại mục 16. Báo cáo Word: [Lab6_2312804_ChungThienY.docx](Lab6_2312804_ChungThienY.docx), [Lab7_2312804_ChungThienY.docx](Lab7_2312804_ChungThienY.docx). Các bản Lab đã nộp trước đó được giữ nguyên.
 
 ## 1. Phạm vi và cách đọc báo cáo
 
@@ -32,6 +33,7 @@ Trong báo cáo:
 | 4 | Hoàn thành toàn bộ endpoint được giao; Recipe Update, RowVersion, slug | Hoàn thiện PUT; đủ 5 thao tác API đến tuần 4; kiểm tra quyền, dữ liệu đầu vào và xung đột 409 |
 | 5 | Publish Recipe và các yêu cầu tối thiểu bổ sung | Thêm Publish; hoàn thiện bảo mật, đặc tả/versioning API, frontend, thư viện và TS types |
 | 6 | FR-SRCH-002 và yêu cầu tối thiểu frontend đã được xác nhận | Bộ lọc tìm kiếm kết hợp; tiện ích API/lỗi; Radix Dialog; store; trang Search responsive; component và layout dùng chung. Chi tiết mục 13 |
+| 7 | FR-JOB-001 Welcome Email và bổ sung health check MinIO | Hangfire enqueue sau khi lưu đăng ký, MailKit/SMTP qua MailHog, retry và kiểm tra bucket MinIO. Chi tiết mục 14 |
 
 ### 1.2. Kết quả kiểm chứng tuần 1–5 tại ngày 13/10/2026
 
@@ -599,7 +601,7 @@ Một cách mô tả phần việc khi báo cáo: **“Em phụ trách Recipe t�
 
 ## 12. Giới hạn còn lại và tài liệu tham khảo
 
-- Phạm vi tuần 1–5 không bao gồm Archive, Delete/Purge, Sitemap của thành viên khác. Search filters tuần 6 được bổ sung theo xác nhận riêng và trình bày ở mục 13; vẫn không triển khai Search sorting/pagination của thành viên khác, Welcome Email/MinIO health check tuần 7 hoặc deploy/tích hợp toàn hệ thống tuần 8.
+- Phạm vi tuần 1–5 không bao gồm Archive, Delete/Purge, Sitemap của thành viên khác. Search filters tuần 6 được trình bày ở mục 13; Welcome Email/MinIO health check tuần 7 được bổ sung ở mục 14. Không triển khai Search sorting/pagination của thành viên khác hoặc deploy/tích hợp toàn hệ thống tuần 8.
 - SQL nullable Instructions chưa được áp dụng vào database hiện có của nhóm. Cần chủ động chạy script ở mục 8.2 để database cũ khớp code khi bỏ Instructions.
 - NuGet còn cảnh báo NU1902/NU1903 ở các package có sẵn như Microsoft.OpenApi, OpenTelemetry, System.Security.Cryptography.Xml. Chưa nâng đồng loạt dependency; báo cáo không khẳng định đã xử lý hết cảnh báo bảo mật.
 - Chưa kiểm chứng toàn bộ ứng dụng qua trình duyệt với database và Google thật; kiểm tra Auth frontend Production dùng backend giả lập. Limiter chưa dùng ngân sách chia sẻ giữa nhiều API replica.
@@ -787,3 +789,421 @@ Khi thầy/cô hỏi về phần chưa làm: sắp xếp tùy chọn và phân t
 
 Tài liệu đối chiếu: [React useReducer](https://react.dev/reference/react/useReducer), [Radix Dialog](https://www.radix-ui.com/primitives/docs/components/dialog), [EF Core SQL queries và tham số hóa](https://learn.microsoft.com/en-us/ef/core/querying/sql-queries).
 
+## 14. Tuần 7 — Welcome Email bằng Hangfire và health check MinIO
+
+### 14.1. Công việc được giao và phạm vi thực hiện
+
+Chung Thiện Ý phụ trách **FR-JOB-001 – Welcome Email** và bổ sung kiểm tra MinIO vào health endpoints. Công việc bao gồm đưa thư chào mừng vào hàng đợi sau đăng ký, gửi bằng MailKit qua MailHog trong môi trường phát triển, xử lý retry và kiểm tra MinIO khi đánh giá readiness.
+
+Phần thay đổi trong RegisterCommandHandler chỉ phục vụ việc lên lịch thư chào mừng. Email xác nhận và đặt lại mật khẩu tiếp tục sử dụng luồng hiện có. Không thực hiện phần xóa tệp/log file của Thịnh, thumbnail/migration UploadedFiles của Tiến, frontend Auth của Quang hoặc nhiệm vụ tuần 8.
+
+Căn cứ: [phân công tuần 7](phan_cong_chi_tiet_theo_buoi.md), [SRS trang 38–39](SRS_Culinary_Blog_v1.0.0.pdf). SRS quy định Welcome Email là fire-and-forget, retry sau 1, 5 và 30 phút. Việc đưa MinIO vào /health/ready áp dụng theo phân công bổ sung tuần 7 đã được xác nhận.
+
+### 14.2. Luồng xử lý đăng ký và gửi thư
+
+1. Request đăng ký đi qua endpoint, MediatR và validator hiện có.
+2. RegisterCommandHandler tạo tài khoản bằng Identity, gán vai trò Author và lưu refresh token.
+3. Sau SaveChangesAsync, handler gọi IWelcomeEmailScheduler.Enqueue(user.Id). Interface ở Application; HangfireWelcomeEmailScheduler ở Infrastructure gọi IBackgroundJobClient.Enqueue.
+4. Hangfire lưu job vào PostgreSQL theo cấu hình chung của ứng dụng. Request đăng ký trả 201 cùng token; không chờ SMTP gửi thư.
+5. Worker tạo WelcomeEmailJob qua DI và đọc tài khoản từ database. Tài khoản không tồn tại, không hoạt động hoặc không có email được bỏ qua và ghi log.
+6. MailKitWelcomeEmailSender tạo thư HTML và văn bản thuần, kết nối SMTP và gửi. Trong Development, SMTP trỏ đến MailHog.
+7. Khi gửi thành công, Hangfire ghi Succeeded. Khi SMTP lỗi, exception được chuyển cho Hangfire để lên lịch thử lại; job không tự bỏ qua lỗi gửi thư.
+
+Chỉ mã tài khoản được đưa vào tham số job; không đưa JWT, refresh token hoặc mật khẩu vào hàng đợi. Tên người dùng và địa chỉ nhận được đọc lại khi worker chạy để tránh dùng dữ liệu tài khoản đã thay đổi.
+
+**Vì sao tách scheduler và sender?** Scheduler quyết định lên lịch công việc; sender chịu trách nhiệm SMTP. Tách hai phần giúp Application không cần tham chiếu Hangfire hoặc MailKit, đồng thời kiểm thử được việc tài khoản đã lưu trước khi enqueue.
+
+### 14.3. Nội dung thư, MailKit và cấu hình SMTP
+
+Thư chào mừng gồm tên người dùng, thông báo tạo tài khoản thành công và liên kết vào ứng dụng. Có cả TextBody và HtmlBody. Dữ liệu tên hiển thị được HTML-encode trước khi đưa vào thư, nên tên chứa thẻ như script không trở thành HTML thực thi.
+
+Liên kết xác nhận tài khoản được SRS ghi là tùy chọn khi cần. Đợt này giữ luồng xác nhận email của nhóm; Welcome Email không tự tạo trang frontend hoặc đường dẫn kích hoạt chưa tồn tại.
+
+Gói bổ sung: **MailKit 4.18.0** tại Infrastructure. Cấu hình nằm trong WelcomeEmailOptions:
+
+| Khóa | Mục đích | Giá trị phát triển |
+|---|---|---|
+| WelcomeEmail:Host | Máy chủ SMTP | 127.0.0.1 khi chạy backend trên máy; mailhog khi chạy API trong Compose |
+| Port | Cổng SMTP | 1025 |
+| Security | Chế độ TLS của MailKit | None với MailHog nội bộ; mặc định của options là StartTls |
+| FromEmail / FromName | Địa chỉ và tên người gửi | noreply@culinaryblog.local / Culinary Blog |
+| AppUrl | Liên kết trong thư | http://localhost:3000 |
+| Username / Password | Xác thực SMTP nếu máy chủ yêu cầu | Bỏ trống với MailHog; cấp riêng qua biến môi trường/User Secrets |
+| TimeoutSeconds | Thời gian chờ kết nối và thao tác SMTP | 10 giây; được kiểm tra trong khoảng 1–120 |
+
+ValidateOnStart kiểm tra host, cổng, địa chỉ gửi, URL http/https, chế độ bảo mật và cặp username/password. Production cần cấp cấu hình SMTP hợp lệ; thiếu host sẽ báo lỗi cấu hình khi khởi động thay vì giả vờ đã gửi thư.
+
+MailHog là công cụ giữ thư phát triển và cung cấp giao diện xem thư. Hai cổng được bind vào loopback để sử dụng trên máy: **SMTP 1025**, **web 8025**. Compose cho API truyền host mailhog vì localhost bên trong container là chính container API.
+
+### 14.4. Retry, log và các tình huống lỗi
+
+WelcomeEmailJob được gắn AutomaticRetry với Attempts=3, DelaysInSeconds=[60,300,1800], OnAttemptsExceeded=Fail. Có một lần chạy đầu và tối đa ba lần thử lại. Chính sách chỉ gắn cho job này, không thay đổi retry của sitemap, purge hoặc job thành viên khác.
+
+- **SMTP tạm thời dừng:** request đăng ký vẫn trả 201; worker lỗi và job chuyển Scheduled để thử lại.
+- **SMTP phục hồi:** job có thể chạy tiếp và gửi thư thành công.
+- **Enqueue lỗi sau khi tài khoản đã lưu:** handler ghi log Error cùng UserId, vẫn trả tài khoản thành công để tránh báo đăng ký thất bại giả. Trường hợp này cần xử lý/lên lịch lại theo log.
+- **Email xác nhận lỗi:** được xử lý và ghi log riêng; lỗi này không chặn bước enqueue Welcome Email.
+- **Tài khoản không còn phù hợp:** job bỏ qua nếu người dùng bị xóa, vô hiệu hóa hoặc không có email.
+
+Lưu tài khoản và enqueue chưa được ghép thành một giao dịch hoặc outbox. SMTP cũng không bảo đảm nhận thư đúng một lần trong mọi tình huống; nếu máy chủ đã nhận nhưng kết nối ngắt trước khi xác nhận, retry có thể gửi trùng. Đây là giới hạn được ghi nhận, không tuyên bố bảo đảm exactly-once.
+
+### 14.5. Health check MinIO và ý nghĩa của readiness
+
+MinioHealthCheck dùng SDK MinIO có sẵn để gọi BucketExistsAsync với endpoint, credential và bucket hiện tại. Check không upload, sửa hoặc xóa object. Kiểm tra bucket giúp phát hiện cả sai quyền, thiếu bucket và lỗi kết nối, thay vì chỉ kiểm tra process có trả HTTP hay không.
+
+Check được đăng ký với tên minio, tag ready và timeout 5 giây; SDK có timeout 3 giây. Kết quả dùng mô tả ngắn, không trả endpoint, credential hoặc chi tiết lỗi nội bộ.
+
+| Endpoint | Khi các dependency sẵn sàng | Khi MinIO dừng |
+|---|---|---|
+| /health | 200 | 503 |
+| /health/ready | 200 | 503 |
+| /health/live | 200 | 200 nếu tiến trình API vẫn nhận request |
+
+Việc đưa MinIO vào readiness là chủ đích theo phân công tuần 7. Đổi lại, khi MinIO hoặc bucket không sẵn sàng, toàn API được đánh dấu chưa ready dù một số thao tác không sử dụng tệp vẫn có thể chạy. Liveness tiếp tục độc lập để tránh khởi động lại API chỉ vì dịch vụ bên ngoài bị lỗi.
+
+### 14.6. Các tệp chính và phần dùng lại
+
+| Nội dung | Mã nguồn |
+|---|---|
+| Lên lịch sau đăng ký | [RegisterCommandHandler.cs](../src/CulinaryBlog.Application/Features/Auth/Commands/Register/RegisterCommandHandler.cs) |
+| Hợp đồng Application | [IWelcomeEmailScheduler.cs](../src/CulinaryBlog.Application/Common/Interfaces/IWelcomeEmailScheduler.cs), [IWelcomeEmailSender.cs](../src/CulinaryBlog.Application/Common/Interfaces/IWelcomeEmailSender.cs) |
+| Hangfire adapter và worker | [HangfireWelcomeEmailScheduler.cs](../src/CulinaryBlog.Infrastructure/Jobs/HangfireWelcomeEmailScheduler.cs), [WelcomeEmailJob.cs](../src/CulinaryBlog.Infrastructure/Jobs/WelcomeEmailJob.cs) |
+| Gửi thư và cấu hình | [MailKitWelcomeEmailSender.cs](../src/CulinaryBlog.Infrastructure/Services/MailKitWelcomeEmailSender.cs), [WelcomeEmailOptions.cs](../src/CulinaryBlog.Infrastructure/Services/WelcomeEmailOptions.cs) |
+| Kiểm tra MinIO | [MinioHealthCheck.cs](../src/CulinaryBlog.Infrastructure/Services/MinioHealthCheck.cs), [DependencyInjection.cs](../src/CulinaryBlog.Infrastructure/DependencyInjection.cs) |
+| Endpoint health dùng chung | [HealthEndpoints.cs](../src/CulinaryBlog.API/Endpoints/HealthEndpoints.cs) |
+| SMTP Development/Compose | [appsettings.Development.json](../src/CulinaryBlog.API/appsettings.Development.json), [docker-compose.yml](../docker-compose.yml) |
+| Unit và tích hợp | [WelcomeEmailTests.cs](../tests/CulinaryBlog.UnitTests/Jobs/WelcomeEmailTests.cs), [Week7IntegrationTests.cs](../tests/CulinaryBlog.UnitTests/Jobs/Week7IntegrationTests.cs) |
+| Chạy kiểm thử riêng | [test-chung-thien-y-tuan-7.ps1](../test-chung-thien-y-tuan-7.ps1) |
+| Báo cáo Word | [Lab7_2312804_ChungThienY.docx](Lab7_2312804_ChungThienY.docx), [script tạo báo cáo](../scripts/build-week7-report.py) |
+
+Hangfire server, storage PostgreSQL, Identity, repository refresh token, middleware lỗi, DI và health endpoints là nền tảng dùng lại của nhóm. Đóng góp tuần 7 tập trung vào welcome job, SMTP, nối enqueue vào đăng ký và check MinIO.
+
+### 14.7. Kết quả kiểm chứng ngày 21/10/2026
+
+| Kiểm tra | Kết quả |
+|---|---|
+| Toàn bộ project test backend | **131 đạt, 7 bỏ qua có điều kiện, 0 lỗi; tổng 138** |
+| Trong số trên: test độc lập mới tuần 7 | **12/12 đạt**: lưu rồi enqueue, lỗi hàng đợi, đăng ký trùng/mật khẩu sai, tài khoản không hợp lệ, lỗi SMTP, policy retry và cấu hình |
+| Tích hợp PostgreSQL/Redis/MailHog/MinIO | **4/4 ca độc lập đạt**: pha MinIO hoạt động có 3 đạt/1 bỏ qua theo pha; pha MinIO dừng có 1 đạt/3 bỏ qua theo pha; không có ca lỗi |
+| Frontend | Không thay đổi mã frontend trong tuần 7; không nhận kết quả kiểm thử frontend trước đây là lần chạy mới |
+
+Bảy ca bỏ qua gồm ba ca Search cần PostgreSQL/Redis của tuần 6 và bốn ca tích hợp tuần 7. Các ca tích hợp được chạy riêng bằng script khi có đủ dịch vụ; không cộng số lần chạy lại thành ca test mới.
+
+Các kiểm thử tích hợp dùng HTTP qua endpoint Auth thật, MediatR/Identity, Hangfire worker và storage PostgreSQL thật, SMTP MailKit, MailHog và SDK MinIO. Thư kiểm thử được đọc từ MailHog API rồi parse MIME để xác nhận nội dung và việc mã hóa HTML.
+
+Ca SMTP lỗi quan sát job chuyển Scheduled và thời điểm thử lại khoảng 60 giây. Sau khi phục hồi SMTP, test chủ động đưa job vào queue sớm để tránh chờ một phút. Mã production vẫn giữ lịch 1, 5, 30 phút; không tuyên bố đã chờ đủ 30 phút hoặc kiểm tra máy chủ thư bên ngoài.
+
+Máy kiểm thử có SDK Windows bị thiếu dotnet.dll. Build/test đã sử dụng SDK Docker từ cache, artifact và package mới lưu trong thư mục tạm; không sửa SDK hệ thống hoặc global.json. NuGet audit tắt trong lần chạy Docker này; kết quả test không xác nhận đã xử lý hết cảnh báo dependency có sẵn.
+
+Docker Hub tải chậm nên lần tích hợp này sử dụng image culinary-week7-mailhog:local, dựng từ binary Linux chính thức MailHog v1.0.1. Binary tải từ GitHub có SHA-256 e2ed634ded49929f089b20045581955ed217672078fd86082dd7a6c67c5d09c7 và đã kiểm tra lệnh -version trả 1.0.1. Cấu hình local của máy dùng image này; Compose chung vẫn khai báo mailhog/mailhog:v1.0.1.
+
+### 14.8. Lệnh chạy và kiểm tra thủ công
+
+Khởi động hạ tầng theo cấu hình chung của nhóm:
+
+~~~powershell
+docker compose up -d postgres redis minio mailhog
+~~~
+
+Máy đang dùng cấu hình cổng và MinIO riêng tiếp tục chạy:
+
+~~~powershell
+.\run-local.ps1 Infra
+.\run-local.ps1 Backend
+~~~
+
+Nếu SDK Windows vẫn báo thiếu dotnet.dll, có thể chạy API bằng Docker với cấu hình local hiện có (thay cho lệnh Backend):
+
+~~~powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build api
+~~~
+
+Lệnh này phục vụ chạy ứng dụng với database phát triển hiện có, khác với script kiểm thử bên dưới vốn chỉ dùng database tạm. Cấu hình SDK hệ thống chưa được sửa trong phạm vi tuần 7.
+
+Mở giao diện MailHog tại http://localhost:8025. Đăng ký tài khoản qua giao diện hoặc POST /api/v1/auth/register. Sau khi request trả 201, kiểm tra thư chào mừng trong MailHog và trạng thái job tại /hangfire của môi trường phát triển. MailHog chỉ giữ thư phát triển.
+
+Kiểm thử tự động tại thư mục gốc:
+
+~~~powershell
+dotnet test .\tests\CulinaryBlog.UnitTests\CulinaryBlog.UnitTests.csproj
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test-chung-thien-y-tuan-7.ps1
+# Nếu máy chưa có SDK .NET 10 hoạt động, có thể dùng SDK Docker:
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test-chung-thien-y-tuan-7.ps1 -UseDockerSdk
+# Lệnh đã dùng để kiểm chứng trên máy hiện tại:
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test-chung-thien-y-tuan-7.ps1 -UseDockerSdk -MailhogImage culinary-week7-mailhog:local
+~~~
+
+Script cần các image postgres:16-alpine, redis:7-alpine, mailhog/mailhog:v1.0.1 và MinIO có sẵn. Có thể truyền -MinioImage hoặc -MailhogImage khi dùng image riêng. Cổng host ngẫu nhiên, database bắt đầu bằng culinary_week7_tests_, tên container có hậu tố riêng. Script chỉ dừng các container đã tự tạo, giữ nguyên dữ liệu nhóm và LMS.
+
+Để kiểm tra MinIO dừng, ưu tiên script tự động vì chỉ dừng container tạm. Không cần dừng MinIO đang phục vụ dữ liệu của nhóm. Trong môi trường triển khai, SMTP thật và cấu hình dashboard/phân quyền cần được kiểm tra trong phần tích hợp vận hành của nhóm.
+
+### 14.9. Kết quả rà soát cá nhân và hạn chế
+
+- Phần Recipe Create/Read/Update/Publish và bộ lọc tuần 6 vẫn được giữ; bộ test hiện có được chạy lại cùng test tuần 7.
+- Welcome Email và MinIO readiness là phạm vi mới của tuần 7; các tệp dùng chung chỉ được chạm để tích hợp phần này.
+- Chưa làm nhiệm vụ test luồng Auth + Recipe xuyên suốt và chuẩn bị demo của tuần 8; không mở rộng sang công việc của thành viên khác.
+- Chưa bổ sung outbox, chống gửi trùng tuyệt đối, SMTP production hoặc luồng xác nhận email mới.
+- Chưa đánh giá coverage, hiệu năng quy mô lớn hoặc đăng nhập Google thực tế trong đợt tuần 7.
+
+Báo cáo Word Lab 7 kế thừa bố cục, khổ giấy, bảng 4 cột và kiểu chữ của Lab 6. Đã kiểm tra cấu trúc ZIP/XML, nội dung và 5 dòng công việc; chưa kiểm tra phân trang trực tiếp trong Microsoft Word. File Word là tài liệu cục bộ, không đồng nghĩa đã được commit hoặc đẩy lên GitHub.
+
+Tham khảo kỹ thuật: [Hangfire truyền dependency](https://docs.hangfire.io/en/latest/background-methods/passing-dependencies.html), [Hangfire xử lý exception và retry](https://docs.hangfire.io/en/latest/background-processing/dealing-with-exceptions.html), [MailKit chính thức](https://github.com/jstedfast/MailKit), [ASP.NET Core health checks](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0).
+
+## 15. Áp dụng kỹ thuật tham khảo trong phạm vi tuần 1–7
+
+### 15.1. Căn cứ và phạm vi điều chỉnh
+
+Ngày 27/10/2026, đã đọc tài liệu [Các kỹ thuật tham khảo](<Các kỹ thuật tham khảo.md>) và đối chiếu với phần việc đã thực hiện. Hai kỹ thuật được chọn từ mục **3.3 — Các kỹ thuật tối ưu truy vấn trong EF Core** là chọn dữ liệu trực tiếp sang DTO bằng `Select` và tách truy vấn có nhiều collection bằng `AsSplitQuery()`.
+
+Đây là phần hoàn thiện chất lượng truy vấn đọc Recipe đã thuộc phân công tuần 3–5, trong phạm vi rà soát công việc tuần 1–7. Phần điều chỉnh không được tính thành chức năng mới của tuần 8. Lý do, ưu điểm và hạn chế đã được trình bày trước khi nhận xác nhận thực hiện.
+
+| Kỹ thuật | Vị trí áp dụng | Mục đích |
+|---|---|---|
+| Projection với `Select` | Danh sách Recipe trong `GetRecipesQueryHandler` | Chỉ lấy các trường cần cho `RecipeSummaryDto`, tránh tải toàn bộ entity và danh sách ảnh về bộ nhớ rồi mới chuyển đổi |
+| `AsSplitQuery()` | Đọc chi tiết Recipe theo Id và Slug trong `RecipeRepository` | Tránh nhân số dòng khi nối đồng thời Steps, Ingredients và Images |
+
+Không thêm thư viện, thay đổi schema hoặc áp dụng script lên database của nhóm. Contract API, cách lọc, sắp xếp, phân trang, quy tắc xem bản nháp và cơ chế xóa cache hiện có được giữ. Hai kỹ thuật này bổ sung cho Repository/Unit of Work đang dùng, không thay thế kiến trúc đó.
+
+### 15.2. Chọn trực tiếp dữ liệu cần cho danh sách Recipe
+
+Trước khi điều chỉnh, truy vấn danh sách sử dụng `Include` cho Category, Author và Images. EF Core tải các entity này, sau đó mã C# gọi `ToSummaryDto()` để lấy tên danh mục, tên tác giả và một URL ảnh. Cách làm trả đúng dữ liệu nhưng có thể đọc thêm những cột chỉ cần ở màn hình chi tiết hoặc không cần cho danh sách, đồng thời tải nhiều ảnh dù mỗi thẻ công thức chỉ dùng một ảnh.
+
+Sau khi điều chỉnh, quy tắc ánh xạ được khai báo bằng `Expression<Func<Recipe, RecipeSummaryDto>>` có tên `SummaryProjection`. Handler đặt `.Select(RecipeDtoMapping.SummaryProjection)` trước `.ToListAsync(ct)`. EF Core nhận được cây biểu thức để dịch phần lựa chọn dữ liệu thành SQL; việc chọn dữ liệu diễn ra tại database thay vì sau khi đã tải toàn bộ entity. Đây là cách áp dụng khuyến nghị chỉ truy vấn các thuộc tính cần thiết trong [tài liệu hiệu năng EF Core của Microsoft](https://learn.microsoft.com/en-us/ef/core/performance/efficient-querying#project-only-properties-you-need).
+
+Luồng xử lý danh sách sau điều chỉnh:
+
+1. Tạo truy vấn Recipe ở chế độ `AsNoTracking()`.
+2. Áp dụng quyền đọc theo tài khoản và các bộ lọc hiện có.
+3. Giữ cách sắp xếp đang dùng và đếm số kết quả để tạo thông tin phân trang.
+4. Áp dụng `Skip`/`Take`, chọn trực tiếp sang `RecipeSummaryDto`, rồi thực thi truy vấn.
+5. Đóng gói danh sách cùng metadata bằng `PagedResult` như trước.
+
+`ToSummaryDto()` vẫn được cung cấp cho những nơi đã có entity trong bộ nhớ. Hàm này sử dụng delegate được biên dịch một lần từ cùng `SummaryProjection`, giúp tránh duy trì hai bộ quy tắc ánh xạ khác nhau. Riêng truy vấn database sử dụng trực tiếp **biểu thức**, không gọi delegate đã biên dịch trong `Select`.
+
+Quy tắc chọn ảnh được giữ đúng hành vi trước đây: ảnh chưa xóa có `OrderIndex` thấp nhất; không đổi sang chọn theo `IsPrimary`. Recipe không có ảnh trả `primaryImageUrl = null`. Tên danh mục và tên hiển thị tác giả vẫn có trong DTO, dù đã bỏ các lệnh `Include` khỏi handler danh sách.
+
+**Ưu điểm:** giảm số cột và lượng dữ liệu không cần thiết được tải cho danh sách; tránh tạo toàn bộ entity liên quan chỉ để lấy một số trường. **Hạn chế:** biểu thức ánh xạ phải được EF Core và provider PostgreSQL dịch được sang SQL. Khi DTO thay đổi, cần rà soát lại biểu thức và SQL sinh ra. Đợt kiểm tra này xác nhận hình dạng SQL và tính đúng đắn, chưa đo mức giảm thời gian hoặc bộ nhớ trên dữ liệu lớn.
+
+### 15.3. Tách truy vấn đọc chi tiết Recipe
+
+Màn hình chi tiết cần đồng thời các bước thực hiện, nguyên liệu và ảnh. Khi nối ba collection cùng cấp trong một SQL, các dòng có thể bị nhân lên. Ví dụ một công thức có 3 bước, 4 nguyên liệu và 2 ảnh có thể tạo ra 24 tổ hợp dòng trước khi EF Core ghép lại thành một đối tượng. Những dữ liệu của Recipe cũng bị lặp theo các tổ hợp này.
+
+Đã thêm `.AsSplitQuery()` vào hai phương thức chỉ đọc:
+
+- `GetByIdWithDetailsAsync`.
+- `GetBySlugWithDetailsAsync`.
+
+Category và Author vẫn được nạp; ba collection vẫn được sắp theo `StepNumber` hoặc `OrderIndex`. EF Core thực thi truy vấn gốc và các truy vấn riêng cho collection, sau đó ghép kết quả. Việc chỉ áp dụng tại hai phương thức giúp giới hạn tác động đúng phần Recipe được phân công. `GetByIdForPublishingAsync` tiếp tục dùng tracking phục vụ thay đổi trạng thái; không bật split query trên toàn bộ DbContext.
+
+**Ưu điểm:** tránh tích chéo giữa các collection và giảm dữ liệu bị lặp do phép nối. **Hạn chế:** có thêm lượt trao đổi với database; với dữ liệu ít hoặc độ trễ mạng cao, cách này chưa chắc nhanh hơn một truy vấn. Nhiều câu SQL cũng không tự bảo đảm cùng một ảnh chụp dữ liệu nếu có thao tác cập nhật xen giữa. Đợt điều chỉnh này chưa thêm transaction với mức cô lập snapshot/serializable; nếu sau này có yêu cầu đọc nhất quán nghiêm ngặt, cần đánh giá riêng chi phí và cách xử lý. Các đánh đổi này phù hợp với [tài liệu Single vs. Split Queries của Microsoft](https://learn.microsoft.com/en-us/ef/core/querying/single-split-queries#characteristics-of-split-queries).
+
+### 15.4. Kiểm thử trực tiếp SQL và hành vi API
+
+Đã bổ sung [RecipeQueryOptimizationTests.cs](../tests/CulinaryBlog.UnitTests/Recipes/RecipeQueryOptimizationTests.cs) với ba kiểm thử chạy bằng PostgreSQL và Redis tạm. Một `DbCommandInterceptor` chỉ được đăng ký trong host kiểm thử để quan sát nội dung câu SQL; không ghi giá trị tham số và không đưa bộ quan sát này vào ứng dụng chạy thật.
+
+| Kiểm thử mới | Dữ liệu/tình huống | Kết quả xác nhận |
+|---|---|---|
+| `OptimizedList_ProjectsOnlySummary_AndPreservesImageFiltersPagingAndVisibility` | Nhiều Recipe, ảnh khác thứ tự, ảnh đã xóa, Recipe không ảnh, bản nháp của hai tác giả; kết hợp bộ lọc và phân trang | Đúng tên danh mục/tác giả, ảnh theo `OrderIndex`, ảnh thiếu trả `null`, metadata và quyền đọc đúng. Request danh sách được quan sát sinh 2 SQL: đếm và lấy trang |
+| `OptimizedDetails_LoadsOrderedCollectionsWithoutCrossProduct_AndDoesNotTrackEntities` | 3 bước, 4 nguyên liệu, 2 ảnh còn hiệu lực và dữ liệu con đã xóa; đọc theo cả Id lẫn Slug | Mỗi lần đọc sinh 4 SQL; không câu nào nối đồng thời nhiều collection cùng cấp. Thứ tự, Nutrition và RowVersion đúng; đọc qua repository không để entity trong ChangeTracker |
+| `OptimizedDetails_PreservesEmptyCollectionsAndDraftAccessRules` | Bản nháp không có dữ liệu con; truy cập bởi khách, tác giả khác, chủ sở hữu và Admin | Khách/tác giả khác nhận 403; chủ sở hữu/Admin nhận 200 và các mảng con rỗng; áp dụng cho cả Id lẫn Slug |
+
+Kiểm thử danh sách còn kiểm tra SQL không lấy các cột `Instructions`, `Nutrition_Calories`, `PasswordHash`, `SecurityStamp` và `MediumUrl`. Đây là bằng chứng truy vấn chọn dữ liệu cần cho DTO trong tình huống đã kiểm tra, không phải phép đo hiệu năng toàn ứng dụng. Những trường này vốn cũng không thuộc response danh sách trước khi tối ưu; thay đổi nằm ở dữ liệu được đọc từ database.
+
+Đã chạy từ thư mục gốc:
+
+~~~powershell
+# PostgreSQL và Redis tạm; script tự tạo và dọn container riêng
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test-chung-thien-y-tuan-1-5.ps1
+
+# Chạy toàn bộ assembly vừa được build ở bước trên
+dotnet test .\tests\CulinaryBlog.UnitTests\CulinaryBlog.UnitTests.csproj --no-build --no-restore --verbosity minimal
+~~~
+
+Kết quả ngày **27/10/2026**:
+
+- Bộ kiểm thử Recipe/Search với PostgreSQL và Redis: **33/33 đạt**, không bỏ qua; gồm 30 kiểm thử hiện có và 3 kiểm thử tối ưu mới.
+- Chạy toàn bộ assembly: **131 đạt, 10 bỏ qua, 0 lỗi; tổng 141**. Trong 10 kiểm thử bỏ qua có 6 kiểm thử cần PostgreSQL/Redis đã chạy thành công trong lượt 33/33 ở trên; 4 kiểm thử tích hợp tuần 7 cần môi trường riêng chưa được chạy lại trong đợt này.
+- Các container kiểm thử được tạo với tên riêng và đã được dừng/xóa tự động sau khi chạy. Không dùng database hiện có của nhóm và không thao tác vào dữ liệu LMS.
+- SDK .NET trên Windows tại thời điểm kiểm tra trả phiên bản **10.0.402** và đã chạy được bộ kiểm thử trực tiếp. Ghi chú lỗi SDK tại mục 14 phản ánh tình trạng của đợt kiểm tra ngày 21/10, không phải kết quả hiện tại.
+- Không sửa frontend nên không chạy lại build hoặc kiểm thử trình duyệt trong đợt tối ưu này. Kết quả tích hợp tuần 7 ở mục 14 vẫn là kết quả của đợt trước, không được tính là vừa kiểm chứng lại.
+
+Khi build, NuGet vẫn cảnh báo lỗ hổng từ một số dependency hiện có, gồm Microsoft.OpenApi, OpenTelemetry và các gói mật mã. Đợt tối ưu truy vấn không nâng phiên bản các gói này; kết quả kiểm thử đạt không có nghĩa là các cảnh báo đã được xử lý.
+
+### 15.5. Tệp đã điều chỉnh và giới hạn áp dụng
+
+| Tệp | Nội dung |
+|---|---|
+| [RecipeDtos.cs](../src/CulinaryBlog.Application/Features/Recipes/Dtos/RecipeDtos.cs) | Khai báo `SummaryProjection`; dùng chung định nghĩa ánh xạ với `ToSummaryDto()` |
+| [GetRecipesQueryHandler.cs](../src/CulinaryBlog.Application/Features/Recipes/Queries/GetRecipesQueryHandler.cs) | Bỏ tải toàn bộ navigation cho danh sách; chọn DTO trước khi thực thi truy vấn |
+| [RecipeRepository.cs](../src/CulinaryBlog.Infrastructure/Persistence/Repositories/RecipeRepository.cs) | Thêm split query riêng cho hai phương thức đọc chi tiết |
+| [RecipeApiTests.cs](../tests/CulinaryBlog.UnitTests/Recipes/RecipeApiTests.cs) | Đăng ký bộ quan sát SQL trong fixture PostgreSQL của kiểm thử |
+| [RecipeQueryOptimizationTests.cs](../tests/CulinaryBlog.UnitTests/Recipes/RecipeQueryOptimizationTests.cs) | Bổ sung ba kiểm thử về SQL và hành vi API |
+| Báo cáo tổng hợp hiện tại | Bổ sung căn cứ, giải thích, ưu/nhược điểm và kết quả tại mục 15 |
+
+Các kỹ thuật như `AsNoTracking()`, Repository/Unit of Work, ProblemDetails, JWT/phân quyền, Redis Output Cache và cách dùng Server Components đã có trong dự án ở những mức độ tương ứng. Việc đối chiếu tài liệu không được tính là vừa cài đặt mới toàn bộ các kỹ thuật đó hoặc nhận phần hạ tầng dùng chung thành công việc cá nhân.
+
+Chưa bổ sung một lớp Redis Cache-Aside/IMemoryCache riêng vì cần tuân thủ quyết định cache hiện có và tránh phát sinh thêm quy tắc đồng bộ/xóa cache. Chưa nâng Next.js lên phiên bản khác, tạo index khi chưa có kế hoạch thực thi và số liệu đối chiếu, hoặc sửa luồng Auth và nghiệp vụ của thành viên khác. Không sửa thêm logic tìm kiếm, sắp xếp hay phân trang để chạy theo toàn bộ ví dụ trong tài liệu tham khảo.
+
+Không công bố tỷ lệ tăng tốc hoặc tiết kiệm bộ nhớ cố định. Kết quả hiện có chứng minh hai cách tổ chức truy vấn hoạt động trên PostgreSQL trong các tình huống đã kiểm thử, đồng thời giữ đúng hành vi Recipe được kiểm tra. Báo cáo Word Lab 6/Lab 7 và tài liệu tham khảo gốc được giữ nguyên trong đợt cập nhật này.
+
+## 16. Hoàn thiện Auth, hồ sơ và các trang công khai theo yêu cầu bổ sung
+
+### 16.1. Phạm vi đã được xác nhận
+
+Ngày 27/10/2026, đã rà soát nhóm yêu cầu gồm đăng ký, đăng nhập, đăng xuất, đổi/quên mật khẩu, cập nhật hồ sơ, trang chủ, chi tiết công thức, tìm kiếm và danh sách tất cả danh mục. Bảng phân công cập nhật giao Recipe và bộ lọc tìm kiếm cho Chung Thiện Ý; Auth/hồ sơ thuộc phần việc của các thành viên khác. Sau khi trình bày hiện trạng, lý do và đánh đổi, đã nhận xác nhận **“Phương án 2: Cho phép bổ sung cả Auth/hồ sơ”**.
+
+Phần dưới đây ghi nhận những điều chỉnh bổ sung dựa trên mã nhóm đã có. Không nhận toàn bộ công viết Auth, Category hoặc tìm kiếm toàn văn thành phần việc cá nhân; không tự đổi người phụ trách trong bảng phân công. Nhóm yêu cầu mới chưa được chỉ định số tuần riêng nên được ghi thành đợt bổ sung, không tự đánh dấu hoàn thành toàn bộ tuần 8.
+
+### 16.2. Đối chiếu yêu cầu và kết quả
+
+| Yêu cầu | Phần có sẵn được dùng lại | Phần hoàn thiện trong đợt bổ sung |
+|---|---|---|
+| Đăng ký/đăng nhập | Endpoint Identity/JWT và giao diện Auth.js của nhóm | Rà soát, kiểm thử đăng ký qua giao diện, tự đăng nhập, đăng nhập đúng/sai và giữ demo riêng ở Development |
+| Đăng xuất | Endpoint `/auth/logout` và nút đăng xuất frontend | Nối sự kiện sign-out phía server với backend để thu hồi refresh token; xử lý cả access token đã hết hạn |
+| Đổi mật khẩu | Endpoint `/auth/change-password` | Thêm trang `/profile/change-password`, kiểm tra mật khẩu hiện tại, mật khẩu mới và xác nhận |
+| Quên/đặt lại mật khẩu | Token Provider của Identity và hai endpoint forgot/reset | Thêm hai trang công khai, liên kết từ form đăng nhập và email SMTP chứa liên kết đặt lại |
+| Xem/cập nhật hồ sơ | `/profile`, `GET/PATCH /auth/me`, form và hook | Tách cache theo user; sửa thao tác xóa bio/avatar; đồng bộ tên/avatar Header sau khi lưu; xử lý lỗi lưu |
+| Trang chủ | Header, Footer, hero và danh sách công thức mới | Thêm sidebar danh mục; tải hai nguồn độc lập; hỗ trợ lỗi/thử lại từng phần; điều chỉnh cách render để tránh HTML cũ từ build |
+| Chi tiết công thức | Trang theo Slug, nguyên liệu, bước nấu, dinh dưỡng | Hiển thị Instructions khi có; bổ sung giao diện loading/error/404; escape dữ liệu JSON-LD |
+| Tìm kiếm | Full-text Search và bộ lọc FR-SRCH-002 đã có | Kiểm chứng lại bộ lọc trên giao diện; giữ phạm vi hiện tại, không cài thêm sorting/pagination của thành viên khác |
+| Tất cả danh mục | Endpoint danh sách và `CategoryGrid` | Phân biệt tải lỗi với danh sách rỗng; cho thử lại và tránh giữ HTML cũ từ build |
+
+### 16.3. Đăng xuất được nối với backend như thế nào
+
+Trước đây, nút Đăng xuất chỉ gọi `signOut()` của Auth.js. Cookie frontend bị xóa nhưng refresh token trong PostgreSQL chưa được thu hồi qua endpoint backend.
+
+Sau điều chỉnh, [auth.ts](../frontend/auth.ts) đăng ký sự kiện `events.signOut`. Sự kiện chạy phía server và đọc access/refresh token từ JWT cookie của Auth.js. Nếu access token còn hạn, sự kiện gọi `POST /auth/logout` bằng Bearer token và gửi refresh token trong body. Nếu access token đã hết hạn, sự kiện gọi `/auth/refresh` trước, sau đó thu hồi refresh token vừa được cấp. Token demo được bỏ qua và refresh token không được đưa vào JSON session trả cho trình duyệt.
+
+Backend sử dụng cơ chế thu hồi refresh token đã có của nhóm. Kiểm thử xác nhận đăng xuất lặp lại vẫn trả 204 và refresh token đã thu hồi không thể dùng để xin token mới. Access token JWT đã phát hành vẫn có thể hợp lệ đến khi hết hạn; đợt bổ sung không triển khai denylist cho mọi JWT.
+
+Nếu backend mất kết nối, cookie frontend vẫn được xóa để kết thúc phiên trên trình duyệt. Có log thông báo thu hồi thất bại nhưng không ghi giá trị token. Trường hợp này không bảo đảm thu hồi được phiên từ xa; đây là giới hạn cần phân biệt với đăng xuất thành công ở cả hai phía.
+
+### 16.4. Luồng đổi, quên và đặt lại mật khẩu
+
+Các trang mới dùng [PasswordForm.tsx](../frontend/components/forms/PasswordForm.tsx) và schema Zod trong [auth.schema.ts](../frontend/lib/validations/auth.schema.ts). Mật khẩu mới cần ít nhất 8 ký tự, có chữ hoa, chữ số và ký tự đặc biệt; mật khẩu xác nhận phải khớp. Lỗi ProblemDetails được đưa qua tiện ích `apiErrorMessage` để hiển thị thông báo phù hợp.
+
+**Đổi mật khẩu:** từ `/profile`, chọn Đổi mật khẩu. Trang nằm dưới `/profile/*` nên middleware hiện có yêu cầu đăng nhập. Form gửi mật khẩu hiện tại và mật khẩu mới tới `/auth/change-password`; backend lấy UserId từ JWT và dùng Identity để kiểm tra. Tài khoản demo được thông báo không hỗ trợ thao tác này. Kiểm thử xác nhận mật khẩu hiện tại sai bị từ chối, đổi thành công trả 204, mật khẩu cũ không còn đăng nhập được và mật khẩu mới đăng nhập được.
+
+**Quên mật khẩu:** liên kết Quên mật khẩu? trên form đăng nhập dẫn tới `/forgot-password`. Form chỉ gửi email và hiển thị phản hồi chung: nếu email đã đăng ký thì hướng dẫn sẽ được gửi tới hộp thư. Không trả về token trong response.
+
+**Gửi thư:** [MailKitAuthEmailService.cs](../src/CulinaryBlog.Infrastructure/Services/MailKitAuthEmailService.cs) được đăng ký qua `IEmailService`. Dịch vụ dùng lại thư viện MailKit và cấu hình `WelcomeEmail` hiện có, gửi bản HTML và plain text qua SMTP. Development sử dụng MailHog. Liên kết có dạng `/reset-password?email=...&token=...`; từng giá trị được URL-encode riêng để giữ nguyên dấu `+`, `/`, `=` trong token và email. Tên hiển thị và liên kết được HTML-encode trước khi đặt vào thư. Không ghi token/liên kết đặt lại mật khẩu vào log.
+
+**Đặt lại mật khẩu:** trang `/reset-password` đọc email/token từ liên kết và gửi cùng mật khẩu mới tới backend. Trường hợp thiếu email/token hiển thị hướng dẫn yêu cầu liên kết mới. Backend xác thực token bằng Identity; giao diện không tự quyết định token hợp lệ. Kiểm thử thực tế lấy liên kết từ thư trong MailHog, đặt lại thành công, sau đó xác nhận token sai và token vừa dùng đều bị từ chối.
+
+[ForgotPasswordCommandHandler.cs](../src/CulinaryBlog.Application/Features/Auth/Commands/ForgotPassword/ForgotPasswordCommandHandler.cs) được bổ sung xử lý lỗi gửi SMTP để giữ phản hồi chung 204 khi dịch vụ thư gặp sự cố. Có log theo UserId, không ghi token hoặc nội dung thư. Cách này tránh phân biệt tài khoản chỉ qua mã lỗi SMTP; không bảo đảm thời gian phản hồi bằng nhau. Thư reset hiện gửi trong request, chưa có job retry tự động. Nếu không nhận được thư khi SMTP lỗi, cần khôi phục dịch vụ rồi gửi lại yêu cầu.
+
+Luồng xác nhận địa chỉ email cũ vẫn dùng adapter Console; không được tính là đã hoàn thiện giao diện/email xác nhận trong đợt này. Welcome Email tuần 7 tiếp tục chạy qua Hangfire như trước.
+
+### 16.5. Hồ sơ, cache và đồng bộ Header
+
+Ba vấn đề được xử lý trong [useProfile.ts](../frontend/hooks/useProfile.ts), [ProfileForm.tsx](../frontend/components/forms/ProfileForm.tsx) và [auth.config.ts](../frontend/auth.config.ts):
+
+1. **Cache giữa các tài khoản:** query key trước đây chỉ có `profile/me`, nay có thêm UserId. Khi chuyển tài khoản, truy vấn sử dụng key khác; form cũng có React key theo Id hồ sơ. Tài khoản demo không gọi API lấy hồ sơ bằng token giả.
+2. **Không xóa được trường tùy chọn:** trước đây form đổi chuỗi rỗng thành `undefined`, trong khi backend hiểu không gửi trường là giữ nguyên. Nay form gửi chuỗi rỗng khi xóa bio/avatar, đúng quy ước PATCH hiện có. Giới hạn tên, bio và URL avatar được đối chiếu với validator backend.
+3. **Header còn dữ liệu cũ:** sau khi PATCH thành công, cache hồ sơ được cập nhật và gọi `update({})` của Auth.js. Với phiên bản beta.25 đang cài, cần truyền object để phát `trigger="update"`; gọi `update()` không tham số chỉ đọc session. Callback JWT nhận tín hiệu rồi gọi `/auth/me` bằng token phía server để lấy tên/avatar/quyền thật. Không lấy role, access token hoặc tên do client tự khai qua payload update.
+
+Header hiển thị avatar sau cập nhật và trở về biểu tượng mặc định khi xóa avatar. Lỗi API khi lưu được bắt và hiển thị, tránh promise bị bỏ mặc. Nếu lưu thành công nhưng backend tạm lỗi ở bước đồng bộ session, hồ sơ vẫn được coi là đã lưu và phiên hợp lệ được giữ. Header có thể giữ thông tin cũ đến lần đồng bộ hoặc đăng nhập sau; phản hồi 401 làm phiên cần xác thực lại.
+
+### 16.6. Trang chủ, danh mục và chi tiết công thức
+
+**Trang chủ:** [CategorySidebar.tsx](../frontend/components/category/CategorySidebar.tsx) hiển thị danh sách danh mục và số công thức, liên kết tới trang danh mục tương ứng, cùng đường dẫn Xem tất cả danh mục. Bố cục hai cột ở desktop và xếp dọc ở mobile. Header/Footer hiện có của nhóm được giữ trong root layout; Header ở đầu trang chủ có nền cam để chữ trắng đọc rõ khi thanh này nằm trước hero.
+
+Truy vấn công thức mới vẫn dùng `sort=-createdAt`. Hai nguồn công thức và danh mục được tải bằng `Promise.allSettled`: một nguồn lỗi không xóa dữ liệu thành công của nguồn còn lại. Khu vực lỗi có nút Thử lại; thống kê tổng không hiển thị số 0 giả khi nguồn dữ liệu chưa tải được.
+
+Kiểm thử Production phát hiện HTML dựng sẵn từ lần build có thể giữ dữ liệu cũ. Hai trang `/` và `/categories` được bổ sung `await connection()` trước khi đọc dữ liệu để dựng HTML khi có request. Các lời gọi API vẫn đặt `next.revalidate = 3600` cho dữ liệu thành công. Đây là thay đổi từ cache HTML toàn trang sang render theo request kết hợp cache dữ liệu; có thêm chi phí dựng HTML, đổi lại nội dung lỗi/thử lại không phụ thuộc HTML cũ từ build. Cơ chế chờ request được mô tả trong [tài liệu `connection()` của Next.js](https://nextjs.org/docs/app/api-reference/functions/connection).
+
+**Danh sách danh mục:** `/categories` tiếp tục dùng `CategoryGrid` có sẵn. Khi API lỗi, trang hiện lỗi và nút thử lại thay vì đồng thời báo Chưa có danh mục. Khi API thành công nhưng trả mảng rỗng, mới sử dụng giao diện rỗng của danh sách.
+
+**Chi tiết công thức:** giữ tên, mô tả, thời gian, khẩu phần, tác giả, nguyên liệu, các bước và dinh dưỡng; bổ sung Instructions nếu dữ liệu có trường này. Segment công khai có `loading.tsx` và `error.tsx`; trang chi tiết có `not-found.tsx` khi API trả 404. Lỗi dịch vụ được đưa vào giao diện lỗi với nút thử lại, không được hiển thị thành nội dung không tồn tại.
+
+JSON-LD được serialize qua [structured-data.ts](../frontend/lib/structured-data.ts), thay dấu `<` bằng escape Unicode trước khi chèn vào thẻ script. Mục đích là tránh nội dung công thức có `</script>` đóng thẻ sớm. Dữ liệu sau `JSON.parse` vẫn giữ nguyên. Cách xử lý phù hợp với [hướng dẫn JSON-LD của Next.js](https://nextjs.org/docs/app/guides/json-ld). Kiểm thử trình duyệt dùng mô tả chứa chuỗi script và xác nhận script không được thực thi.
+
+### 16.7. Kiểm chứng và minh chứng ngày 27/10/2026
+
+| Phạm vi | Kết quả | Giới hạn của bằng chứng |
+|---|---|---|
+| Bộ kiểm thử backend thông thường | **131 đạt, 15 bỏ qua, 0 lỗi; tổng 146** | Các ca cần dịch vụ ngoài bỏ qua khi không có cấu hình môi trường tích hợp |
+| PostgreSQL/Redis/MailHog/MinIO tạm | **9/9 ca tích hợp đạt qua hai pha**: pha dịch vụ hoạt động 8 đạt/1 bỏ qua; pha MinIO dừng 1 đạt/8 bỏ qua | Gồm 4 ca tuần 7 có sẵn và 5 ca tài khoản mới; bỏ qua theo pha không phải lỗi hoặc ca chưa chạy |
+| Frontend unit | **19/19 đạt** | Gồm 13 ca có sẵn và 6 ca về mật khẩu, schema hồ sơ, JSON-LD và session update |
+| Build Production | **Đạt**, gồm kiểm tra kiểu và lint trong build | Trang chủ/danh mục được xác nhận render động theo request; không nâng Next.js/Auth.js |
+| ESLint toàn frontend | **Đạt** với `npm run lint` | Kiểm tra cả mã ứng dụng, script và test hiện có |
+| Auth.js Production qua HTTP | **Đạt** với backend giả lập riêng | Xác nhận register/login, tắt demo, session không lộ refresh token, bỏ qua role giả từ client, logout kể cả khi access token hết hạn |
+| Edge headless desktop/mobile | **Đạt** với API giả lập riêng; không có `pageerror` | Bao phủ giao diện và dữ liệu fixture, không đồng nhất với kiểm thử trình duyệt xuyên suốt trên PostgreSQL thật |
+
+Năm kiểm thử tài khoản mới nằm trong [AccountIntegrationTests.cs](../tests/CulinaryBlog.UnitTests/Jobs/AccountIntegrationTests.cs):
+
+- Đăng ký/đăng nhập/đăng xuất; sai mật khẩu trả 401, gọi `/me` không JWT bị từ chối, logout lặp lại trả 204 và refresh token đã thu hồi trả 401.
+- Cập nhật hồ sơ, giữ email, xóa bio/avatar, tải lại từ PostgreSQL và từ chối tên rỗng 422.
+- Đổi mật khẩu: từ chối mật khẩu hiện tại sai, xác nhận đăng nhập bằng mật khẩu cũ/mới sau thay đổi.
+- Quên/đặt lại qua email MailHog thật: link giữ email có dấu `+`, HTML encode tên, token sai/đã dùng bị từ chối.
+- SMTP reset bị lỗi: giữ cùng phản hồi chung cho email tồn tại và không tồn tại.
+
+Script [test-account-ui.mjs](../frontend/scripts/test-account-ui.mjs) thao tác trên bản standalone Production: lỗi danh mục và thử lại, lỗi công thức nhưng sidebar vẫn hiển thị, desktop/mobile không tràn ngang, chi tiết/404/lỗi dịch vụ, JSON-LD, bộ lọc Search, đăng ký/đăng nhập/đăng xuất, xóa thông tin hồ sơ, Header cập nhật, kiểm tra mật khẩu và luồng forgot/reset. Ca cuối chuyển sang tài khoản thứ hai bằng điều hướng client để giữ QueryClient, xác nhận hồ sơ không hiển thị dữ liệu của tài khoản trước.
+
+Ảnh chụp dùng **dữ liệu fixture của kiểm thử**, không phải dữ liệu nghiệp vụ thật:
+
+- [Trang chủ desktop](minh_chung_giao_dien_2026_10_27/home-desktop.png).
+- [Trang chủ mobile](minh_chung_giao_dien_2026_10_27/home-mobile.png).
+- [Hồ sơ và Header sau cập nhật](minh_chung_giao_dien_2026_10_27/profile-updated.png).
+
+Các container PostgreSQL/Redis/MailHog/MinIO của script được đặt tên riêng, tạo database tạm và tự dọn sau kiểm thử. Không thay đổi dữ liệu nhóm, cổng của cấu hình chung hoặc dịch vụ LMS. Sáu kiểm thử Recipe/Search phụ thuộc PostgreSQL được bỏ qua trong lượt backend thông thường đã có kết quả riêng tại mục 15; không tính bộ 33/33 đó thành lần chạy mới của đợt Auth/giao diện.
+
+### 16.8. Lệnh kiểm tra và cách chạy thử
+
+Tại thư mục gốc, chạy môi trường local đã có:
+
+~~~powershell
+.\run-local.ps1 Infra
+.\run-local.ps1 Backend
+~~~
+
+Ở terminal khác:
+
+~~~powershell
+cd frontend
+npm ci
+npm run dev
+~~~
+
+Kiểm tra `AUTH_DEMO_ENABLED=false` trong cấu hình frontend để đăng ký tài khoản thật. SMTP backend sử dụng cấu hình `WelcomeEmail`; Development trỏ tới MailHog, `AppUrl` trỏ tới `http://localhost:3000` nếu frontend chạy cổng mặc định. Khi deploy phải cấu hình lại SMTP/AppUrl theo môi trường, không dùng thông tin bí mật của máy phát triển.
+
+Kịch bản đọc hiểu và trình bày:
+
+1. Mở trang chủ, kiểm tra Header/Footer, sidebar danh mục và danh sách công thức mới.
+2. Mở tất cả danh mục, chọn một công thức và xem nguyên liệu, bước nấu, dinh dưỡng.
+3. Tìm kiếm và kết hợp danh mục, độ khó, khoảng thời gian.
+4. Đăng ký bằng email và mật khẩu hợp lệ, sau đó mở Hồ sơ.
+5. Đổi tên, giới thiệu, avatar; kiểm tra tên/avatar trên Header. Xóa hai trường tùy chọn rồi lưu lại để xác nhận dữ liệu bị xóa.
+6. Chọn Đổi mật khẩu, thử mật khẩu hiện tại sai rồi nhập đúng. Đăng xuất và đăng nhập bằng mật khẩu mới.
+7. Chọn Quên mật khẩu?, gửi yêu cầu, mở MailHog tại `http://localhost:8025`, chọn thư đặt lại mật khẩu và mở liên kết.
+8. Đặt mật khẩu mới, đăng nhập lại; thử dùng lại liên kết để quan sát lỗi token đã dùng.
+
+Limiter hiện có áp dụng **10 request/phút/IP cho `/auth/*`**, bao gồm các lần đọc/cập nhật hồ sơ. Kịch bản thao tác nhanh có thể nhận 429; cần chờ theo `Retry-After` trước khi tiếp tục. Không thay đổi ngưỡng limiter để chạy demo.
+
+Các lệnh kiểm chứng đã sử dụng:
+
+~~~powershell
+# Thư mục gốc: database/container tạm, không dùng database nhóm
+dotnet test .\tests\CulinaryBlog.UnitTests\CulinaryBlog.UnitTests.csproj --no-restore --disable-build-servers -m:1 -p:UseSharedCompilation=false --verbosity minimal
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test-chung-thien-y-tuan-7.ps1 -MailhogImage culinary-week7-mailhog:local
+
+# Thư mục frontend
+npm test
+npm run build
+node scripts/test-production-auth.mjs
+$env:CULINARY_PLAYWRIGHT_MODULE_PATH = "$env:TEMP\culinary-account-browser\node_modules\playwright-core\index.mjs"
+node scripts/test-account-ui.mjs
+Remove-Item Env:CULINARY_PLAYWRIGHT_MODULE_PATH
+~~~
+
+Script UI cần Edge và playwright-core; công cụ trình duyệt được cài riêng trong thư mục tạm theo hướng dẫn [frontend README](../frontend/README.md), không thêm thư viện vào ứng dụng. Không có migration hoặc script cập nhật schema mới trong đợt này.
+
+### 16.9. Những giới hạn còn được giữ đúng phạm vi
+
+- Không mở rộng sang sắp xếp/phân trang Search, upload ảnh đại diện, quản trị Category hoặc triển khai Production của các thành viên khác.
+- Chưa kiểm tra đăng nhập Google bằng tài khoản Google thật trong đợt bổ sung này. Kiểm thử đăng ký/đăng nhập ở đây dùng email/mật khẩu.
+- Không triển khai vô hiệu hóa tức thời mọi access token trên các thiết bị sau khi đổi/đặt lại mật khẩu; không nhận đây là tính năng đã có.
+- Thư reset gửi trực tiếp qua SMTP, có timeout và phản hồi chung khi lỗi; chưa có hàng đợi retry riêng cho thư reset. Welcome Email vẫn dùng Hangfire/retry riêng của tuần 7.
+- Frontend gọi API thật trong ứng dụng, nhưng kiểm thử trình duyệt tự động dùng API giả lập. PostgreSQL/SMTP được kiểm chứng bằng bộ HTTP backend riêng; chưa tuyên bố đã kiểm thử mọi bước bằng trình duyệt trên cùng hệ thống thật.
+- Các cảnh báo dependency hiện có trong mục 15 chưa được giải quyết bằng nâng phiên bản trong đợt này. Không coi build/test đạt là chứng nhận bảo mật toàn dự án.
+- Cập nhật báo cáo tổng hợp Markdown và frontend README; không ghi đè các bản Word Lab 6/Lab 7 đã có, không tự tạo báo cáo mang số tuần chưa được chỉ định, không commit/push hoặc merge nhánh.

@@ -4,8 +4,8 @@ import { readFile } from "node:fs/promises";
 import ts from "typescript";
 
 /**
- * Tuần 8 (Quang) — hoàn thiện frontend: upload ảnh qua presigned URL, Auth nâng cao
- * (quên/đặt lại/đổi mật khẩu, xác nhận email). fetch được giả lập, không cần backend thật.
+ * Tuần 8 (Quang) — upload ảnh công thức qua presigned URL MinIO. Phần quên/đặt lại/đổi mật khẩu
+ * do tests/account.test.mjs kiểm tra. fetch được giả lập, không cần backend thật.
  */
 const cache = new Map();
 async function loadTs(relativePath) {
@@ -24,7 +24,6 @@ async function loadTs(relativePath) {
 }
 
 const { module: images } = await loadTs("../lib/recipe-images.ts");
-const { module: schemas } = await loadTs("../lib/validations/auth.schema.ts");
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const png = new File([new Uint8Array([137, 80, 78, 71])], "pho-bo.png", { type: "image/png" });
@@ -83,22 +82,4 @@ test("upload ảnh: file sai loại bị chặn trước khi gọi API", async t
   const bad = new File(["x"], "note.txt", { type: "text/plain" });
   await assert.rejects(images.uploadRecipeImage("r1", bad), images.StorageUploadError);
   assert.equal(fetchMock.mock.callCount(), 0);
-});
-
-test("token trong link email: dấu + bị đọc thành dấu cách được sửa lại", () => {
-  assert.equal(schemas.normalizeAuthToken(" CfDJ8 abc/def== "), "CfDJ8+abc/def==");
-});
-
-test("schema đặt lại / đổi mật khẩu dùng đúng chính sách mật khẩu backend", () => {
-  const ok = { email: "a@b.vn", token: "t", newPassword: "Quang@123", confirmPassword: "Quang@123" };
-  assert.equal(schemas.resetPasswordSchema.safeParse(ok).success, true);
-  for (const newPassword of ["short1!", "quang@123", "Quang@abc", "Quang1234"])
-    assert.equal(schemas.resetPasswordSchema.safeParse({ ...ok, newPassword, confirmPassword: newPassword }).success, false, newPassword);
-  assert.equal(schemas.resetPasswordSchema.safeParse({ ...ok, confirmPassword: "Khac@123" }).success, false);
-
-  const change = { currentPassword: "Old@1234", newPassword: "New@1234", confirmPassword: "New@1234" };
-  assert.equal(schemas.changePasswordSchema.safeParse(change).success, true);
-  assert.equal(schemas.changePasswordSchema.safeParse({ ...change, newPassword: "Old@1234", confirmPassword: "Old@1234" }).success, false);
-  assert.equal(schemas.forgotPasswordSchema.safeParse({ email: "không-phải-email" }).success, false);
-  assert.equal(schemas.confirmEmailSchema.safeParse({ userId: "u1", token: "" }).success, false);
 });

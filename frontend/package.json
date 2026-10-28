@@ -15,6 +15,7 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "test": "node --test tests/auth-mode.test.mjs tests/backend-auth.test.mjs tests/search.test.mjs tests/frontend-integration.test.mjs tests/account.test.mjs",
     "test:production-auth": "node scripts/test-production-auth.mjs"
   },
   "dependencies": {

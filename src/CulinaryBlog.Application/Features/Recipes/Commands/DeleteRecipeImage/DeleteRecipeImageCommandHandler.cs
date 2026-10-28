@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
@@ -12,6 +13,8 @@ public class DeleteRecipeImageCommandHandler(
     IRepository<RecipeImage> images,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
+    IFileStorageService fileStorageService,
+    IFileDeletionScheduler fileDeletionScheduler,
     ICacheInvalidator? cacheInvalidator = null)
     : IRequestHandler<DeleteRecipeImageCommand>
 {
@@ -38,6 +41,11 @@ public class DeleteRecipeImageCommandHandler(
             throw new NotFoundException(nameof(RecipeImage), request.ImageId);
         }
 
+        // FR-FILE-002: lấy object name của cả 3 bản ảnh TRƯỚC khi đánh dấu xoá, nhưng chỉ lên lịch xoá
+        // file SAU khi lưu DB thành công (SRS FR-RCP-008 bước 13–14) — lưu DB lỗi thì file vẫn còn.
+        var objectNames = FileStorageObjectNameResolver.FromImageUrls(
+            fileStorageService.BucketName, image.OriginalUrl, image.MediumUrl, image.ThumbnailUrl);
+
         bool wasPrimary = image.IsPrimary;
         image.IsDeleted = true;
         image.IsPrimary = false;
@@ -58,6 +66,9 @@ public class DeleteRecipeImageCommandHandler(
         }
 
         await unitOfWork.SaveChangesAsync(ct);
+
+        // Hangfire fire-and-forget, retry 3 lần: MinIO tạm lỗi không làm request xoá ảnh trả 500.
+        fileDeletionScheduler.Enqueue(objectNames);
 
         if (cacheInvalidator is not null)
         {

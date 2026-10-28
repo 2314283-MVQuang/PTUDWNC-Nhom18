@@ -494,3 +494,6 @@ src/CulinaryBlog.API/wwwroot/uploads/
 # Bản dump database xuất từ pg_dump — chứa PasswordHash/TokenHash, không đưa lên repo công khai.
 # Schema và dữ liệu mẫu đã có sẵn trong db/init/*.sql.
 /culinary.sql
+
+# Serilog sink File (FR-OBS-002, Tuần 7): log chạy máy dev, không commit.
+logs/

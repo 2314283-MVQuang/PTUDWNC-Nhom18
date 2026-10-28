@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import { ImageUp, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useDeleteImage, useSetPrimaryImage, useUploadImage } from "@/hooks/useRecipeParts";
 import { ACCEPTED_IMAGE_TYPES, StorageUploadError, validateImageFile } from "@/lib/recipe-images";
@@ -97,6 +98,7 @@ function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }
   const setPrimary = useSetPrimaryImage(recipeId);
   const deleteImage = useDeleteImage(recipeId);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const src = resolveMediaUrl(image.thumbnailUrl ?? image.originalUrl);
 
@@ -110,10 +112,10 @@ function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }
   }
 
   async function handleDelete() {
-    if (!confirm("Xoá ảnh này?")) return;
     setError(null);
     try {
       await deleteImage.mutateAsync(image.id);
+      setDeleteDialogOpen(false);
     } catch (err) {
       setError(apiErrorMessage(err, "Không xoá được ảnh."));
     }
@@ -156,15 +158,53 @@ function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }
           </button>
         )}
 
-        <button
-          type="button"
-          aria-label="Xoá ảnh"
-          disabled={deleteImage.isPending}
-          className="rounded-lg p-1 text-neutral-500 hover:bg-spice-50 hover:text-spice-600 disabled:opacity-50"
-          onClick={handleDelete}
+        <Dialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            if (deleteImage.isPending && !open) return;
+            setDeleteDialogOpen(open);
+            if (open) setError(null);
+          }}
+          title="Xác nhận xóa ảnh"
+          description="Bạn có chắc chắn muốn xóa ảnh này khỏi công thức không? Hành động này không thể hoàn tác."
+          trigger={
+            <button
+              type="button"
+              aria-label="Xoá ảnh"
+              disabled={deleteImage.isPending}
+              className="rounded-lg p-1 text-neutral-500 hover:bg-spice-50 hover:text-spice-600 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          }
         >
-          <Trash2 className="h-4 w-4" />
-        </button>
+          {error && (
+            <p role="alert" className="mb-4 rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={deleteImage.isPending}
+              className="border-neutral-200 bg-neutral-100 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-200 hover:text-neutral-900"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              isLoading={deleteImage.isPending}
+              onClick={handleDelete}
+            >
+              Xóa ảnh
+            </Button>
+          </div>
+        </Dialog>
       </div>
 
       {error && <p className="text-xs text-spice-600">{error}</p>}

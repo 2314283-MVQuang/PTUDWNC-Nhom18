@@ -1,4 +1,5 @@
 import type { RecipeIngredient } from "@/types/recipe";
+import { formatDecimal } from "@/lib/utils";
 
 /** Danh sách nguyên liệu, hiển thị ở trang chi tiết recipe (mục 7.4). */
 export function IngredientList({ ingredients }: { ingredients: RecipeIngredient[] }) {
@@ -15,7 +16,7 @@ export function IngredientList({ ingredients }: { ingredients: RecipeIngredient[
           <li key={ing.id} className="flex items-baseline justify-between gap-4 py-2 text-sm">
             <span className="text-neutral-800">{ing.name}</span>
             <span className="whitespace-nowrap text-neutral-500">
-              {ing.quantity ?? ""} {ing.unit ?? ""}
+              {formatDecimal(ing.quantity)} {ing.unit ?? ""}
             </span>
           </li>
         ))}

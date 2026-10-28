@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Minio;
 
 namespace CulinaryBlog.Infrastructure;
 
@@ -20,7 +22,7 @@ public static class DependencyInjection
     {
         // --- Database (CONS-006: PostgreSQL duy nhất, EF Core Code-First) ---
         services.AddDbContext<CulinaryBlogDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
 
@@ -91,7 +93,22 @@ public static class DependencyInjection
         // --- UploadedFile Repository & MinIO Storage (FR-FILE-001, Tiến) ---
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
+        services.AddSingleton<IMinioClient>(serviceProvider =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<MinioOptions>>().Value;
+            var client = new MinioClient()
+                .WithEndpoint(options.Endpoint)
+                .WithCredentials(options.AccessKey, options.SecretKey);
+
+            if (options.UseSsl)
+            {
+                client = client.WithSSL();
+            }
+
+            return client.Build();
+        });
         services.AddScoped<IFileStorageService, MinioFileStorageService>();
+        services.AddHostedService<MinioBucketInitializer>();
 
         // --- Redis (Tuần 4) ---
         // Mâu thuẫn #3 (xem phan-tich-mau-thuan-SRS): chỉ dùng 1 tầng cache duy nhất — ASP.NET Core
@@ -132,6 +149,15 @@ public static class DependencyInjection
         services.AddTransient<GenerateSitemapJob>();
         // FR-RCP-007 / FR-JOB-004 (Thịnh): xoá hẳn công thức đã xoá mềm quá 30 ngày.
         services.AddTransient<PurgeDeletedRecipesJob>();
+
+        // --- FR-JOB-002 (Tuần 7 — Tiến): Sinh Thumbnail & Background Job ---
+        services.AddSingleton<IImageProcessor, ImageSharpProcessor>();
+        services.AddScoped<IThumbnailJobScheduler, ThumbnailJobScheduler>();
+        services.AddTransient<GenerateThumbnailJob>();
+
+        // FR-FILE-002 (Thịnh): xoá file MinIO bằng Hangfire job, retry 3 lần.
+        services.AddScoped<IFileDeletionScheduler, HangfireFileDeletionScheduler>();
+        services.AddTransient<DeleteFileJob>();
 
         return services;
     }

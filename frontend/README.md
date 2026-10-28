@@ -5,8 +5,8 @@ Next.js App Router + TypeScript, theo mục 6.1 và mục 9 (Sitemap Frontend) c
 
 ## Công nghệ dùng
 
-Phần việc tuần 1–6, các yêu cầu tối thiểu, cấu hình bảo mật và kết quả kiểm chứng được ghi tại
-[báo cáo tổng hợp Chung Thiện Ý tuần 1–6](../spec/bao_cao_tong_hop_ChungThienY_tuan_1_6.md).
+Phần việc tuần 1–7, các yêu cầu tối thiểu, cấu hình bảo mật và kết quả kiểm chứng được ghi tại
+[báo cáo tổng hợp Chung Thiện Ý tuần 1–7](../spec/bao_cao_tong_hop_ChungThienY_tuan_1_7.md).
 
 Tuần 6 bổ sung FR-SRCH-002 trên `/search`: bộ lọc kết hợp, Context/reducer store,
 Radix Dialog cho mobile và component loading/error/empty. `npm test` chạy cả Auth và Search.
@@ -40,9 +40,9 @@ Không cần tự tạo file `.env` gì cả: lệnh `npm run dev` sẽ tự ch�
 để tạo `.env.local` từ `.env.local.example` kèm một `AUTH_SECRET` ngẫu nhiên. Nếu bạn đã có
 `.env.local` rồi thì script bỏ qua, không ghi đè.
 
-**Backend chưa chạy cũng không sao.** Các trang đã bọc try-catch nên vẫn hiển thị giao diện
-bình thường, chỉ kèm một dòng thông báo màu vàng "chưa kết nối được tới backend". Khi nào API
-.NET chạy thì dữ liệu tự lên, không phải sửa code.
+Khi backend chưa sẵn sàng, các trang công khai hiển thị thông báo lỗi và cho thử lại.
+Trang chủ tải công thức/danh mục độc lập: lỗi một phần vẫn giữ phần còn lại. Dữ liệu cập nhật
+khi tải lại trang hoặc chọn **Thử lại**; không có cơ chế tự cập nhật liên tục trong nền.
 
 ### Các biến trong `.env.local`
 
@@ -97,7 +97,7 @@ sửa code phải build lại. Để vừa code vừa xem thay đổi ngay thì 
 frontend/
 ├── app/                    # Next.js App Router — mỗi route là 1 folder có page.tsx
 │   ├── (public)/            # Route công khai: /, /recipes, /categories, /search
-│   ├── (auth)/               # /auth/login, /auth/register
+│   ├── (auth)/               # /login, /register, /forgot-password, /reset-password
 │   ├── dashboard/            # Route yêu cầu đăng nhập (Author/Admin)
 │   ├── profile/              # Trang hồ sơ cá nhân
 │   ├── api/auth/[...nextauth]/  # Route handler của Auth.js
@@ -187,10 +187,10 @@ sẽ báo lỗi — khi đó xoá 2 khối `Inter(...)`/`Playfair_Display(...)` 
 
 | Route | Rendering | Trạng thái |
 |---|---|---|
-| `/` (trang chủ) | ISR (revalidate 1h) | ✅ Đã code |
+| `/` (trang chủ) | HTML theo request; API cache 1h | ✅ Header/footer, sidebar danh mục, công thức mới |
 | `/recipes` | SSR | ✅ Đã code |
 | `/recipes/[slug]` | ISR (revalidate 5p) | ✅ Đã code |
-| `/categories` | ISR (revalidate 1h) | ✅ Đã code |
+| `/categories` | HTML theo request; API cache 1h | ✅ Danh sách, rỗng, lỗi/thử lại |
 | `/categories/[slug]` | ISR (revalidate 10p) | ✅ Đã code |
 | `/search` | SSR | ✅ Đã code |
 | `/auth/login`, `/auth/register` | CSR | ✅ Đã code |
@@ -198,6 +198,9 @@ sẽ báo lỗi — khi đó xoá 2 khối `Inter(...)`/`Playfair_Display(...)` 
 | `/dashboard/recipes/[id]/edit` | CSR (bảo vệ auth) | ✅ Đã code |
 | `/dashboard/categories` | CSR (bảo vệ auth, Admin only) | ✅ Đã code |
 | `/profile` | CSR (bảo vệ auth) | ✅ Đã code |
+| `/forgot-password` | Form công khai | ✅ Gửi yêu cầu, phản hồi chung |
+| `/reset-password?email=...&token=...` | Form công khai theo liên kết email | ✅ Đặt mật khẩu mới |
+| `/profile/change-password` | CSR (bảo vệ auth) | ✅ Yêu cầu mật khẩu hiện tại |
 
 **Gợi ý thứ tự chạy thử cho intern:** vì backend cần thời gian hoàn thiện dần từng nhóm
 endpoint (mục 8), nên chạy `npm run dev` rồi test **trang chủ `/` trước** (chỉ cần API
@@ -214,21 +217,37 @@ docker build -t culinary-blog-frontend --build-arg NEXT_PUBLIC_API_BASE_URL=http
 docker run -p 3000:3000 culinary-blog-frontend
 ```
 
-## Trạng thái hiện tại
+## Hoàn thiện Auth, hồ sơ và giao diện — 27/10/2026
 
-Đây là bản khung (scaffold) đầy đủ cấu trúc + UI theo đúng sitemap mục 9, gọi API thật qua
-`lib/api-client.ts`. Vì backend đang trong quá trình xây dựng nên một số màn hình sẽ hiện
-trạng thái lỗi/loading cho đến khi các endpoint tương ứng (mục 8) hoàn thiện — đó là hành vi
-mong đợi, không phải bug.
+Đợt bổ sung được Chung Thiện Ý xác nhận mở rộng ngoài phân công ban đầu. Mã đăng ký/đăng nhập,
+profile và Category có sẵn của nhóm được sử dụng lại; không nhận toàn bộ module thành công việc
+cá nhân. Chi tiết và kết quả kiểm chứng nằm tại mục 16 của báo cáo tổng hợp.
 
-**Quan trọng:** phần frontend này được viết tay trong môi trường sandbox bị chặn truy cập
-`registry.npmjs.org`, nên CHƯA chạy được `npm install` / `npm run build` / `npm run type-check`
-để tự kiểm tra. Sau khi copy code về máy, việc đầu tiên cần làm là:
+- Nút đăng xuất gọi sự kiện phía server để thu hồi refresh token ở backend, rồi xóa cookie Auth.js.
+  Nếu backend gián đoạn, cookie vẫn được xóa; việc thu hồi từ xa chưa được bảo đảm.
+- Hồ sơ có cache theo user, cho xóa bio/avatar bằng chuỗi rỗng. Sau lưu, Auth.js nạp lại hồ sơ
+  từ backend để đồng bộ tên/avatar ở Header; không tin role/token do client gửi qua `update()`.
+- Email đặt lại mật khẩu dùng cấu hình `WelcomeEmail` của backend hiện có: Host, Port,
+  Security, FromEmail, AppUrl và thông tin SMTP khi cần. `AppUrl` phải trỏ đến frontend.
+  Development dùng MailHog tại `http://localhost:8025`, không gửi ra hộp thư cá nhân.
+- Nhấn **Quên mật khẩu?**, nhập email, mở thư MailHog, chọn liên kết đặt lại và nhập mật khẩu
+  mới. Token sai/đã dùng bị backend từ chối; giao diện không tự tạo hoặc xác nhận token.
+- SMTP reset lỗi vẫn trả phản hồi chung; kiểm tra log vận hành và gửi lại yêu cầu khi SMTP phục hồi.
+  Luồng xác nhận địa chỉ email cũ chưa chuyển thành SMTP trong phạm vi này.
+- Rate Limiting `/auth/*` hiện là 10 request/phút/IP, gồm cả gọi hồ sơ. Nếu nhận 429, chờ theo
+  `Retry-After` rồi thao tác lại; không tắt limiter để kiểm chứng ứng dụng.
 
-```bash
-npm install
-npm run type-check
-npm run dev
-```
+Kiểm thử HTTP Auth.js Production với API giả lập: `npm run test:production-auth`.
+Kiểm thử giao diện desktop/mobile với Edge headless sau khi build:
 
-Nếu gặp lỗi TypeScript hoặc lỗi runtime, báo lại nội dung lỗi để được sửa tiếp trong lượt sau.
+~~~powershell
+# Chỉ cài công cụ kiểm thử vào thư mục tạm, không thay dependency của ứng dụng
+npm install --prefix "$env:TEMP\culinary-account-browser" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund playwright-core
+$env:CULINARY_PLAYWRIGHT_MODULE_PATH = "$env:TEMP\culinary-account-browser\node_modules\playwright-core\index.mjs"
+node scripts/test-account-ui.mjs
+Remove-Item Env:CULINARY_PLAYWRIGHT_MODULE_PATH
+~~~
+
+Script UI dùng API giả lập riêng và không dùng dữ liệu nhóm. Kiểm thử tài khoản/SMTP với
+PostgreSQL/MailHog thật chạy từ thư mục gốc bằng `test-chung-thien-y-tuan-7.ps1`.
+Không đồng nhất kết quả API giả lập với kiểm thử xuyên suốt toàn bộ hệ thống thật.

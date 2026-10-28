@@ -80,7 +80,12 @@ export async function uploadRecipeImage(
       "Không kết nối được kho lưu trữ ảnh (MinIO). Kiểm tra MinIO đang chạy và đã cho phép CORS.",
     );
   }
-  if (!storageResponse.ok) throw new StorageUploadError();
+  if (!storageResponse.ok) {
+    const responseBody = await storageResponse.text();
+    const errorCode = responseBody.match(/<Code>([^<]+)<\/Code>/)?.[1];
+    const reason = errorCode ? `, ${errorCode}` : "";
+    throw new StorageUploadError(`MinIO từ chối tải ảnh (HTTP ${storageResponse.status}${reason}).`);
+  }
 
   // 3. Gắn ảnh vào công thức.
   return apiFetch<RecipeImage>(`/recipes/${recipeId}/images`, {

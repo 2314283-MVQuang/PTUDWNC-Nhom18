@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using CulinaryBlog.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
@@ -81,6 +82,56 @@ public static class RoleSeeder
             }
 
             logger.LogInformation("RoleSeeder: đã tạo tài khoản admin dev {Email}.", email);
+        }
+
+        foreach (var role in new[] { "Admin", "Author" })
+        {
+            if (!await userManager.IsInRoleAsync(user, role))
+            {
+                await userManager.AddToRoleAsync(user, role);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tuần 8 (triển khai): tạo tài khoản Admin đầu tiên ở môi trường thật từ cấu hình
+    /// <c>Admin:Email</c>, <c>Admin:Password</c>, <c>Admin:DisplayName</c> (không có thì bỏ qua).
+    /// Tài khoản đã tồn tại thì chỉ đảm bảo có role Admin + Author — KHÔNG đổi mật khẩu.
+    /// </summary>
+    public static async Task SeedConfiguredAdminAsync(
+        UserManager<ApplicationUser> userManager,
+        IConfiguration configuration,
+        ILogger logger)
+    {
+        var email = configuration["Admin:Email"]?.Trim();
+        var password = configuration["Admin:Password"];
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        {
+            return;
+        }
+
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                DisplayName = configuration["Admin:DisplayName"] ?? "Quản trị viên",
+                EmailConfirmed = true,
+            };
+
+            var create = await userManager.CreateAsync(user, password);
+            if (!create.Succeeded)
+            {
+                logger.LogError(
+                    "RoleSeeder: không tạo được Admin {Email}: {Errors}",
+                    email,
+                    string.Join(", ", create.Errors.Select(e => e.Description)));
+                return;
+            }
+
+            logger.LogInformation("RoleSeeder: đã tạo tài khoản Admin {Email} từ cấu hình.", email);
         }
 
         foreach (var role in new[] { "Admin", "Author" })

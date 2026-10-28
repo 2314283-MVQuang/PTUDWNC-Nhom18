@@ -497,3 +497,6 @@ src/CulinaryBlog.API/wwwroot/uploads/
 
 # Serilog sink File (FR-OBS-002, Tuần 7): log chạy máy dev, không commit.
 logs/
+
+# Cấu hình production thật (Tuần 8) — chỉ commit file mẫu .env.prod.example
+.env.prod

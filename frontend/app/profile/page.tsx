@@ -1,6 +1,7 @@
 "use client";
 
 import { ProfileForm } from "@/components/forms/ProfileForm";
+import { ChangePasswordForm } from "@/components/forms/AccountForms";
 import { ErrorBlock, LoadingBlock } from "@/components/ui/Spinner";
 import { useMyProfile } from "@/hooks/useProfile";
 import { useCurrentUser } from "@/hooks/useAuth";

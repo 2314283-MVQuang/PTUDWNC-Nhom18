@@ -117,7 +117,7 @@ public partial class RecipeApiTests
         });
         var ids = await SearchIds($"q={keyword}&difficulty=Easy&maxPrepTime=20&maxCookTime=30");
         Assert.Equal(new[] { target.Id }, ids);
-        Assert.Equal(50, (await SearchIds($"q={keyword}")).Length);
+        Assert.Equal(50, (await SearchIds($"q={keyword}&pageSize=50")).Length); // trang tối đa 50 (FR-SRCH-004)
     }
 
     [SearchPostgresFact]
@@ -149,7 +149,6 @@ public partial class RecipeApiTests
     private async Task<Guid[]> SearchIds(string query)
     {
         var response = await api.GetJsonAsync($"/api/v1/recipes/search?{query}");
-        Assert.False(response.TryGetProperty("meta", out _)); // Không triển khai phân trang của Tiến.
         return response.GetProperty("data").EnumerateArray().Select(r => r.GetProperty("id").GetGuid()).ToArray();
     }
 

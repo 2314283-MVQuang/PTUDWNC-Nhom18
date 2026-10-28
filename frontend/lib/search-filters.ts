@@ -1,8 +1,21 @@
 import type { SearchFilterDraft } from "../types/search";
 
 export const EMPTY_SEARCH_FILTERS: SearchFilterDraft = {
-  q: "", categoryId: "", difficulty: "", minPrepTime: "", maxPrepTime: "", minCookTime: "", maxCookTime: "", minServings: "",
+  q: "", categoryId: "", difficulty: "", minPrepTime: "", maxPrepTime: "", minCookTime: "", maxCookTime: "", minServings: "", sort: "",
 };
+
+/** FR-SRCH-003: khớp whitelist SortParser ở backend; "" = độ liên quan (ts_rank). */
+export const SEARCH_SORT_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: "", label: "Liên quan nhất" },
+  { value: "-createdAt", label: "Mới nhất" },
+  { value: "createdAt", label: "Cũ nhất" },
+  { value: "-publishedAt", label: "Xuất bản gần đây" },
+  { value: "title", label: "Tên A → Z" },
+  { value: "-title", label: "Tên Z → A" },
+  { value: "cookTime", label: "Nấu nhanh nhất" },
+  { value: "-cookTime", label: "Nấu lâu nhất" },
+  { value: "prepTime", label: "Chuẩn bị nhanh nhất" },
+];
 export const SEARCH_FILTER_KEYS = Object.keys(EMPTY_SEARCH_FILTERS) as (keyof SearchFilterDraft)[];
 const TIME_KEYS = ["minPrepTime", "maxPrepTime", "minCookTime", "maxCookTime"] as const;
 
@@ -30,6 +43,8 @@ export function validateSearchFilters(draft: SearchFilterDraft): string[] {
   if (draft.minServings && (!/^\d+$/.test(draft.minServings) || Number(draft.minServings) < 1
     || Number(draft.minServings) > 2147483647))
     errors.push("Số khẩu phần tối thiểu phải là số nguyên từ 1 trở lên.");
+  if (draft.sort && !SEARCH_SORT_OPTIONS.some(option => option.value === draft.sort))
+    errors.push("Hãy chọn một cách sắp xếp trong danh sách.");
   for (const [min, max, label] of [
     ["minPrepTime", "maxPrepTime", "chuẩn bị"],
     ["minCookTime", "maxCookTime", "nấu"],
@@ -45,8 +60,18 @@ export function searchFilterParams(draft: SearchFilterDraft): Record<string, str
     .map(key => [key, draft[key].trim()] as const).filter(([, value]) => value !== ""));
 }
 
-export function searchHref(draft: SearchFilterDraft): string {
-  const query = new URLSearchParams(searchFilterParams(draft)).toString();
+/** FR-SRCH-004: đọc ?page= trên URL; giá trị lạ (0, âm, chữ, số lẻ) quay về trang 1. */
+export function readSearchPage(params: Record<string, string | string[] | undefined>): number {
+  const raw = params.page;
+  const value = (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? "";
+  return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 100000 ? Number(value) : 1;
+}
+
+/** Link tới trang tìm kiếm; `page` > 1 mới thêm vào URL (đổi bộ lọc luôn quay về trang 1). */
+export function searchHref(draft: SearchFilterDraft, page = 1): string {
+  const params = searchFilterParams(draft);
+  if (page > 1) params.page = String(page);
+  const query = new URLSearchParams(params).toString();
   return query ? `/search?${query}` : "/search";
 }
 
@@ -59,6 +84,6 @@ export function searchFilterReducer(state: SearchFilterDraft, action: SearchFilt
   switch (action.type) {
     case "change": return { ...state, [action.key]: action.value };
     case "sync": return { ...action.value };
-    case "reset": return { ...EMPTY_SEARCH_FILTERS, q: state.q };
+    case "reset": return { ...EMPTY_SEARCH_FILTERS, q: state.q, sort: state.sort };
   }
 }

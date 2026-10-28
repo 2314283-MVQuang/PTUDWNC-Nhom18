@@ -188,10 +188,3 @@ export interface AddIngredientInput {
 export interface UpdateIngredientInput extends AddIngredientInput {
   orderIndex?: number | null;
 }
-
-/** PUT /recipes/{id}/images/{imageId} (FR-RCP-008). Không gửi field nào = giữ nguyên field đó. */
-export interface UpdateImageInput {
-  altText?: string | null;
-  isPrimary?: boolean | null;
-  orderIndex?: number | null;
-}

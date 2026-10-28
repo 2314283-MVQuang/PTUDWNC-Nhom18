@@ -5,6 +5,7 @@ import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { apiErrorMessage } from "@/lib/api-client";
+import { formatDecimal } from "@/lib/utils";
 import {
   useAddIngredient,
   useDeleteIngredient,
@@ -192,7 +193,7 @@ function IngredientRow({
 
       <div className="flex shrink-0 items-center gap-1">
         <span className="whitespace-nowrap text-neutral-500">
-          {ingredient.quantity ?? ""} {ingredient.unit ?? ""}
+          {formatDecimal(ingredient.quantity)} {ingredient.unit ?? ""}
         </span>
         <button
           type="button"

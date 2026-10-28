@@ -79,26 +79,39 @@ public static class DbSeeder
         ("Sữa tươi không đường", "ml"), ("Đậu xanh cà vỏ", "kg"), ("Lá dứa", "lá"), ("Ớt chuông", "trái"),
     ];
 
-    private static readonly string[] StepTitles =
+    // Danh sách bước nấu theo thứ tự thực tế, kèm mô tả chi tiết & timer hợp lý (phút).
+    private static readonly (string Title, string Desc, int? Timer)[] OrderedSteps =
     [
-        "Sơ chế nguyên liệu", "Ướp gia vị", "Chuẩn bị nước dùng", "Xào sơ",
-        "Nấu chín", "Nêm nếm lại", "Hoàn thiện món ăn", "Trình bày",
-        "Làm nước chấm", "Om nhỏ lửa", "Chiên vàng giòn", "Hấp chín",
-        "Luộc sơ", "Phi thơm hành tỏi",
-    ];
-
-    private static readonly string[] StepDescriptionTemplates =
-    [
-        "Rửa sạch nguyên liệu chính, để ráo nước rồi thái miếng vừa ăn.",
-        "Ướp nguyên liệu với gia vị đã chuẩn bị trong khoảng 15-20 phút cho ngấm đều.",
-        "Bắc chảo lên bếp, phi thơm hành tỏi trước khi cho nguyên liệu vào.",
-        "Đun lửa vừa đến khi nước sôi thì hạ nhỏ lửa, nấu thêm một lúc cho vừa chín tới.",
-        "Nêm nếm lại gia vị cho vừa ăn trước khi tắt bếp.",
-        "Múc ra đĩa/tô, trang trí thêm rau thơm rồi thưởng thức khi còn nóng.",
-        "Đảo đều tay để món ăn chín đều, tránh bị cháy khét.",
-        "Cho thêm chút nước nếu thấy cạn, đậy nắp om đến khi mềm.",
-        "Chiên với lửa vừa đến khi vàng đều hai mặt.",
-        "Hấp cách thủy khoảng 10-15 phút đến khi chín.",
+        ("Sơ chế nguyên liệu",
+         "Rửa sạch nguyên liệu dưới vòi nước chảy. Thái thịt/cá miếng vừa ăn (~3–4 cm), băm nhỏ hành tỏi, thái sợi rau củ nếu cần.",
+         3),
+        ("Ướp gia vị",
+         "Trộn đều nguyên liệu chính với nước mắm, tiêu, đường, tỏi băm. Để ngấm 5 phút cho ngấm vị. Nguyên liệu sẽ đậm hơn nếu ướp lâu hơn.",
+         5),
+        ("Phi thơm hành tỏi",
+         "Bắc chảo lên bếp, cho dầu ăn vào đun nóng lửa vừa. Cho hành tỏi băm phi khoảng 1 phút đến khi vàng nhẹ và dậy mùi thơm. Chú ý không để cháy.",
+         1),
+        ("Xào/nấu chín",
+         "Cho nguyên liệu đã ướp vào chảo, đảo đều lửa lớn 2–3 phút. Hạ lửa vừa, tiếp tục nấu đến khi chín hoàn toàn. Thỉnh thoảng đảo để không dính đáy.",
+         5),
+        ("Nêm nếm & hoàn thiện",
+         "Nếm thử và chỉnh vị: thêm nước mắm nếu nhạt, đường nếu cần ngọt dịu. Tắt bếp khi gia vị vừa miệng.",
+         2),
+        ("Trình bày & thưởng thức",
+         "Gắp ra đĩa/tô, rắc hành lá, rau mùi hoặc ớt thái lát lên trên trang trí. Dùng kèm cơm trắng hoặc bún. Ăn nóng để ngon nhất.",
+         null),
+        ("Làm nước chấm",
+         "Pha 2 muỗng nước mắm + 1 muỗng đường + 1 muỗng nước cốt chanh + 3 muỗng nước lọc, khuấy tan. Thêm tỏi ớt băm, chỉnh chua–ngọt–mặn vừa miệng.",
+         2),
+        ("Chiên vàng giòn",
+         "Cho dầu nóng vào chảo (~170 °C). Đặt nguyên liệu vào chiên lửa vừa ~3 phút mỗi mặt đến khi vàng đều. Vớt ra giấy thấm dầu.",
+         5),
+        ("Hấp chín",
+         "Đặt nguyên liệu vào xửng hấp, hấp lửa vừa 8–10 phút đến khi chín đều. Kiểm tra bằng đũa — xuyên nhẹ là đã chín.",
+         8),
+        ("Luộc sơ",
+         "Đun sôi nồi nước, thêm chút muối. Thả nguyên liệu vào luộc nhanh 2–3 phút đến khi đổi màu, vớt ra ngay để giữ độ giòn và màu đẹp.",
+         3),
     ];
 
     private static readonly string[] DescriptionTemplates =
@@ -323,8 +336,8 @@ public static class DbSeeder
             Slug = slug,
             Description = string.Format(faker.PickRandom(DescriptionTemplates), title),
             Instructions = faker.PickRandom(InstructionsTemplates),
-            PrepTime = faker.Random.Int(10, 60),
-            CookTime = faker.Random.Int(0, 120),
+            PrepTime = faker.Random.Int(5, 10),
+            CookTime = faker.Random.Int(10, 20),
             Servings = faker.Random.Int(1, 8),
             Difficulty = faker.PickRandom<RecipeDifficulty>(),
             Status = status,
@@ -335,12 +348,12 @@ public static class DbSeeder
                 : null,
             Nutrition = new RecipeNutrition
             {
-                Calories = faker.Random.Decimal(100, 800),
-                Protein = faker.Random.Decimal(5, 50),
-                Carbohydrates = faker.Random.Decimal(5, 100),
-                Fat = faker.Random.Decimal(2, 40),
-                Fiber = faker.Random.Decimal(0, 10),
-                Sodium = faker.Random.Decimal(50, 1500),
+                Calories = Math.Round(faker.Random.Decimal(100, 800), 1),
+                Protein = Math.Round(faker.Random.Decimal(5, 50), 1),
+                Carbohydrates = Math.Round(faker.Random.Decimal(5, 100), 1),
+                Fat = Math.Round(faker.Random.Decimal(2, 40), 1),
+                Fiber = Math.Round(faker.Random.Decimal(0, 10), 1),
+                Sodium = Math.Round(faker.Random.Decimal(50, 1500), 1),
             },
         };
 
@@ -354,25 +367,31 @@ public static class DbSeeder
                 Id = Guid.NewGuid(),
                 RecipeId = recipeId,
                 Name = name,
-                Quantity = faker.Random.Decimal(0.1m, 2m),
+                Quantity = Math.Round(faker.Random.Decimal(0.1m, 2m), 1),
                 Unit = unit,
                 Notes = faker.Random.Bool(0.3f) ? "Sơ chế sạch trước khi dùng" : null,
                 OrderIndex = i,
             });
         }
 
-        var stepCount = faker.Random.Int(MinStepsPerRecipe, MinStepsPerRecipe + 2);
-        var pickedTitles = faker.Random.Shuffle(StepTitles).Take(stepCount).ToList();
-        for (var i = 0; i < stepCount; i++)
+        // 5 bước cố định (đúng thứ tự thực tế) + 0-2 bước phụ ngẫu nhiên.
+        var coreSteps = OrderedSteps.Take(5).ToList();
+        var extraPool = OrderedSteps.Skip(5).ToList();
+        var extraCount = faker.Random.Int(0, Math.Min(2, extraPool.Count));
+        var extraSteps = faker.Random.Shuffle(extraPool).Take(extraCount).ToList();
+        var allSteps = coreSteps.Concat(extraSteps).ToList();
+
+        for (var i = 0; i < allSteps.Count; i++)
         {
+            var (stepTitle, stepDesc, stepTimer) = allSteps[i];
             recipe.Steps.Add(new RecipeStep
             {
                 Id = Guid.NewGuid(),
                 RecipeId = recipeId,
                 StepNumber = i + 1,
-                Title = pickedTitles.Count > i ? pickedTitles[i] : $"Bước {i + 1}",
-                Description = faker.PickRandom(StepDescriptionTemplates),
-                TimerMinutes = faker.Random.Bool(0.6f) ? faker.Random.Int(5, 60) : null,
+                Title = stepTitle,
+                Description = stepDesc,
+                TimerMinutes = stepTimer,
             });
         }
 

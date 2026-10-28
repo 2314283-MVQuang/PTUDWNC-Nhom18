@@ -426,7 +426,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(recipes): implement FR-RCP-007 soft delete and FR-JOB-004 purge job per MT-01`
 
-**Hồ Quốc Tiến · FR-JOB-003 Sinh Sitemap** — ⬜ Chưa làm
+**Hồ Quốc Tiến · FR-JOB-003 Sinh Sitemap** — ✅ Hoàn thành
 
 - **Cách làm:** `GenerateSitemapJob` (Hangfire Recurring Job, 02:00 AM hàng ngày) build `sitemap.xml` từ toàn bộ recipe/category `Published`.
 
@@ -483,7 +483,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(search): implement FR-SRCH-003 whitelisted dynamic sorting`
 
-**Hồ Quốc Tiến · FR-SRCH-004 Phân trang kết quả tìm kiếm** — ⬜ Chưa làm
+**Hồ Quốc Tiến · FR-SRCH-004 Phân trang kết quả tìm kiếm** — ✅ Hoàn thành
 
 - **Cách làm:** thay giới hạn cứng 50 dòng trong `SearchRecipesAsync` bằng `page`/`pageSize` (giới hạn `pageSize` tối đa), trả `PagedResult` kèm `totalCount`/`totalPages`; giữ policy cache `Search` 1 phút (mâu thuẫn #4).
 
@@ -543,7 +543,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Bổ sung (OBS-002):** thêm Serilog sink File (rolling theo ngày) bên cạnh Console + Seq đã có.
 
-**Hồ Quốc Tiến · FR-JOB-002 Sinh Thumbnail + migration bảng `UploadedFiles`** — ⬜ Chưa làm
+**Hồ Quốc Tiến · FR-JOB-002 Sinh Thumbnail + migration bảng `UploadedFiles`** — ✅ Hoàn thành
 
 - **Cách làm (JOB-002):** `GenerateThumbnailJob` (Hangfire) được enqueue sau khi upload ảnh, dùng `IImageProcessor.Resize` sinh bản medium và thumbnail, lưu lại `MediumUrl`/`ThumbnailUrl`.
 

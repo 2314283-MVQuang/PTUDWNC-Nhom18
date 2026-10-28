@@ -195,41 +195,26 @@ var app = builder.Build();
 try
 {
     using var roleSeedScope = app.Services.CreateScope();
-    // FR-FILE-001 (Tiến): bảng metadata file upload. Database của nhóm có máy tạo bằng script SQL,
-    // có máy tạo bằng migration, nên tạo bảng bằng lệnh idempotent (IF NOT EXISTS) lúc khởi động để
-    // máy nào cũng chạy được module Files. Khi nhóm chốt dùng EF Migrations thì thay bằng
-    // "dotnet ef migrations add AddUploadedFiles" rồi xoá khối này.
     var filesDb = roleSeedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-    await filesDb.Database.ExecuteSqlRawAsync("""
-        CREATE TABLE IF NOT EXISTS "UploadedFiles" (
-            "Id" uuid NOT NULL,
-            "FileName" character varying(255) NOT NULL,
-            "ContentType" character varying(100) NOT NULL,
-            "Size" bigint NOT NULL,
-            "StorageKey" character varying(500) NOT NULL,
-            "Url" character varying(1000) NOT NULL,
-            "BucketName" character varying(100) NOT NULL,
-            "UploadedBy" character varying(256) NULL,
-            "CreatedAt" timestamp with time zone NOT NULL,
-            "UpdatedAt" timestamp with time zone NULL,
-            "IsDeleted" boolean NOT NULL DEFAULT FALSE,
-            "DeletedAt" timestamp with time zone NULL,
-            "RowVersion" bytea NOT NULL DEFAULT '\x'::bytea,
-            CONSTRAINT "PK_UploadedFiles" PRIMARY KEY ("Id")
-        );
-        """);
-
-    // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job purge
-    // 30 ngày). db/init/02-schema.sql chỉ chạy khi tạo database MỚI, nên database đã có sẵn trên máy
-    // các thành viên phải được thêm cột ở đây — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
-    await filesDb.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE "Categories"        ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "Recipes"           ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeSteps"       ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeIngredients" ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        """);
+    // FR-FILE-001/FR-JOB-002 (Tiến, Tuần 7): bảng "UploadedFiles" KHÔNG còn tạo ở đây nữa — database
+    // mới có bảng từ db/init/02-schema.sql (Docker) hoặc EF migration AddUploadedFiles
+    // ("dotnet ef database update"). Khối dưới chỉ bổ sung cột cho database ĐÃ có sẵn trên máy các
+    // thành viên (db/init chỉ chạy khi tạo database mới) — mọi lệnh đều idempotent.
+    if (filesDb.Database.IsRelational())
+    {
+        // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job
+        // purge 30 ngày) — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
+        await filesDb.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE "Categories"        ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "Recipes"           ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeSteps"       ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeIngredients" ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "MediumUrl" character varying(1000) NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "ThumbnailUrl" character varying(1000) NULL;
+            """);
+    }
 
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
@@ -257,12 +242,12 @@ if (app.Environment.IsDevelopment())
     try
     {
         using var seedScope = app.Services.CreateScope();
-        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
-
         // Tài khoản Admin THẬT trong DB (chỉ Development) để test API cần quyền Admin.
         var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         await RoleSeeder.SeedDevAdminAsync(userManager, app.Logger);
+
+        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
+        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
     }
     catch (Exception ex)
     {

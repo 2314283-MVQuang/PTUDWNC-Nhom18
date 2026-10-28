@@ -1,4 +1,5 @@
 import type { RecipeNutrition } from "@/types/recipe";
+import { formatDecimal } from "@/lib/utils";
 
 const ROWS: Array<{ key: keyof RecipeNutrition; label: string; unit: string }> = [
   { key: "calories", label: "Năng lượng", unit: "kcal" },
@@ -21,7 +22,7 @@ export function NutritionTable({ nutrition }: { nutrition: RecipeNutrition }) {
           <tr key={row.key} className="border-b border-neutral-100 last:border-0">
             <td className="py-2 text-neutral-600">{row.label}</td>
             <td className="py-2 text-right font-medium text-neutral-900">
-              {nutrition[row.key]} {row.unit}
+              {formatDecimal(nutrition[row.key])} {row.unit}
             </td>
           </tr>
         ))}

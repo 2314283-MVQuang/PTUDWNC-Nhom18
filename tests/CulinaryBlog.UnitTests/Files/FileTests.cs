@@ -28,6 +28,16 @@ public class TestFileStorageService : IFileStorageService
         return $"https://minio.test.local/{BucketName}/{key}";
     }
 
+    public Task<Stream> GetFileStreamAsync(string key, CancellationToken ct = default)
+    {
+        return Task.FromResult<Stream>(new MemoryStream(new byte[] { 1, 2, 3, 4 }));
+    }
+
+    public Task<string> UploadFileAsync(string key, Stream content, string contentType, CancellationToken ct = default)
+    {
+        return Task.FromResult(GetPublicUrl(key));
+    }
+
     public Task DeleteAsync(string objectName, CancellationToken cancellationToken = default)
     {
         DeletedObjects.Add(objectName);

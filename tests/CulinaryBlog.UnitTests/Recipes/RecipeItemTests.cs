@@ -55,6 +55,12 @@ public class TestRecipeFileStorageService : IFileStorageService
 
     public string GetPublicUrl(string key) => $"http://minio:9000/{BucketName}/{key}";
 
+    public Task<Stream> GetFileStreamAsync(string key, CancellationToken ct = default) =>
+        Task.FromResult<Stream>(new MemoryStream());
+
+    public Task<string> UploadFileAsync(string key, Stream content, string contentType, CancellationToken ct = default) =>
+        Task.FromResult(GetPublicUrl(key));
+
     public Task DeleteAsync(string objectName, CancellationToken cancellationToken = default)
     {
         DeletedObjects.Add(objectName);

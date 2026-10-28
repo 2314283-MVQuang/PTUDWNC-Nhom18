@@ -1,7 +1,7 @@
 namespace CulinaryBlog.Application.Features.Files.Dtos;
 
 /// <summary>
-/// DTO chứa metadata của tệp tin đã lưu trữ trong hệ thống.
+/// DTO chứa metadata của tệp tin đã lưu trữ trong hệ thống (FR-FILE-001, FR-JOB-002).
 /// </summary>
 public record UploadedFileDto(
     Guid Id,
@@ -10,6 +10,8 @@ public record UploadedFileDto(
     long Size,
     string StorageKey,
     string Url,
+    string? MediumUrl,
+    string? ThumbnailUrl,
     string BucketName,
     string? UploadedBy,
     DateTimeOffset CreatedAt

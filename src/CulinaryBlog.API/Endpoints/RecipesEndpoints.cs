@@ -4,6 +4,7 @@ using CulinaryBlog.Application.Features.Recipes.Commands.ArchiveRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
 using CulinaryBlog.Application.Features.Recipes.Commands.PublishRecipe;
+using CulinaryBlog.Application.Features.Recipes.Commands.UnpublishRecipe;
 using Microsoft.AspNetCore.Mvc;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeById;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeBySlug;
@@ -268,6 +269,28 @@ public static class RecipesEndpoints
             .RequireAuthorization(
                 AuthorizationPolicies.Author)
             .WithName("PublishRecipe");
+
+        // -----------------------------------------------------------
+        // PATCH /api/v1/recipes/{id}/unpublish   (FR-RCP-005 — Ý, Tuần 8)
+        // -----------------------------------------------------------
+        // Published → Draft. Khác lưu trữ (archive, FR-RCP-006): bản nháp vẫn sửa và xuất bản lại được.
+        group.MapPatch(
+            "/{id:guid}/unpublish",
+            async (
+                Guid id,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                var result =
+                    await sender.Send(
+                        new UnpublishRecipeCommand(id),
+                        cancellationToken);
+
+                return result.ToOkResponse();
+            })
+            .RequireAuthorization(
+                AuthorizationPolicies.Author)
+            .WithName("UnpublishRecipe");
 
 
         // -----------------------------------------------------------

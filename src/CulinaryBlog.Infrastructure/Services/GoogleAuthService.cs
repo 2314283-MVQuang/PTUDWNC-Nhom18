@@ -22,6 +22,13 @@ public class GoogleAuthService(IOptions<GoogleOptions> options) : IGoogleAuthSer
                     Audience = [_options.ClientId], // chỉ chấp nhận token phát cho đúng Client ID của mình
                 });
 
+            // Tuần 8: chỉ tin email Google ĐÃ xác minh — GoogleLoginCommandHandler gộp tài khoản theo
+            // email, nhận email chưa xác minh thì người khác có thể chiếm tài khoản sẵn có.
+            if (!payload.EmailVerified)
+            {
+                throw new UnauthorizedException("Email của tài khoản Google chưa được xác minh.");
+            }
+
             return new GoogleUserInfo(payload.Email, payload.Name, payload.Picture);
         }
         catch (InvalidJwtException)

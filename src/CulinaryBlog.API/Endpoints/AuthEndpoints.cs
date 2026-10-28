@@ -52,9 +52,9 @@ public static class AuthEndpoints
             return result.ToOkResponse();
         });
 
-        group.MapPost("/logout", async (RefreshRequest request, ISender sender) =>
+        group.MapPost("/logout", async (RefreshRequest request, ClaimsPrincipal user, ISender sender) =>
         {
-            await sender.Send(new LogoutCommand(request.RefreshToken));
+            await sender.Send(new LogoutCommand(request.RefreshToken, user.GetUserId()));
             return Results.NoContent();
         }).RequireAuthorization();
 

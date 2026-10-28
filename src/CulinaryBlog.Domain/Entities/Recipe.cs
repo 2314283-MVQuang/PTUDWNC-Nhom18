@@ -157,4 +157,21 @@ public class Recipe : BaseEntity
             PublishedAt = DateTimeOffset.UtcNow;
         }
     }
+
+    /// <summary>
+    /// FR-RCP-005 (Tuần 8 — Ý): huỷ xuất bản, Published → Draft (ẩn khỏi trang công khai và tìm
+    /// kiếm, tác giả vẫn sửa được). Xoá <c>PublishedAt</c> để <see cref="Unarchive"/> về sau không
+    /// đưa bản nháp này trở lại Published; xuất bản lại sẽ ghi thời điểm mới. Không ở trạng thái
+    /// Published thì không đổi gì (idempotent).
+    /// </summary>
+    public void Unpublish()
+    {
+        if (Status != RecipeStatus.Published)
+        {
+            return;
+        }
+
+        Status = RecipeStatus.Draft;
+        PublishedAt = null;
+    }
 }

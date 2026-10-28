@@ -118,14 +118,14 @@ export function usePublishRecipe() {
   });
 }
 
-/** FR-RCP-006: Hủy xuất bản bằng cách lưu trữ, giữ nguyên dữ liệu. */
+/** FR-RCP-005: PATCH /recipes/{id}/unpublish — Published → Draft (sửa tiếp và xuất bản lại được). */
 export function useUnpublishRecipe() {
   const queryClient = useQueryClient();
   const { accessToken } = useCurrentUser();
 
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch<RecipeDetail>(`/recipes/${id}/archive`, { method: "PATCH", token: accessToken }),
+      apiFetch<RecipeDetail>(`/recipes/${id}/unpublish`, { method: "PATCH", token: accessToken }),
     onSuccess: () => Promise.all([
       queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
       queryClient.invalidateQueries({ queryKey: categoryKeys.all }),

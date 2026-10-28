@@ -1,4 +1,6 @@
+using CulinaryBlog.Application.Common.Authorization;
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Recipes.Dtos;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
@@ -11,18 +13,24 @@ public record GetRecipeIngredientsQuery(Guid RecipeId) : IRequest<List<RecipeIng
 
 public class GetRecipeIngredientsQueryHandler(
     IRepository<Recipe> recipes,
-    IRepository<RecipeIngredient> ingredients)
+    IRepository<RecipeIngredient> ingredients,
+    ICurrentUser currentUser)
     : IRequestHandler<GetRecipeIngredientsQuery, List<RecipeIngredientItemDto>>
 {
     public async Task<List<RecipeIngredientItemDto>> Handle(GetRecipeIngredientsQuery request, CancellationToken ct)
     {
-        var recipeExists = await recipes.Query()
-            .AnyAsync(r => r.Id == request.RecipeId, ct);
+        var recipe = await recipes.Query()
+            .Where(r => r.Id == request.RecipeId)
+            .Select(r => new { r.Status, r.AuthorId })
+            .FirstOrDefaultAsync(ct);
 
-        if (!recipeExists)
+        if (recipe is null)
         {
             throw new NotFoundException(nameof(Recipe), request.RecipeId);
         }
+
+        // Bản nháp/lưu trữ: chỉ tác giả hoặc Admin xem được phần con (giống GET /recipes/{id}).
+        RecipeAuthorization.EnsureCanRead(recipe.Status, recipe.AuthorId, currentUser);
 
         var list = await ingredients.Query()
             .Where(i => i.RecipeId == request.RecipeId)

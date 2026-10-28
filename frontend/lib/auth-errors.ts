@@ -9,6 +9,8 @@
 export const AUTH_ERROR = {
   /** 401 — sai email/mật khẩu (không tiết lộ email có tồn tại hay không — FR-AUTH-002). */
   invalidCredentials: "invalid_credentials",
+  /** 403 — tài khoản bị Admin vô hiệu hoá (IsActive = false, Tuần 8). */
+  accountDisabled: "account_disabled",
   /** 423 — Identity khoá 15 phút sau 5 lần sai (LockedOutException). */
   accountLocked: "account_locked",
   /** 429 — vượt rate limit 10 request/phút/IP của nhóm /auth. */
@@ -21,6 +23,7 @@ export type AuthErrorCode = (typeof AUTH_ERROR)[keyof typeof AUTH_ERROR];
 
 const LOGIN_MESSAGES: Record<AuthErrorCode, string> = {
   invalid_credentials: "Email hoặc mật khẩu không đúng.",
+  account_disabled: "Tài khoản đã bị vô hiệu hoá. Vui lòng liên hệ quản trị viên.",
   account_locked: "Tài khoản tạm khoá do đăng nhập sai quá 5 lần. Vui lòng thử lại sau 15 phút.",
   rate_limited: "Bạn thao tác quá nhanh. Vui lòng đợi 1 phút rồi thử lại.",
   backend_unavailable: "Không kết nối được máy chủ. Vui lòng thử lại sau.",
@@ -33,6 +36,8 @@ export function authErrorFromStatus(status: number | undefined): AuthErrorCode {
     case 401:
     case 422:
       return AUTH_ERROR.invalidCredentials;
+    case 403:
+      return AUTH_ERROR.accountDisabled;
     case 423:
       return AUTH_ERROR.accountLocked;
     case 429:

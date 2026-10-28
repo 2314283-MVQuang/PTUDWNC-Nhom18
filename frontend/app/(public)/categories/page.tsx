@@ -1,13 +1,16 @@
-import { AlertTriangle } from "lucide-react";
+import { connection } from "next/server";
 import { apiFetch } from "@/lib/api-client";
 import { CategoryGrid } from "@/components/category/CategoryGrid";
 import { PageHero } from "@/components/layout/PageHero";
 import type { Category } from "@/types/category";
+import { ErrorState } from "@/components/ui/Feedback";
+import { RetryButton } from "@/components/ui/RetryButton";
 
-// Mục 9: "/categories" — ISR revalidate=3600.
+// HTML theo request; dữ liệu danh mục thành công vẫn cache 1 giờ.
 export const revalidate = 3600;
 
 export default async function CategoriesPage() {
+  await connection();
   // Bọc try-catch để backend chưa chạy thì trang vẫn render được (xem chú thích ở trang chủ).
   let categories: Category[] = [];
   let backendError = false;
@@ -26,19 +29,13 @@ export default async function CategoriesPage() {
         emojis={["🥗", "🍰", "🍲"]}
       >
         <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-md">
-          {categories.length} danh mục
+          {backendError ? "Chưa tải được danh mục" : `${categories.length} danh mục`}
         </span>
       </PageHero>
 
       <div className="container-page flex flex-col gap-6 pb-20 pt-8">
-        {backendError && (
-          <p className="flex items-start gap-3 rounded-card border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-            <span>Chưa kết nối được tới backend — danh mục sẽ hiện khi API .NET chạy.</span>
-          </p>
-        )}
-
-        <CategoryGrid categories={categories} />
+        {backendError ? <ErrorState message="Không tải được danh mục. Vui lòng thử lại."><RetryButton /></ErrorState>
+          : <CategoryGrid categories={categories} />}
       </div>
     </div>
   );

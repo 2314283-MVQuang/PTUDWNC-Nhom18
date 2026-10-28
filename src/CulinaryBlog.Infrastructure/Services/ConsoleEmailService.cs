@@ -4,10 +4,9 @@ using Microsoft.Extensions.Logging;
 namespace CulinaryBlog.Infrastructure.Services;
 
 /// <summary>
-/// TODO (nhóm làm tiếp): implementation TẠM THỜI của IEmailService — chỉ ghi log thay vì gửi mail
-/// thật, để scaffold chạy được ngay không cần cấu hình SMTP. Khi triển khai FR-JOB-001 thật, viết
-/// MailKitEmailService (SMTP dev qua MailHog, SendGrid production — mục 3.1) implement interface
-/// NÀY, rồi đổi đăng ký DI ở Infrastructure/DependencyInjection.cs.
+/// Adapter giả lập cũ, hiện chỉ được MailKitAuthEmailService dùng cho xác nhận địa chỉ email.
+/// Thư đặt lại mật khẩu thực tế đi qua MailKitAuthEmailService; WelcomeEmailJob dùng
+/// MailKitWelcomeEmailSender. Các phương thức cũ giữ lại để tương thích interface.
 ///
 /// Tuần 3: thêm log cho 2 method mới (reset mật khẩu, xác nhận email) — CÙNG cách làm TẠM, chỉ in
 /// token ra log thay vì dựng link đầy đủ trỏ về frontend (frontend build link + gọi API tương ứng

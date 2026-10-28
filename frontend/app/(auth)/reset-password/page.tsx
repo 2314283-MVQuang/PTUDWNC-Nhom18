@@ -1,16 +1,16 @@
-import { Suspense } from "react";
 import { AuthShell } from "@/components/layout/AuthShell";
-import { ResetPasswordForm } from "@/components/forms/AccountForms";
+import { PasswordForm } from "@/components/forms/PasswordForm";
+import type { Metadata } from "next";
 
-export const metadata = { title: "Đặt lại mật khẩu" };
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Đặt lại mật khẩu", robots: { index: false }, referrer: "no-referrer" };
 
-export default function ResetPasswordPage() {
-  return (
-    <AuthShell title="Đặt lại mật khẩu" subtitle="Nhập mã trong email và chọn mật khẩu mới">
-      {/* useSearchParams cần Suspense để Next.js render tĩnh phần còn lại của trang. */}
-      <Suspense fallback={<div className="skeleton h-56 w-full" />}>
-        <ResetPasswordForm />
-      </Suspense>
-    </AuthShell>
-  );
+export default async function ResetPasswordPage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  return <AuthShell title="Đặt lại mật khẩu" subtitle="Chọn mật khẩu mới cho tài khoản.">
+    <PasswordForm mode="reset" email={typeof params.email === "string" ? params.email : ""}
+      token={typeof params.token === "string" ? params.token : ""} />
+  </AuthShell>;
 }

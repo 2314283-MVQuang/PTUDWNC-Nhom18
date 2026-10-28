@@ -16,7 +16,7 @@ import { BackendAuthError, loginWithBackend, revokeBackendSession } from "@/lib/
  */
 import { findLocalUser } from "@/lib/local-users";
 import { authConfig } from "@/auth.config";
-import { isDemoAuthEnabled } from "@/lib/auth-mode";
+import { isDemoAuthEnabled, isLocalAccessToken } from "@/lib/auth-mode";
 
 /** Auth.js chuyển `code` của lỗi này xuống client: `signIn(...)` trả `{ error, code }`. */
 class BackendCredentialsSignin extends CredentialsSignin {
@@ -32,8 +32,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Đăng xuất (Tuần 7): thu hồi refresh token ở backend (POST /auth/logout) — không để token cũ
     // còn dùng được 7 ngày sau khi người dùng đã bấm "Đăng xuất".
     async signOut(message) {
-      const token = "token" in message ? await message.token : null;
-      if (token) await revokeBackendSession(token.accessToken, token.refreshToken);
+      if (!("token" in message) || !message.token) return;
+      
+      const { accessToken, refreshToken } = message.token;
+      
+      if (
+        typeof accessToken === "string" && 
+        typeof refreshToken === "string" && 
+        !isLocalAccessToken(accessToken)
+      ) {
+        try {
+          await revokeBackendSession(accessToken, refreshToken);
+        } catch (error) {
+          console.error("Không thể thu hồi phiên backend khi đăng xuất:", error);
+        }
+      }
     },
   },
   providers: [

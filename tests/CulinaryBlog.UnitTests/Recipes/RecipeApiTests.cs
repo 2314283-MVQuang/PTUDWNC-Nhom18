@@ -49,6 +49,7 @@ public sealed class RecipeApiFixture : IAsyncLifetime
     public Guid CategoryId { get; private set; }
     public bool UsesExternalStores { get; private set; }
     public TestCacheInvalidator? Cache { get; private set; }
+    public RecipeSqlCapture SqlCapture { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -68,7 +69,8 @@ public sealed class RecipeApiFixture : IAsyncLifetime
             var connection = new NpgsqlConnectionStringBuilder(postgres);
             if (connection.Database?.StartsWith("culinary_recipe_tests_", StringComparison.Ordinal) != true)
                 throw new InvalidOperationException("Chỉ chạy test trên database tạm culinary_recipe_tests_*.");
-            builder.Services.AddDbContext<CulinaryBlogDbContext>(options => options.UseNpgsql(postgres));
+            builder.Services.AddDbContext<CulinaryBlogDbContext>(options => options
+                .UseNpgsql(postgres).AddInterceptors(SqlCapture));
         }
         else
         {

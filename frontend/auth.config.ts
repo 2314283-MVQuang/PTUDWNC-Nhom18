@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, ApiError } from "@/lib/api-client";
 import type { AuthTokenResponse, UserProfile } from "@/types/user";
 import { isDemoAuthEnabled, isLocalAccessToken } from "@/lib/auth-mode";
 
@@ -9,7 +9,7 @@ export const authConfig = {
   session: { strategy: "jwt" },
   providers: [],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       if (isLocalAccessToken(typeof token.accessToken === "string" ? token.accessToken : undefined) && !isDemoAuthEnabled()) {
         token.accessToken = undefined;
         token.refreshToken = undefined;
@@ -45,13 +45,8 @@ export const authConfig = {
         }
       }
 
-      // Access token còn hạn -> giữ nguyên, không cần refresh.
-      if (token.accessTokenExpires && Date.now() < (token.accessTokenExpires as number)) {
-        return token;
-      }
-
       // Hết hạn -> thử refresh (FR-AUTH-004). Nếu fail, xoá accessToken để buộc đăng nhập lại.
-      if (token.refreshToken) {
+      if (typeof token.refreshToken === "string" && (typeof token.accessTokenExpires !== "number" || Date.now() >= token.accessTokenExpires)) {
         try {
           const tokens = await apiFetch<AuthTokenResponse>("/auth/refresh", {
             method: "POST",
@@ -67,6 +62,23 @@ export const authConfig = {
         }
       }
 
+      // update() chỉ là tín hiệu nạp lại. Không tin tên/role/token do trình duyệt gửi lên.
+      if (trigger === "update" && typeof token.accessToken === "string" && !isLocalAccessToken(token.accessToken)) {
+        try {
+          const profile = await apiFetch<UserProfile>("/auth/me", { token: token.accessToken, cache: "no-store" });
+          token.sub = profile.id;
+          token.name = profile.displayName;
+          token.email = profile.email;
+          token.picture = profile.avatarUrl;
+          token.roles = profile.roles;
+        } catch (error) {
+          // Mất mạng khi đồng bộ hồ sơ không được làm Auth.js xóa cookie đang hợp lệ.
+          if (error instanceof ApiError && error.status === 401) {
+            token.accessToken = undefined; token.refreshToken = undefined; token.roles = [];
+          }
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -76,7 +88,12 @@ export const authConfig = {
         ? undefined : accessToken;
       session.isDemo = isDemoAuthEnabled() && isLocalAccessToken(session.accessToken);
       session.roles = (token.roles as string[] | undefined) ?? [];
-      if (session.user) session.user.id = token.sub ?? "";
+      if (session.user) {
+        session.user.id = token.sub ?? "";
+        session.user.name = token.name ?? "";
+        session.user.email = token.email ?? "";
+        session.user.image = token.picture ?? null;
+      }
       return session;
     },
   },

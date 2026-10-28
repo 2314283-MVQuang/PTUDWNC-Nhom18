@@ -127,8 +127,9 @@ public static class DependencyInjection
                 "Thiếu cấu hình Redis:ConnectionString (xem appsettings.json / docker-compose.yml service \"redis\").");
 
         // --- Health checks (FR-OBS-001, Tuần 3 + Tuần 4) ---
-        // "postgresql"/"redis"/"minio" gắn tag "ready" — dùng cho /health/ready (app đã sẵn sàng nhận
-        // traffic chưa, CÓ kiểm tra dependency ngoài). /health/live KHÔNG chạy check nào (xem
+        // Tuần 8 (Tiến) — đúng SRS FR-OBS-001: chỉ "postgresql"/"redis" gắn tag "ready" (readiness =
+        // DB + Redis). "minio" gắn tag "storage", chỉ nằm trong /health tổng hợp — MinIO chết thì
+        // vẫn đọc/ghi công thức được (chỉ không tải ảnh), không nên rút instance khỏi load balancer. /health/live KHÔNG chạy check nào (xem
         // API/Endpoints/HealthEndpoints.cs) nên không cần đăng ký gì thêm ở đây cho liveness.
         //
         // NFR-REL-002: "Redis down → fallback database (không cache), không throw exception" — vì
@@ -141,7 +142,7 @@ public static class DependencyInjection
         services.AddHealthChecks()
             .AddNpgSql(connectionString, name: "postgresql", tags: ["ready"])
             .AddRedis(redisConnectionString, name: "redis", tags: ["ready"])
-            .AddCheck<MinioHealthCheck>("minio", tags: ["ready"], timeout: TimeSpan.FromSeconds(5));
+            .AddCheck<MinioHealthCheck>("minio", tags: ["storage"], timeout: TimeSpan.FromSeconds(5));
 
         // --- FR-JOB-003 (Tuần 5 — Tiến): Sitemap & Background Job ---
         services.AddScoped<ISitemapBuilder, SitemapBuilder>();

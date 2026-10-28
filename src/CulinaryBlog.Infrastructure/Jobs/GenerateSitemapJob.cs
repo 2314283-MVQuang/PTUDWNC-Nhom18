@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Interfaces;
+using Hangfire;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -7,7 +8,9 @@ namespace CulinaryBlog.Infrastructure.Jobs;
 /// <summary>
 /// FR-JOB-003 (Tuần 5 — Tiến): Hangfire Recurring Job chạy 02:00 AM hàng ngày sinh sitemap.xml
 /// và gọi ping Google Search Console theo yêu cầu NFR-SEO.
+/// Tuần 8 (Tiến): SRS FR-JOB-003 "Retry 2 lần nếu fail" (mặc định Hangfire là 10 lần).
 /// </summary>
+[AutomaticRetry(Attempts = 2)]
 public class GenerateSitemapJob(
     ISitemapService sitemapService,
     IConfiguration configuration,

@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Common.Diagnostics;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
@@ -129,6 +130,7 @@ public sealed class CreateRecipeCommandHandler(
 
         // Một SaveChanges cho toàn bộ Recipe aggregate.
         await unitOfWork.SaveChangesAsync(ct);
+        RecipeMetrics.RecipeCreated();
         await cacheInvalidator.EvictByTagAsync("recipes", ct);
 
         // Query lại:

@@ -529,7 +529,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(jobs): implement FR-JOB-001 welcome email enqueued after registration`
 
-- **Bổ sung (OBS-001):** thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready` — tắt MinIO thì `/health/ready` trả 503.
+- **Bổ sung (OBS-001):** thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `storage` — tắt MinIO thì `/health` trả 503, `/health/ready` (chỉ DB + Redis theo SRS) vẫn 200.
 
 **Nguyễn Ngọc Bảo Thịnh · FR-FILE-002 Xóa file khỏi MinIO + bổ sung log ra file** — ✅ Đã hoàn thành
 
@@ -607,6 +607,8 @@ Chạy toàn bộ hệ thống ở chế độ **Production** trên 1 máy chủ
    - Database tạo từ `db/init/01-extensions.sql` + `02-schema.sql` (không seed dữ liệu giả).
    - Tài khoản `ADMIN_EMAIL` được tạo tự động với quyền Admin + Author.
    - Hangfire lưu job trong PostgreSQL; dashboard `/hangfire` chỉ Admin vào được.
+   - Mở dashboard: đăng nhập Admin lấy `accessToken` (POST `/api/v1/auth/login`) rồi vào `http://IP:5000/hangfire?access_token=<token>` (token được lưu vào cookie HttpOnly chỉ cho `/hangfire`). Không phải Admin → 401/403.
+   - Giám sát: `GET /health/ready` (PostgreSQL + Redis, dùng cho load balancer/Uptime Robot), `GET /health` (thêm MinIO), `GET /health/live`; cả 3 trả JSON. Mỗi request được ghi 1 dòng log có UserId + CorrelationId, request > 500 ms ghi mức Warning.
 3. **Mở firewall** cổng 3000 (web), 5000 (API), 9000 (ảnh MinIO). PostgreSQL, Redis, Seq không mở ra ngoài; xem log qua SSH tunnel: `ssh -L 8081:127.0.0.1:8081 user@may-chu` rồi mở http://localhost:8081.
 4. **Khởi tạo dữ liệu**: đăng nhập web bằng tài khoản Admin → `/dashboard/categories` tạo danh mục → người dùng tự đăng ký tài khoản tại `/register` và đăng công thức.
 5. **Kiểm thử luồng người dùng thật** (đăng ký → đăng nhập → tạo → xuất bản → tìm kiếm không dấu → huỷ xuất bản → xoá, kèm kiểm tra phân quyền):

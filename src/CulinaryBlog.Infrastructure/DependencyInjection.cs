@@ -150,6 +150,10 @@ public static class DependencyInjection
         // FR-RCP-007 / FR-JOB-004 (Thịnh): xoá hẳn công thức đã xoá mềm quá 30 ngày.
         services.AddTransient<PurgeDeletedRecipesJob>();
 
+        // FR-FILE-002 (Thịnh): xoá file MinIO bằng Hangfire job, retry 3 lần.
+        services.AddScoped<IFileDeletionScheduler, HangfireFileDeletionScheduler>();
+        services.AddTransient<DeleteFileJob>();
+
         return services;
     }
 }

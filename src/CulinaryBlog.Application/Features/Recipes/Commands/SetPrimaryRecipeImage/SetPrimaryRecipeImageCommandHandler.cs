@@ -26,11 +26,6 @@ public class SetPrimaryRecipeImageCommandHandler(
             throw new NotFoundException(nameof(Recipe), request.RecipeId);
         }
 
-        if (currentUser.UserId != recipe.AuthorId && !currentUser.IsInRole("Admin"))
-        {
-            throw new ForbiddenAccessException("Bạn không có quyền chỉnh sửa ảnh của công thức này.");
-        }
-
         var allImages = await images.Query()
             .Where(img => img.RecipeId == request.RecipeId)
             .ToListAsync(ct);

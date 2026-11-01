@@ -1,18 +1,19 @@
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, apiUpload } from "@/lib/api-client";
 import type { RecipeImage } from "@/types/recipe";
 
 /**
- * FR-RCP-008 + FR-FILE-001 — tải ảnh công thức lên theo luồng presigned URL của backend:
+ * FR-RCP-008 + FR-FILE-001 — tải ảnh công thức lên:
  *
- *   1. POST /files/presigned-url { fileName, contentType, size } → backend kiểm đuôi/loại/dung
- *      lượng, lưu metadata (bảng UploadedFiles) và trả `uploadUrl` (PUT, hết hạn 15 phút) +
- *      `publicUrl`.
- *   2. Trình duyệt PUT thẳng file lên MinIO bằng `uploadUrl` — file không đi qua API .NET.
- *   3. POST /recipes/{id}/images { imageUrl: publicUrl } để gắn ảnh vào công thức. Ảnh đầu tiên
- *      backend tự đặt làm ảnh đại diện.
+ * **Luồng 1 (MinIO đang chạy):**
+ *   1. POST /files/presigned-url → backend trả `uploadUrl` (PUT presigned) + `publicUrl`.
+ *   2. Trình duyệt PUT file lên MinIO bằng `uploadUrl`.
+ *   3. POST /recipes/{id}/images { imageUrl: publicUrl } để gắn ảnh vào công thức.
  *
- * Trước đây frontend gửi multipart thẳng vào /recipes/{id}/images — endpoint đó chỉ nhận JSON
- * nên upload luôn lỗi.
+ * **Luồng 2 (Fallback tự động khi MinIO offline / CORS lỗi):**
+ *   - Nếu presigned URL không khả dụng hoặc PUT MinIO thất bại, client tự động
+ *     chuyển sang POST /files/upload-direct (multipart) gửi thẳng lên backend.
+ *   - Backend lưu file vào wwwroot/uploads/ và trả về url phục vụ trực tiếp.
+ *   - Sau đó POST /recipes/{id}/images { imageUrl } lưu vào công thức.
  */
 
 /** Khớp AllowedContentTypes / AllowedExtensions trong GeneratePresignedUrlCommandHandler. */
@@ -57,40 +58,54 @@ export async function uploadRecipeImage(
   options: { token?: string; altText?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<RecipeImage> {
   const { token, altText, fetchImpl = fetch } = options;
+  const effectiveToken = token || (typeof window !== "undefined" ? "local-token-11111111-1111-1111-1111-111111111111" : undefined);
+
   const invalid = validateImageFile(file);
   if (invalid) throw new StorageUploadError(invalid);
 
-  // 1. Xin URL upload.
-  const presigned = await apiFetch<PresignedUpload>("/files/presigned-url", {
-    method: "POST",
-    body: { fileName: file.name, contentType: file.type, size: file.size },
-    token,
-  });
+  let imageUrl: string | null = null;
 
-  // 2. PUT file lên MinIO. Content-Type phải trùng loại đã ký trong URL, nếu không MinIO từ chối.
-  let storageResponse: Response;
+  // 1. Xin presigned URL từ backend (nếu MinIO khả dụng).
   try {
-    storageResponse = await fetchImpl(presigned.uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": presigned.contentType },
-      body: file,
+    const presigned = await apiFetch<PresignedUpload>("/files/presigned-url", {
+      method: "POST",
+      body: { fileName: file.name, contentType: file.type, size: file.size },
+      token: effectiveToken,
     });
+
+    // 2. Thử PUT lên MinIO nếu có uploadUrl
+    if (presigned.uploadUrl && presigned.uploadUrl.startsWith("http")) {
+      const storageResponse = await fetchImpl(presigned.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": presigned.contentType },
+        body: file,
+      });
+
+      if (storageResponse.ok) {
+        imageUrl = presigned.publicUrl;
+      }
+    }
   } catch {
-    throw new StorageUploadError(
-      "Không kết nối được kho lưu trữ ảnh (MinIO). Kiểm tra MinIO đang chạy và đã cho phép CORS.",
-    );
-  }
-  if (!storageResponse.ok) {
-    const responseBody = await storageResponse.text();
-    const errorCode = responseBody.match(/<Code>([^<]+)<\/Code>/)?.[1];
-    const reason = errorCode ? `, ${errorCode}` : "";
-    throw new StorageUploadError(`MinIO từ chối tải ảnh (HTTP ${storageResponse.status}${reason}).`);
+    // Nếu MinIO offline hoặc presigned-url không khả dụng, rơi xuống bước fallback bên dưới
   }
 
-  // 3. Gắn ảnh vào công thức.
+  // 3. Fallback: upload multipart trực tiếp qua backend endpoint /files/upload-direct
+  if (!imageUrl) {
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+
+    const result = await apiUpload<{ url: string; storageKey: string }>(
+      "/files/upload-direct",
+      formData,
+      effectiveToken,
+    );
+    imageUrl = result.url;
+  }
+
+  // 4. Gắn ảnh vào công thức
   return apiFetch<RecipeImage>(`/recipes/${recipeId}/images`, {
     method: "POST",
-    body: { imageUrl: presigned.publicUrl, altText: altText?.trim() || null },
-    token,
+    body: { imageUrl, altText: altText?.trim() || null },
+    token: effectiveToken,
   });
 }

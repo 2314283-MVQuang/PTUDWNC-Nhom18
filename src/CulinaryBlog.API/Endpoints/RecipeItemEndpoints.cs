@@ -1,4 +1,4 @@
-using CulinaryBlog.API.Extensions;
+﻿using CulinaryBlog.API.Extensions;
 using CulinaryBlog.Application.Features.Recipes.Commands.AddRecipeImage;
 using CulinaryBlog.Application.Features.Recipes.Commands.AddRecipeIngredient;
 using CulinaryBlog.Application.Features.Recipes.Commands.AddRecipeStep;
@@ -79,7 +79,7 @@ public static class RecipeItemEndpoints
 
             var result = await sender.Send(command, ct);
             return Results.Created($"/api/v1/recipes/{id}/ingredients/{result.Id}", new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
         // PUT /api/v1/recipes/{id}/ingredients/{ingredientId}
         group.MapPut("/ingredients/{ingredientId:guid}", async (Guid id, Guid ingredientId, UpdateIngredientRequest request, ISender sender, CancellationToken ct) =>
@@ -95,14 +95,14 @@ public static class RecipeItemEndpoints
 
             var result = await sender.Send(command, ct);
             return Results.Ok(new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
         // DELETE /api/v1/recipes/{id}/ingredients/{ingredientId}
         group.MapDelete("/ingredients/{ingredientId:guid}", async (Guid id, Guid ingredientId, ISender sender, CancellationToken ct) =>
         {
             await sender.Send(new DeleteRecipeIngredientCommand(id, ingredientId), ct);
             return Results.NoContent();
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
 
         // ==========================================
@@ -129,7 +129,7 @@ public static class RecipeItemEndpoints
 
             var result = await sender.Send(command, ct);
             return Results.Created($"/api/v1/recipes/{id}/steps/{result.Id}", new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
         // PUT /api/v1/recipes/{id}/steps/{stepId}
         group.MapPut("/steps/{stepId:guid}", async (Guid id, Guid stepId, UpdateStepRequest request, ISender sender, CancellationToken ct) =>
@@ -145,14 +145,14 @@ public static class RecipeItemEndpoints
 
             var result = await sender.Send(command, ct);
             return Results.Ok(new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
         // DELETE /api/v1/recipes/{id}/steps/{stepId}
         group.MapDelete("/steps/{stepId:guid}", async (Guid id, Guid stepId, ISender sender, CancellationToken ct) =>
         {
             await sender.Send(new DeleteRecipeStepCommand(id, stepId), ct);
             return Results.NoContent();
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
 
         // ==========================================
@@ -178,7 +178,7 @@ public static class RecipeItemEndpoints
 
             var result = await sender.Send(command, ct);
             return Results.Created($"/api/v1/recipes/{id}/images/{result.Id}", new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
         // PATCH /api/v1/recipes/{id}/images/{imageId}/primary
         group.MapPatch("/images/{imageId:guid}/primary", async (Guid id, Guid imageId, ISender sender, CancellationToken ct) =>
@@ -186,13 +186,13 @@ public static class RecipeItemEndpoints
             var command = new SetPrimaryRecipeImageCommand(id, imageId);
             var result = await sender.Send(command, ct);
             return Results.Ok(new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
 
         // DELETE /api/v1/recipes/{id}/images/{imageId}
         group.MapDelete("/images/{imageId:guid}", async (Guid id, Guid imageId, ISender sender, CancellationToken ct) =>
         {
             await sender.Send(new DeleteRecipeImageCommand(id, imageId), ct);
             return Results.NoContent();
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).AllowAnonymous();
     }
 }

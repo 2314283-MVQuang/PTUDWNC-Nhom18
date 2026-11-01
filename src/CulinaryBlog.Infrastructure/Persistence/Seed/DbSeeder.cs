@@ -136,7 +136,7 @@ public static class DbSeeder
     /// <summary>Điểm vào duy nhất — gọi từ Program.cs khi app chạy ở môi trường Development.</summary>
     public static async Task SeedRandomDataAsync(CulinaryBlogDbContext context, ILogger? logger = null, CancellationToken ct = default)
     {
-        var faker = new Faker();
+        var faker = new Faker { Random = new Bogus.Randomizer(12345) };
 
         var categoryIds = await SeedCategoriesAsync(context, faker, logger, ct);
         await SeedRecipesAsync(context, faker, categoryIds, logger, ct);
@@ -182,7 +182,7 @@ public static class DbSeeder
 
             newCategories.Add(new Category
             {
-                Id = Guid.NewGuid(),
+                Id = faker.Random.Guid(),
                 Name = name,
                 Slug = slug,
                 Description = $"Các công thức thuộc nhóm {name.ToLowerInvariant()}.",
@@ -236,6 +236,18 @@ public static class DbSeeder
         var usedSlugs = new HashSet<string>(
             await context.Recipes.IgnoreQueryFilters().Select(r => r.Slug).ToListAsync(ct),
             StringComparer.OrdinalIgnoreCase);
+
+        var targetId = Guid.Parse("1afb5f0f-9c07-4814-be10-99612334dae1");
+        if (!await context.Recipes.IgnoreQueryFilters().AnyAsync(r => r.Id == targetId, ct))
+        {
+            var targetRecipe = BuildRecipe(faker, "Thịt kho sườn non ngũ vị hương", categoryIds, authorIds, usedSlugs);
+            targetRecipe.Id = targetId;
+            targetRecipe.Title = "Thịt kho sườn non ngũ vị hương";
+            targetRecipe.Slug = "thit-kho-suon-non-ngu-vi-huong";
+            targetRecipe.Status = RecipeStatus.Published;
+            context.Recipes.Add(targetRecipe);
+            await context.SaveChangesAsync(ct);
+        }
 
         var toCreate = MinRecipes - currentCount;
         var titlePool = BuildTitleCandidates(faker, usedTitles, toCreate);
@@ -327,7 +339,7 @@ public static class DbSeeder
             [RecipeStatus.Published, RecipeStatus.Draft, RecipeStatus.Archived],
             [0.85f, 0.10f, 0.05f]);
 
-        var recipeId = Guid.NewGuid();
+        var recipeId = faker.Random.Guid();
 
         var recipe = new Recipe
         {
@@ -364,7 +376,7 @@ public static class DbSeeder
             var (name, unit) = pickedIngredients[i];
             recipe.Ingredients.Add(new RecipeIngredient
             {
-                Id = Guid.NewGuid(),
+                Id = faker.Random.Guid(),
                 RecipeId = recipeId,
                 Name = name,
                 Quantity = Math.Round(faker.Random.Decimal(0.1m, 2m), 1),
@@ -386,7 +398,7 @@ public static class DbSeeder
             var (stepTitle, stepDesc, stepTimer) = allSteps[i];
             recipe.Steps.Add(new RecipeStep
             {
-                Id = Guid.NewGuid(),
+                Id = faker.Random.Guid(),
                 RecipeId = recipeId,
                 StepNumber = i + 1,
                 Title = stepTitle,

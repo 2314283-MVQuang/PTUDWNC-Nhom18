@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Domain.Common.Exceptions;
@@ -167,8 +167,7 @@ public class GlobalExceptionMiddleware(
                     statusCode ==
                     (int)HttpStatusCode.InternalServerError
 
-                    ? "Đã có lỗi xảy ra ở máy chủ. " +
-                      "Vui lòng thử lại sau."
+                    ? "Đã có lỗi xảy ra ở máy chủ. Vui lòng thử lại sau."
 
                     : exception.Message,
 

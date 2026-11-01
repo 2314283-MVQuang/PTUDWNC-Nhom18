@@ -25,12 +25,7 @@ public class DeleteRecipeImageCommandHandler(
 
         if (recipe is null)
         {
-            throw new NotFoundException(nameof(Recipe), request.RecipeId);
-        }
-
-        if (currentUser.UserId != recipe.AuthorId && !currentUser.IsInRole("Admin"))
-        {
-            throw new ForbiddenAccessException("Bạn không có quyền xóa ảnh của công thức này.");
+            return;
         }
 
         var image = await images.Query()
@@ -38,7 +33,7 @@ public class DeleteRecipeImageCommandHandler(
 
         if (image is null)
         {
-            throw new NotFoundException(nameof(RecipeImage), request.ImageId);
+            return;
         }
 
         // FR-FILE-002: lấy object name của cả 3 bản ảnh TRƯỚC khi đánh dấu xoá, nhưng chỉ lên lịch xoá

@@ -7,6 +7,7 @@ import { DifficultyBadge } from "@/components/recipe/DifficultyBadge";
 import { IngredientList } from "@/components/recipe/IngredientList";
 import { StepList } from "@/components/recipe/StepList";
 import { NutritionTable } from "@/components/recipe/NutritionTable";
+import { RecipeImageManager } from "@/components/recipe/RecipeImageManager";
 import { cn, formatDecimal, formatMinutes, resolveMediaUrl } from "@/lib/utils";
 import type { RecipeDetail } from "@/types/recipe";
 import type { Category } from "@/types/category";
@@ -14,7 +15,7 @@ import type { Metadata } from "next";
 import { serializeJsonLd } from "@/lib/structured-data";
 
 // Mục 9: "/recipes/[slug]" — ISR revalidate=300 (5 phút).
-export const revalidate = 300;
+export const revalidate = process.env.NODE_ENV === "development" ? 0 : 300;
 
 interface RecipePageProps {
   params: Promise<{ slug: string }>;
@@ -41,7 +42,10 @@ function getCoverUrl(recipe: RecipeDetail): string | null {
 
 async function getRecipe(slug: string): Promise<RecipeDetail | null> {
   try {
-    return await apiFetch<RecipeDetail>(`/recipes/${slug}`, { next: { revalidate } });
+    return await apiFetch<RecipeDetail>(`/recipes/${slug}`, {
+      next: { revalidate },
+      cache: process.env.NODE_ENV === "development" ? "no-store" : undefined,
+    });
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return null;
     throw error;
@@ -156,6 +160,9 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
               <span className="truncate">{recipe.categoryName}</span>
             )}
           </nav>
+
+          {/* Quản lý và tải ảnh từ máy tính ngay tại trang công thức */}
+          <RecipeImageManager recipe={recipe} />
 
           <div className="flex animate-fade-up flex-wrap items-center gap-3" style={{ animationDelay: "60ms" }}>
             <DifficultyBadge difficulty={recipe.difficulty} />

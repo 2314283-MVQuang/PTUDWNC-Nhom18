@@ -1,4 +1,4 @@
-using CulinaryBlog.Application.Common.Interfaces;
+﻿using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
 using CulinaryBlog.Infrastructure.Persistence;
@@ -20,9 +20,39 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        // --- Database (CONS-006: PostgreSQL duy nhất, EF Core Code-First) ---
-        services.AddDbContext<CulinaryBlogDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+        // --- Database (CONS-006: PostgreSQL duy nhất, EF Core Code-First; tự động fallback InMemory nếu chưa có Postgres) ---
+        var connStr = configuration.GetConnectionString("DefaultConnection");
+        var isPostgresRunning = false;
+        if (!string.IsNullOrEmpty(connStr))
+        {
+            try
+            {
+                using var tcp = new System.Net.Sockets.TcpClient();
+                var npgsqlBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connStr);
+                var host = npgsqlBuilder.Host ?? "localhost";
+                var port = npgsqlBuilder.Port > 0 ? npgsqlBuilder.Port : 5432;
+                var connectTask = tcp.ConnectAsync(host, port);
+                if (connectTask.Wait(TimeSpan.FromMilliseconds(400)) && tcp.Connected)
+                {
+                    isPostgresRunning = true;
+                }
+            }
+            catch
+            {
+                isPostgresRunning = false;
+            }
+        }
+
+        if (isPostgresRunning)
+        {
+            services.AddDbContext<CulinaryBlogDbContext>(options =>
+                options.UseNpgsql(connStr).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+        }
+        else
+        {
+            services.AddDbContext<CulinaryBlogDbContext>(options =>
+                options.UseInMemoryDatabase("CulinaryBlogDev"));
+        }
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
 
@@ -93,22 +123,47 @@ public static class DependencyInjection
         // --- UploadedFile Repository & MinIO Storage (FR-FILE-001, Tiến) ---
         services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
-        services.AddSingleton<IMinioClient>(serviceProvider =>
+
+        var minioOpts = configuration.GetSection(MinioOptions.SectionName).Get<MinioOptions>();
+        var isMinioRunning = false;
+        if (minioOpts != null && !string.IsNullOrWhiteSpace(minioOpts.Endpoint))
         {
-            var options = serviceProvider.GetRequiredService<IOptions<MinioOptions>>().Value;
-            var client = new MinioClient()
-                .WithEndpoint(options.Endpoint)
-                .WithCredentials(options.AccessKey, options.SecretKey);
-
-            if (options.UseSsl)
+            try
             {
-                client = client.WithSSL();
+                using var tcpMinio = new System.Net.Sockets.TcpClient();
+                var epParts = minioOpts.Endpoint.Split(':');
+                var minioHost = epParts[0];
+                var minioPort = epParts.Length > 1 && int.TryParse(epParts[1], out var mp) ? mp : 9000;
+                var minioConnTask = tcpMinio.ConnectAsync(minioHost, minioPort);
+                if (minioConnTask.Wait(TimeSpan.FromMilliseconds(400)) && tcpMinio.Connected)
+                    isMinioRunning = true;
             }
+            catch { isMinioRunning = false; }
+        }
 
-            return client.Build();
-        });
-        services.AddScoped<IFileStorageService, MinioFileStorageService>();
-        services.AddHostedService<MinioBucketInitializer>();
+        if (isMinioRunning)
+        {
+            services.AddSingleton<IMinioClient>(serviceProvider =>
+            {
+                var options = serviceProvider.GetRequiredService<IOptions<MinioOptions>>().Value;
+                var client = new MinioClient()
+                    .WithEndpoint(options.Endpoint)
+                    .WithCredentials(options.AccessKey, options.SecretKey);
+
+                if (options.UseSsl)
+                {
+                    client = client.WithSSL();
+                }
+
+                return client.Build();
+            });
+            services.AddScoped<IFileStorageService, MinioFileStorageService>();
+            services.AddHostedService<MinioBucketInitializer>();
+        }
+        else
+        {
+            services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        }
 
         // --- Redis (Tuần 4) ---
         // Mâu thuẫn #3 (xem phan-tich-mau-thuan-SRS): chỉ dùng 1 tầng cache duy nhất — ASP.NET Core

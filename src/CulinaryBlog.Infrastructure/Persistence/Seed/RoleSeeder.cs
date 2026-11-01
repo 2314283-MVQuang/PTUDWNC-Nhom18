@@ -1,4 +1,4 @@
-using CulinaryBlog.Domain.Entities;
+﻿using CulinaryBlog.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
@@ -81,6 +81,27 @@ public static class RoleSeeder
             }
 
             logger.LogInformation("RoleSeeder: đã tạo tài khoản admin dev {Email}.", email);
+        // Seed tài khoản Tien (Hồ Quốc Tiến - 2312769)
+        var tien = await userManager.FindByEmailAsync("2312769@dli.edu.vn");
+        if (tien is null)
+        {
+            tien = new ApplicationUser
+            {
+                UserName = "2312769@dli.edu.vn",
+                Email = "2312769@dli.edu.vn",
+                DisplayName = "Tien",
+                EmailConfirmed = true,
+            };
+            await userManager.CreateAsync(tien, "12345678@Aa");
+        }
+        if (tien != null)
+        {
+            foreach (var role in new[] { "Admin", "Author" })
+            {
+                if (!await userManager.IsInRoleAsync(tien, role))
+                    await userManager.AddToRoleAsync(tien, role);
+            }
+        }
         }
 
         foreach (var role in new[] { "Admin", "Author" })

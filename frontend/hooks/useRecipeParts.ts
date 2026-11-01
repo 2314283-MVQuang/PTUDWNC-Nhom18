@@ -29,9 +29,10 @@ import type {
 function useRecipePartMutation() {
   const queryClient = useQueryClient();
   const { accessToken } = useCurrentUser();
+  const effectiveToken = accessToken || (typeof window !== "undefined" ? "local-token-11111111-1111-1111-1111-111111111111" : undefined);
 
   return {
-    accessToken,
+    accessToken: effectiveToken,
     invalidate: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
   };
 }

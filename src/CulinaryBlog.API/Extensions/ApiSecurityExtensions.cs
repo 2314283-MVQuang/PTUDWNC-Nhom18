@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -36,54 +35,6 @@ public static class ApiSecurityExtensions
             };
             options.Events = new JwtBearerEvents
             {
-                OnMessageReceived = context =>
-                {
-                    var authHeader = context.Request.Headers.Authorization.ToString();
-                    var path = context.Request.Path.Value ?? "";
-
-                    // 1. Hỗ trợ token dev / demo từ frontend Next.js (chế độ demo/local user)
-                    if (authHeader.StartsWith("Bearer local-token-", StringComparison.OrdinalIgnoreCase) ||
-                        authHeader.StartsWith("Bearer dev-", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var tokenVal = authHeader["Bearer ".Length..].Trim();
-                        var userId = tokenVal.StartsWith("local-token-") ? tokenVal["local-token-".Length..] : tokenVal;
-                        if (string.IsNullOrWhiteSpace(userId)) userId = "11111111-1111-1111-1111-111111111111";
-
-                        var claims = new List<Claim>
-                        {
-                            new(ClaimTypes.NameIdentifier, userId),
-                            new(JwtRegisteredClaimNames.Sub, userId),
-                            new(ClaimTypes.Email, "admin@culinaryblog.local"),
-                            new(ClaimTypes.Role, "Admin"),
-                            new(ClaimTypes.Role, "Author"),
-                            new("displayName", "Quản trị viên (Dev)")
-                        };
-                        context.Principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "DevLocalScheme"));
-                        context.Success();
-                        return Task.CompletedTask;
-                    }
-
-                    // 2. Nếu request không có header Authorization khi upload hoặc quản lý ảnh công thức (hỗ trợ test trực tiếp)
-                    if (string.IsNullOrEmpty(authHeader) &&
-                        (path.Contains("/files/") || path.Contains("/images")))
-                    {
-                        var devUserId = "11111111-1111-1111-1111-111111111111";
-                        var claims = new List<Claim>
-                        {
-                            new(ClaimTypes.NameIdentifier, devUserId),
-                            new(JwtRegisteredClaimNames.Sub, devUserId),
-                            new(ClaimTypes.Email, "admin@culinaryblog.local"),
-                            new(ClaimTypes.Role, "Admin"),
-                            new(ClaimTypes.Role, "Author"),
-                            new("displayName", "Khách thử nghiệm (Dev)")
-                        };
-                        context.Principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "DevLocalScheme"));
-                        context.Success();
-                        return Task.CompletedTask;
-                    }
-
-                    return Task.CompletedTask;
-                },
                 OnChallenge = async context =>
                 {
                     context.HandleResponse();

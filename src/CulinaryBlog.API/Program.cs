@@ -285,6 +285,9 @@ try
                 --   GET /recipes sắp mặc định CreatedAt DESC; trang danh mục lọc CategoryId + Status, sắp PublishedAt;
                 --   job purge tìm công thức đã xoá mềm quá 30 ngày (partial index chỉ chứa hàng IsDeleted).
                 CREATE INDEX IF NOT EXISTS "IX_Recipes_CreatedAt" ON "Recipes" ("CreatedAt" DESC);
+                -- Đo bằng EXPLAIN ANALYZE: index 1 cột này làm planner chọn sai cho trang danh mục
+                -- (bỏ qua hàng nghìn bản nháp PublishedAt NULL ở đầu index DESC) — index ghép bên dưới thay thế.
+                DROP INDEX IF EXISTS "IX_Recipes_PublishedAt";
                 CREATE INDEX IF NOT EXISTS "IX_Recipes_CategoryId_Status_PublishedAt"
                     ON "Recipes" ("CategoryId", "Status", "PublishedAt" DESC);
                 CREATE INDEX IF NOT EXISTS "IX_Recipes_DeletedAt_Purge"

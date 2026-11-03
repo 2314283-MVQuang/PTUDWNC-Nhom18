@@ -51,7 +51,6 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
         builder.HasIndex(x => x.AuthorId);
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.Difficulty);
-        builder.HasIndex(x => x.PublishedAt).IsDescending().HasDatabaseName("IX_Recipes_PublishedAt");
         // Chương 3 (3.6): index theo câu truy vấn thật — khớp db/init/02-schema.sql.
         builder.HasIndex(x => x.CreatedAt).IsDescending().HasDatabaseName("IX_Recipes_CreatedAt");
         builder.HasIndex(x => new { x.CategoryId, x.Status, x.PublishedAt })

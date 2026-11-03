@@ -58,6 +58,8 @@ GROUP BY "CategoryId" ORDER BY count(*) DESC LIMIT 1 \gset
 DROP INDEX IF EXISTS "IX_Recipes_CreatedAt";
 DROP INDEX IF EXISTS "IX_Recipes_CategoryId_Status_PublishedAt";
 DROP INDEX IF EXISTS "IX_Recipes_DeletedAt_Purge";
+-- Schema cũ có index 1 cột trên PublishedAt (đã bỏ ở bản mới) — dựng lại để đo đúng trạng thái cũ.
+CREATE INDEX IF NOT EXISTS "IX_Recipes_PublishedAt" ON "Recipes" ("PublishedAt" DESC);
 ANALYZE "Recipes";
 
 \echo
@@ -81,12 +83,13 @@ SELECT r."Id" FROM "Recipes" r WHERE r."IsDeleted" AND r."DeletedAt" < now() - i
 
 \echo
 \echo '############################################################################'
-\echo '#  SAU: tạo lại index của Chương 3                                          #'
+\echo '#  SAU: schema mới — index Chương 3, bỏ IX_Recipes_PublishedAt              #'
 \echo '############################################################################'
 CREATE INDEX IF NOT EXISTS "IX_Recipes_CreatedAt" ON "Recipes" ("CreatedAt" DESC);
 CREATE INDEX IF NOT EXISTS "IX_Recipes_CategoryId_Status_PublishedAt"
     ON "Recipes" ("CategoryId", "Status", "PublishedAt" DESC);
 CREATE INDEX IF NOT EXISTS "IX_Recipes_DeletedAt_Purge" ON "Recipes" ("DeletedAt") WHERE "IsDeleted";
+DROP INDEX IF EXISTS "IX_Recipes_PublishedAt";
 ANALYZE "Recipes";
 
 \echo

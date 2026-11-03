@@ -206,7 +206,8 @@ CREATE INDEX IF NOT EXISTS "IX_Recipes_CategoryId"  ON "Recipes" ("CategoryId");
 CREATE INDEX IF NOT EXISTS "IX_Recipes_AuthorId"    ON "Recipes" ("AuthorId");
 CREATE INDEX IF NOT EXISTS "IX_Recipes_Status"      ON "Recipes" ("Status");
 CREATE INDEX IF NOT EXISTS "IX_Recipes_Difficulty"  ON "Recipes" ("Difficulty");
-CREATE INDEX IF NOT EXISTS "IX_Recipes_PublishedAt" ON "Recipes" ("PublishedAt" DESC);
+-- (Đã bỏ "IX_Recipes_PublishedAt": EXPLAIN ANALYZE cho thấy planner chọn nó cho trang danh mục rồi
+--  phải bỏ qua hàng nghìn bản nháp có PublishedAt NULL nằm đầu index DESC; không truy vấn nào khác cần.)
 -- Chương 3 (3.6) — index theo câu truy vấn thật (xem db/explain-analyze.sql):
 --   GET /recipes sắp mặc định CreatedAt DESC; trang danh mục lọc CategoryId + Status, sắp PublishedAt;
 --   job purge chỉ quét hàng đã xoá mềm (partial index).

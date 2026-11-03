@@ -82,6 +82,8 @@ services:
     container_name: culinaryblog-seq
     environment:
       ACCEPT_EULA: "Y"
+      # Seq 2025+ đòi mật khẩu admin ở lần chạy đầu; máy dev thì tắt đăng nhập cho tiện.
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
     ports:
       - "8081:80"
       - "5341:5341"

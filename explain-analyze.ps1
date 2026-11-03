@@ -11,6 +11,10 @@ param(
     [string]$Output = 'explain-analyze-ketqua.txt'
 )
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 mac dinh gui chuoi sang lenh ngoai bang ASCII -> tieng Viet thanh '?'.
+$utf8 = New-Object System.Text.UTF8Encoding $false
+$OutputEncoding = $utf8
+[Console]::OutputEncoding = $utf8
 $sql = Join-Path $PSScriptRoot 'db\explain-analyze.sql'
 Write-Host "Dang do truy van tren $Container/$Database ..." -ForegroundColor Cyan
 Get-Content -Raw -Encoding UTF8 $sql | docker exec -i -e PGCLIENTENCODING=UTF8 $Container psql -U $User -d $Database -X -q 2>&1 |

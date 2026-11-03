@@ -41,6 +41,9 @@ JOIN cats ON cats.n = g % ncat.c;
 UPDATE "Recipes" SET "IsDeleted" = TRUE, "DeletedAt" = now() - interval '40 days'
 WHERE "Slug" LIKE 'bench-%' AND ("Slug" ~ '00$');
 
+-- EF Core gửi CategoryId dạng tham số → PostgreSQL lập kế hoạch với giá trị thật; ở đây dùng biến psql.
+SELECT "Id" AS cat_id FROM "Categories" WHERE NOT "IsDeleted" ORDER BY "Id" LIMIT 1 \gset
+
 \echo
 \echo '############################################################################'
 \echo '#  TRƯỚC: bỏ các index mới của Chương 3 (chỉ trong transaction này)        #'
@@ -61,9 +64,8 @@ ORDER BY r."CreatedAt" DESC, r."Id" LIMIT 12;
 \echo '== [TRƯỚC] Q2. GET /categories/{slug} — công thức của 1 danh mục =='
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF)
 SELECT r."Id", r."Slug", r."Title" FROM "Recipes" r
-WHERE NOT r."IsDeleted" AND r."CategoryId" = (SELECT "Id" FROM "Categories" WHERE NOT "IsDeleted" ORDER BY "Id" LIMIT 1)
-  AND r."Status" = 1
-ORDER BY r."PublishedAt" DESC, r."Id" LIMIT 12;
+WHERE NOT r."IsDeleted" AND r."CategoryId" = :'cat_id' AND r."Status" = 1
+ORDER BY r."PublishedAt" DESC, r."CreatedAt" DESC, r."Id" LIMIT 12;
 
 \echo
 \echo '== [TRƯỚC] Q3. Job purge — công thức xoá mềm quá 30 ngày =='
@@ -91,9 +93,8 @@ ORDER BY r."CreatedAt" DESC, r."Id" LIMIT 12;
 \echo '== [SAU] Q2. GET /categories/{slug} — công thức của 1 danh mục =='
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF)
 SELECT r."Id", r."Slug", r."Title" FROM "Recipes" r
-WHERE NOT r."IsDeleted" AND r."CategoryId" = (SELECT "Id" FROM "Categories" WHERE NOT "IsDeleted" ORDER BY "Id" LIMIT 1)
-  AND r."Status" = 1
-ORDER BY r."PublishedAt" DESC, r."Id" LIMIT 12;
+WHERE NOT r."IsDeleted" AND r."CategoryId" = :'cat_id' AND r."Status" = 1
+ORDER BY r."PublishedAt" DESC, r."CreatedAt" DESC, r."Id" LIMIT 12;
 
 \echo
 \echo '== [SAU] Q3. Job purge — công thức xoá mềm quá 30 ngày =='

@@ -82,7 +82,9 @@ public class SitemapBuilder(
             urlset
         );
 
-        using var sw = new StringWriter();
+        // StringWriter mặc định là UTF-16 nên khai báo XML ghi encoding="utf-16" trong khi file được
+        // phục vụ "application/xml; charset=utf-8" — Google Search Console báo lỗi encoding. Ép UTF-8.
+        using var sw = new Utf8StringWriter();
         doc.Save(sw);
         return sw.ToString();
     }
@@ -96,4 +98,9 @@ public class SitemapBuilder(
             new XElement(Ns + "priority", priority)
         );
     }
+}
+
+internal sealed class Utf8StringWriter : StringWriter
+{
+    public override System.Text.Encoding Encoding => new System.Text.UTF8Encoding(false);
 }

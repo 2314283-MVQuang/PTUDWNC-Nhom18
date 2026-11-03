@@ -47,24 +47,37 @@ public sealed class GetCategoryBySlugQueryHandler(
         IQueryable<Recipe> recipes = recipeRepository
             .Query()
             .AsNoTracking()
-            .Where(x => x.CategoryId == category.Id)
-            .Where(x =>
+            .Where(x => x.CategoryId == category.Id);
+
+        // Chương 3 (3.6, đo bằng db/explain-analyze.sql): khách xem (đại đa số request) chỉ thấy
+        // Published nên điều kiện + thứ tự viết đơn giản để PostgreSQL dùng thẳng index
+        // IX_Recipes_CategoryId_Status_PublishedAt (CategoryId, Status, PublishedAt DESC) — đọc đúng
+        // 12 dòng thay vì quét theo PublishedAt rồi lọc. Biểu thức "PublishedAt IS NULL" trong
+        // ORDER BY không dùng được index nên chỉ giữ cho người đăng nhập (có bản nháp của mình).
+        IOrderedQueryable<Recipe> ordered;
+        if (userId is null)
+        {
+            recipes = recipes.Where(x => x.Status == RecipeStatus.Published);
+            ordered = recipes.OrderByDescending(x => x.PublishedAt);
+        }
+        else
+        {
+            recipes = recipes.Where(x =>
                 x.Status == RecipeStatus.Published ||
-                (x.Status == RecipeStatus.Draft &&
-                 userId != null &&
-                 x.AuthorId == userId));
+                (x.Status == RecipeStatus.Draft && x.AuthorId == userId));
+            // Bản nháp (chưa có PublishedAt) xếp cuối — PostgreSQL mặc định để NULL lên TRƯỚC khi sắp giảm dần.
+            ordered = recipes
+                .OrderBy(x => x.PublishedAt == null)
+                .ThenByDescending(x => x.PublishedAt);
+        }
 
         var totalCount = await recipes.CountAsync(ct);
 
-        // Mới xuất bản lên trước; bản nháp (chưa có PublishedAt) xếp cuối, theo ngày tạo. Ghi rõ
-        // "PublishedAt == null" lên đầu vì PostgreSQL mặc định xếp NULL lên TRƯỚC khi sắp giảm dần.
         // Chương 3 (3.5.3 — AsNoTracking + Projection): chỉ SELECT các cột của RecipeSummaryDto
         // (tên danh mục, tên tác giả, 1 URL ảnh đầu tiên qua subquery) thay vì Include rồi nạp cả
         // entity Recipe + Author + MỌI ảnh vào bộ nhớ. ThenBy(Id) giữ thứ tự ổn định giữa các trang.
         var items =
-            await recipes
-                .OrderBy(x => x.PublishedAt == null)
-                .ThenByDescending(x => x.PublishedAt)
+            await ordered
                 .ThenByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Id)
                 .Skip((request.Page - 1) * request.PageSize)

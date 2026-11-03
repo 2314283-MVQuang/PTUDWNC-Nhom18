@@ -34,3 +34,27 @@ export interface RegistrationResponse {
   error?: string;
   user?: Pick<UserProfile, "id" | "email" | "displayName">;
 }
+
+/** Tuần 9 (Quang) — 1 dòng ở trang /dashboard/users, khớp UserSummaryDto của GET /users (chỉ Admin). */
+export interface UserSummary {
+  id: string;
+  email: string;
+  userName: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  roles: UserRole[];
+  isActive: boolean;
+  emailConfirmed: boolean;
+  createdAt: string;
+  recipeCount: number;
+  publishedRecipeCount: number;
+}
+
+/** Bộ lọc của GET /users. `role`: "Admin" = quản trị viên, "Author" = tác giả thường. */
+export interface UserListParams {
+  q?: string;
+  role?: UserRole | "";
+  isActive?: "true" | "false" | "";
+  page?: number;
+  pageSize?: number;
+}

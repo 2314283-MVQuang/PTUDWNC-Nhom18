@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, BookOpen, FolderTree } from "lucide-react";
+import { LayoutGrid, BookOpen, FolderTree, Users } from "lucide-react";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 const NAV = [
   { href: "/dashboard", label: "Tổng quan", icon: LayoutGrid },
@@ -10,12 +11,17 @@ const NAV = [
   { href: "/dashboard/categories", label: "Danh mục", icon: FolderTree },
 ];
 
+/** Tuần 9 (Quang): mục chỉ Admin thấy. Backend vẫn tự chặn 403 nếu tác giả gõ thẳng URL. */
+const ADMIN_NAV = [{ href: "/dashboard/users", label: "Người dùng", icon: Users }];
+
 export function DashboardSidebarNav() {
   const pathname = usePathname();
+  const { isAdmin } = useCurrentUser();
+  const items = isAdmin ? [...NAV, ...ADMIN_NAV] : NAV;
 
   return (
     <aside className="flex flex-col gap-1">
-      {NAV.map((item) => {
+      {items.map((item) => {
         const isActive =
           item.href === "/dashboard"
             ? pathname === "/dashboard"

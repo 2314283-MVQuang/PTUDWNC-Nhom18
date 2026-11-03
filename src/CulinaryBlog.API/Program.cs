@@ -356,6 +356,7 @@ app.MapAuthEndpoints();
 app.MapRecipeEndpoints();
 app.MapRecipeItemEndpoints(); // FR-RCP-008/009/010 (Tiến): nguyên liệu, bước, ảnh
 app.MapCategoryEndpoints();
+app.MapUsersEndpoints();       // Tuần 9 (Quang): quản lý người dùng cho Admin
 app.MapFileEndpoints();       // FR-FILE-001 (Tiến): presigned URL MinIO
 app.MapHealthEndpoints();
 app.MapSitemapEndpoints();    // FR-JOB-003 (Tiến): GET /sitemap.xml

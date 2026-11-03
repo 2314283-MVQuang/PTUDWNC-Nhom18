@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.API.Middleware;
+using CulinaryBlog.API.Security;
 using CulinaryBlog.API.Services;
 using CulinaryBlog.Application;
 using CulinaryBlog.Application.Common.Interfaces;
@@ -11,9 +13,11 @@ using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Seed;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using Serilog.Events;
 using Hangfire;
 using Hangfire.PostgreSql;
 using CulinaryBlog.Infrastructure.Jobs;
@@ -194,6 +198,21 @@ builder.Services.AddOpenTelemetry()
         {
             tracing.AddConsoleExporter();
         }
+    })
+    // Tuần 8 (Tiến) — FR-OBS-003 metrics: request count/duration/error rate (meter ASP.NET Core +
+    // HttpClient) và số công thức tạo/xuất bản (meter "CulinaryBlog", xem RecipeMetrics). Chỉ xuất
+    // khi có OTLP endpoint — máy dev không bị in metrics ra console mỗi phút.
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(CulinaryBlog.Application.Common.Diagnostics.RecipeMetrics.MeterName);
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            metrics.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
+        }
     });
 
 var app = builder.Build();
@@ -239,6 +258,24 @@ catch (Exception ex)
 // Middleware pipeline
 // ---------------------------------------------------------------------------
 app.UseMiddleware<CorrelationIdMiddleware>(); // Đứng TRƯỚC GlobalException — request lỗi 500 vẫn cần có CorrelationId trong log.
+// Tuần 8 (Tiến) — FR-OBS-002: mỗi HTTP request 1 dòng log có method/path/status/elapsed + UserId
+// (khi đã xác thực) + CorrelationId (nằm trong LogContext do CorrelationIdMiddleware đẩy vào).
+// Request > 500ms log mức Warning (performance alert), 5xx log mức Error. Đặt TRƯỚC
+// GlobalExceptionMiddleware để thấy status 500 cuối cùng thay vì exception thô.
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0} ms";
+    options.GetLevel = (httpContext, elapsedMs, exception) =>
+        exception is not null || httpContext.Response.StatusCode >= 500 ? LogEventLevel.Error
+        : elapsedMs > 500 ? LogEventLevel.Warning
+        : LogEventLevel.Information;
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrEmpty(userId)) diagnosticContext.Set("UserId", userId);
+        diagnosticContext.Set("ClientIp", httpContext.Connection.RemoteIpAddress?.ToString());
+    };
+});
 app.UseMiddleware<GlobalExceptionMiddleware>(); // Phải đứng ĐẦU pipeline (sau CorrelationId) để bắt mọi exception phía sau.
 
 app.MapCulinaryApiDocumentation();
@@ -295,10 +332,12 @@ app.UseAuthorization();
 app.UseOutputCache();
 
 // Tuần 5 (FR-JOB-003): Hangfire Dashboard & Recurring Job sinh sitemap lúc 02:00 AM hàng ngày
+// Tuần 8 (Tiến): SRS "Dashboard /hangfire (Admin only)" — xem Security/HangfireAdminAuthorizationFilter.cs.
+// Mở bằng trình duyệt: /hangfire?access_token=<JWT của Admin>.
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
-    // Cho phép truy cập dashboard trong môi trường Development/Testing
-    Authorization = []
+    Authorization = [new HangfireAdminAuthorizationFilter()],
+    DashboardTitle = "Culinary Blog — Background Jobs",
 });
 
 RecurringJob.AddOrUpdate<GenerateSitemapJob>(

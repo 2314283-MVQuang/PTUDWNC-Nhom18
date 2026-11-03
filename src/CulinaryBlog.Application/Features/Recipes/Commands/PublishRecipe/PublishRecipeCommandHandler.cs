@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Authorization;
+using CulinaryBlog.Application.Common.Diagnostics;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Recipes.Dtos;
@@ -54,6 +55,7 @@ public sealed class PublishRecipeCommandHandler(
             await cacheInvalidator.EvictByTagAsync($"recipe-{recipe.Id}", ct);
             await cacheInvalidator.EvictByTagAsync("search", ct);
             await cacheInvalidator.EvictByTagAsync("categories", ct);
+            RecipeMetrics.RecipePublished();
         }
 
         // 6. Đọc lại để lấy navigation + rowVersion mới

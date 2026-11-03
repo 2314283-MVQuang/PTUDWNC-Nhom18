@@ -211,12 +211,14 @@ public partial class Week7IntegrationTests(Week7ApiFixture api) : IClassFixture<
     }
 
     [Week7Fact(true)]
-    public async Task Readiness_MinIoStopped_Returns503_WhileLivenessRemains200()
+    public async Task Readiness_MinIoStopped_ReadyStays200_OverallReturns503()
     {
+        // Tuần 8 (Tiến): SRS FR-OBS-001 — readiness chỉ kiểm tra DB + Redis; MinIO down chỉ làm
+        // /health tổng hợp 503 (không rút instance khỏi load balancer vì vẫn đọc công thức được).
         using var ready = await api.Client.GetAsync("/health/ready");
         using var overall = await api.Client.GetAsync("/health");
         using var live = await api.Client.GetAsync("/health/live");
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, ready.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, overall.StatusCode);
         Assert.Equal(HttpStatusCode.OK, live.StatusCode);
         var report = await api.App.Services.GetRequiredService<HealthCheckService>().CheckHealthAsync();

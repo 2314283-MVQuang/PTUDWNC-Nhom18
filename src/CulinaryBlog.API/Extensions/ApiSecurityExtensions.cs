@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
+using CulinaryBlog.API.Security;
 using CulinaryBlog.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -35,6 +36,25 @@ public static class ApiSecurityExtensions
             };
             options.Events = new JwtBearerEvents
             {
+                // Tuần 8 (Tiến): chỉ dashboard /hangfire mới nhận token qua query/cookie (trình duyệt
+                // không gửi được header Bearer). Mọi endpoint /api vẫn bắt buộc header Authorization.
+                OnMessageReceived = context =>
+                {
+                    if (string.IsNullOrEmpty(context.Token)
+                        && !context.Request.Headers.ContainsKey("Authorization"))
+                    {
+                        context.Token = HangfireDashboardToken.Read(context.Request);
+                    }
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = context =>
+                {
+                    HangfireDashboardToken.PersistFromQuery(context.HttpContext,
+                        context.SecurityToken?.ValidTo is { } validTo && validTo > DateTime.MinValue
+                            ? new DateTimeOffset(DateTime.SpecifyKind(validTo, DateTimeKind.Utc))
+                            : null);
+                    return Task.CompletedTask;
+                },
                 OnChallenge = async context =>
                 {
                     context.HandleResponse();

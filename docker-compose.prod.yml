@@ -73,6 +73,8 @@ services:
     image: datalust/seq:latest
     environment:
       ACCEPT_EULA: "Y"
+      # Seq 2025+ bat buoc dat mat khau admin o lan chay dau, neu khong container restart lien tuc.
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:?Đặt SEQ_ADMIN_PASSWORD trong .env.prod}
     ports:
       # Giao diện xem log chỉ mở trên máy chủ (SSH tunnel: ssh -L 8081:127.0.0.1:8081 ...).
       - "127.0.0.1:8081:80"

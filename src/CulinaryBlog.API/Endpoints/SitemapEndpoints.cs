@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using CulinaryBlog.API.Extensions;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Infrastructure.Jobs;
 using Microsoft.AspNetCore.Mvc;
@@ -41,9 +42,13 @@ public static class SitemapEndpoints
         })
         .WithName("TriggerSitemapJob")
         .WithSummary("Kích hoạt chạy job sinh sitemap ngay lập tức (FR-JOB-003)")
-        .WithDescription("Chạy tiến trình sinh sitemap.xml và ping search engine theo yêu cầu.")
+        .WithDescription("Chạy tiến trình sinh sitemap.xml và ping search engine theo yêu cầu. Chỉ Admin.")
         .Produces(StatusCodes.Status200OK)
-        .AllowAnonymous();
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status403Forbidden)
+        // Tuần 8 (Tiến): trước đây AllowAnonymous — ai cũng có thể bắt server sinh sitemap + ping
+        // Google liên tục (DoS). Chỉ Admin được chạy tay; lịch 02:00 vẫn do Hangfire.
+        .RequireAuthorization(AuthorizationPolicies.Admin);
 
         return app;
     }

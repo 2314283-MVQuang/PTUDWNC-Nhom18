@@ -120,6 +120,24 @@ public class OperationsSecurityTests
     }
 
     [Fact]
+    public async Task CommentsApi_WritingRequiresLogin()
+    {
+        // Tuần 9 (Quang) — FR-CMT: khách xem được bình luận nhưng không viết/sửa/xoá được.
+        await using var host = await OperationsHost.StartAsync();
+        var recipeId = Guid.NewGuid();
+        var commentId = Guid.NewGuid();
+        StringContent Body() => new("{\"content\":\"Ngon!\"}", System.Text.Encoding.UTF8, "application/json");
+
+        using var post = await host.Client.PostAsync($"/api/v1/recipes/{recipeId}/comments", Body());
+        using var put = await host.Client.PutAsync($"/api/v1/comments/{commentId}", Body());
+        using var delete = await host.Client.DeleteAsync($"/api/v1/comments/{commentId}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, post.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, put.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, delete.StatusCode);
+    }
+
+    [Fact]
     public void SitemapJob_RetriesTwice_PerSrs()
     {
         var retry = typeof(GenerateSitemapJob).GetCustomAttribute<AutomaticRetryAttribute>();
@@ -211,6 +229,7 @@ internal sealed class OperationsHost(WebApplication app, JwtOptions jwt) : IAsyn
         app.UseHangfireDashboard("/hangfire", new DashboardOptions { Authorization = [new HangfireAdminAuthorizationFilter()] });
         app.MapSitemapEndpoints();
         app.MapUsersEndpoints();
+        app.MapCommentEndpoints();
         app.MapHealthEndpoints();
         app.MapV1Group("/ops").MapGet("/admin", () => "ok").RequireAuthorization(AuthorizationPolicies.Admin);
         await app.StartAsync();

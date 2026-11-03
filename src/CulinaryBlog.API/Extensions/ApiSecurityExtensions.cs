@@ -12,6 +12,7 @@ namespace CulinaryBlog.API.Extensions;
 public static class ApiSecurityExtensions
 {
     public const string AuthRateLimit = "auth";
+    public const string CommentRateLimit = "comments";
 
     public static IServiceCollection AddApiSecurity(this IServiceCollection services, IConfiguration configuration)
     {
@@ -97,6 +98,10 @@ public static class ApiSecurityExtensions
             // Chung một ngân sách /auth/* theo IP, không thể lách bằng đổi endpoint/tài khoản.
             options.AddPolicy(AuthRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => Window(10)));
+            // FR-CMT-002 (Tuần 9): chống spam bình luận — tối đa 5 bình luận mới/phút/người dùng.
+            options.AddPolicy(CommentRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+                context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? $"ip:{context.Connection.RemoteIpAddress}", _ => Window(5)));
             options.OnRejected = async (context, ct) =>
             {
                 var seconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)

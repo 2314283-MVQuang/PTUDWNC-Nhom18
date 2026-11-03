@@ -244,6 +244,38 @@ try
             ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "MediumUrl" character varying(1000) NULL;
             ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "ThumbnailUrl" character varying(1000) NULL;
             """);
+
+        // FR-CMT (Tuần 9, Quang): bảng bình luận cho database tạo trước khi có tính năng này.
+        // Tách try riêng: lỗi ở đây (vd thiếu hàm touch_row) không được chặn bước seed role phía dưới.
+        try
+        {
+            await filesDb.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS "RecipeComments" (
+                    "Id"         uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+                    "RecipeId"   uuid          NOT NULL REFERENCES "Recipes" ("Id") ON DELETE CASCADE,
+                    "AuthorId"   varchar(450)  NOT NULL REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+                    "Content"    varchar(1000) NOT NULL,
+                    "IsEdited"   boolean       NOT NULL DEFAULT false,
+
+                    "CreatedAt"  timestamptz   NOT NULL DEFAULT now(),
+                    "UpdatedAt"  timestamptz,
+                    "IsDeleted"  boolean       NOT NULL DEFAULT false,
+                    "DeletedAt"  timestamptz,
+                    "RowVersion" bytea         NOT NULL DEFAULT gen_random_bytes(8)
+                );
+                CREATE INDEX IF NOT EXISTS "IX_RecipeComments_RecipeId_CreatedAt" ON "RecipeComments" ("RecipeId", "CreatedAt");
+                CREATE INDEX IF NOT EXISTS "IX_RecipeComments_AuthorId" ON "RecipeComments" ("AuthorId");
+
+                DROP TRIGGER IF EXISTS "trg_RecipeComments_touch" ON "RecipeComments";
+                CREATE TRIGGER "trg_RecipeComments_touch"
+                    BEFORE UPDATE ON "RecipeComments"
+                    FOR EACH ROW EXECUTE FUNCTION touch_row();
+                """);
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Không tạo được bảng RecipeComments — chạy db/init/02-schema.sql để tạo thủ công.");
+        }
     }
 
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
@@ -357,6 +389,7 @@ app.MapRecipeEndpoints();
 app.MapRecipeItemEndpoints(); // FR-RCP-008/009/010 (Tiến): nguyên liệu, bước, ảnh
 app.MapCategoryEndpoints();
 app.MapUsersEndpoints();       // Tuần 9 (Quang): quản lý người dùng cho Admin
+app.MapCommentEndpoints();     // Tuần 9 (Quang): FR-CMT bình luận công thức
 app.MapFileEndpoints();       // FR-FILE-001 (Tiến): presigned URL MinIO
 app.MapHealthEndpoints();
 app.MapSitemapEndpoints();    // FR-JOB-003 (Tiến): GET /sitemap.xml

@@ -335,6 +335,33 @@ CREATE TRIGGER "trg_RecipeImages_touch"
 
 
 -- =============================================================================
+--  RECIPE COMMENTS (FR-CMT — Tuần 9, bổ sung SRS v1.1.0)
+--  Bình luận của người dùng đã đăng nhập dưới công thức đã xuất bản. Xoá mềm.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "RecipeComments" (
+    "Id"         uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    "RecipeId"   uuid          NOT NULL REFERENCES "Recipes" ("Id") ON DELETE CASCADE,
+    "AuthorId"   varchar(450)  NOT NULL REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+    "Content"    varchar(1000) NOT NULL,
+    "IsEdited"   boolean       NOT NULL DEFAULT false,
+
+    "CreatedAt"  timestamptz   NOT NULL DEFAULT now(),
+    "UpdatedAt"  timestamptz,
+    "IsDeleted"  boolean       NOT NULL DEFAULT false,
+    "DeletedAt"  timestamptz,
+    "RowVersion" bytea         NOT NULL DEFAULT gen_random_bytes(8)
+);
+CREATE INDEX IF NOT EXISTS "IX_RecipeComments_RecipeId_CreatedAt" ON "RecipeComments" ("RecipeId", "CreatedAt");
+CREATE INDEX IF NOT EXISTS "IX_RecipeComments_AuthorId" ON "RecipeComments" ("AuthorId");
+
+DROP TRIGGER IF EXISTS "trg_RecipeComments_touch" ON "RecipeComments";
+CREATE TRIGGER "trg_RecipeComments_touch"
+    BEFORE UPDATE ON "RecipeComments"
+    FOR EACH ROW EXECUTE FUNCTION touch_row();
+
+
+-- =============================================================================
 --  REFRESH TOKENS (mục 7.8)
 --  Chỉ lưu SHA-256 hash của token, không bao giờ lưu token gốc.
 -- =============================================================================

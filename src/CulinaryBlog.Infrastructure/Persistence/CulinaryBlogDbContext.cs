@@ -34,6 +34,8 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
 
     public DbSet<UploadedFile> UploadedFiles => Set<UploadedFile>();
 
+    public DbSet<RecipeComment> RecipeComments => Set<RecipeComment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // Bắt buộc gọi trước — cấu hình các bảng AspNet* chuẩn.
@@ -46,6 +48,7 @@ public class CulinaryBlogDbContext(DbContextOptions<CulinaryBlogDbContext> optio
         builder.Entity<RecipeStep>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RecipeIngredient>().HasQueryFilter(x => !x.IsDeleted);
         builder.Entity<RecipeImage>().HasQueryFilter(x => !x.IsDeleted);
+        builder.Entity<RecipeComment>().HasQueryFilter(x => !x.IsDeleted);
     }
 
     /// <inheritdoc />

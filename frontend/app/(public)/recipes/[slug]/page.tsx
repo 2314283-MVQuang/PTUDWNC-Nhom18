@@ -7,6 +7,7 @@ import { DifficultyBadge } from "@/components/recipe/DifficultyBadge";
 import { IngredientList } from "@/components/recipe/IngredientList";
 import { StepList } from "@/components/recipe/StepList";
 import { NutritionTable } from "@/components/recipe/NutritionTable";
+import { RecipeComments } from "@/components/recipe/RecipeComments";
 import { cn, formatDecimal, formatMinutes, resolveMediaUrl } from "@/lib/utils";
 import type { RecipeDetail } from "@/types/recipe";
 import type { Category } from "@/types/category";
@@ -250,6 +251,9 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
             </h2>
             <StepList steps={recipe.steps} />
           </section>
+
+          {/* Tuần 9 (Quang) — FR-CMT: bình luận (component client, tải riêng nên trang vẫn ISR được). */}
+          <RecipeComments recipeId={recipe.id} />
         </div>
 
         {/* Cột phải dính theo màn hình khi cuộn — đọc bước nấu vẫn thấy nguyên liệu */}

@@ -103,6 +103,8 @@ export interface RecipeDetail {
 
 /** Query params cho GET /recipes (mục 8.3, FR-SRCH-002/003/004). */
 export interface RecipeListParams {
+  mine?: boolean;
+  status?: RecipeStatus;
   page?: number;
   pageSize?: number;
   categoryId?: string;

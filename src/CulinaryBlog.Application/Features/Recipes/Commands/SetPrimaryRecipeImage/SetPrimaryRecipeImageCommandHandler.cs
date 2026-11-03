@@ -61,6 +61,8 @@ public class SetPrimaryRecipeImageCommandHandler(
         {
             await cacheInvalidator.EvictByTagAsync($"recipe-{request.RecipeId}", ct);
             await cacheInvalidator.EvictByTagAsync("recipes", ct);
+            await cacheInvalidator.EvictByTagAsync("search", ct);
+            await cacheInvalidator.EvictByTagAsync("categories", ct);
         }
 
         return new RecipeImageItemDto(

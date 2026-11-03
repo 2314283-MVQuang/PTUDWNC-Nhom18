@@ -29,6 +29,10 @@ public static class DependencyInjection
         // Category/Recipe (xem ghi chú trong Program.cs) — sẽ đăng ký lại khi nhóm triển khai tiếp.
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IRecipeRepository, RecipeRepository>();
+        services.AddScoped<IRecipeImageStorage, MinioRecipeImageStorage>();
+        services.AddScoped<IRecipeImageCleanup, HangfireRecipeImageCleanup>();
+        services.AddTransient<RecipeImageCleanupJob>();
+        services.AddScoped<CulinaryBlog.Application.Features.Users.IUserDirectory, UserDirectory>();
         // FR-CAT-005 (Thịnh): kiểm tra danh mục còn công thức trước khi xoá.
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         // FR-CAT-003/004 (Tiến): sinh slug duy nhất cho Category (tự thêm hậu tố -2, -3...).

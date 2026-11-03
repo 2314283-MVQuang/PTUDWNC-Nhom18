@@ -23,7 +23,8 @@ public class CorrelationIdMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext context)
     {
         var correlationId = context.Request.Headers.TryGetValue(HeaderName, out var existing)
-            && !string.IsNullOrWhiteSpace(existing)
+            && existing.Count == 1 && existing.ToString().Length is > 0 and <= 64
+            && existing.ToString().All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.')
                 ? existing.ToString()
                 : Guid.NewGuid().ToString();
 

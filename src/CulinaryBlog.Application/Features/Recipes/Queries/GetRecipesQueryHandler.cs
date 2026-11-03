@@ -38,6 +38,13 @@ public sealed class GetRecipesQueryHandler(
             (!string.IsNullOrWhiteSpace(currentUser.UserId) &&
              x.AuthorId == currentUser.UserId));
 
+        if (request.Mine)
+        {
+            if (!currentUser.IsAuthenticated) throw new CulinaryBlog.Application.Common.Exceptions.UnauthorizedException("Bạn cần đăng nhập để xem công thức của mình.");
+            query = query.Where(x => x.AuthorId == currentUser.UserId);
+        }
+        if (request.Status.HasValue) query = query.Where(x => x.Status == request.Status.Value);
+
         if (request.CategoryId.HasValue)
         {
             query = query.Where(

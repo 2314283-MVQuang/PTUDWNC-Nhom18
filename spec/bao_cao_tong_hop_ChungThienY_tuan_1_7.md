@@ -1207,3 +1207,31 @@ Script UI cần Edge và playwright-core; công cụ trình duyệt được cà
 - Frontend gọi API thật trong ứng dụng, nhưng kiểm thử trình duyệt tự động dùng API giả lập. PostgreSQL/SMTP được kiểm chứng bằng bộ HTTP backend riêng; chưa tuyên bố đã kiểm thử mọi bước bằng trình duyệt trên cùng hệ thống thật.
 - Các cảnh báo dependency hiện có trong mục 15 chưa được giải quyết bằng nâng phiên bản trong đợt này. Không coi build/test đạt là chứng nhận bảo mật toàn dự án.
 - Cập nhật báo cáo tổng hợp Markdown và frontend README; không ghi đè các bản Word Lab 6/Lab 7 đã có, không tự tạo báo cáo mang số tuần chưa được chỉ định, không commit/push hoặc merge nhánh.
+
+## 17. Tuần 8 — Kiểm thử tích hợp và chuẩn bị demo Auth + Recipe
+
+Ngày 28/10/2026, phạm vi tuần 8 được xác nhận gồm hai nhiệm vụ của Chung Thiện Ý: kiểm thử Auth ghép với Recipe và chuẩn bị dữ liệu/kịch bản demo. Nội dung chi tiết nằm trong [báo cáo tuần 8](bao_cao_ChungThienY_tuan_8.md) và [kịch bản demo](kich_ban_demo_ChungThienY_tuan_8.md). Các mục tuần 1–7 phía trên giữ kết quả tại thời điểm thực hiện, không đổi tên các tệp báo cáo cũ.
+
+Bổ sung host HTTP thử nghiệm sử dụng Identity/JWT và endpoint thật, cùng PostgreSQL/Redis tạm. Bộ kiểm thử đi qua đăng ký → đăng nhập → refresh → tạo → sửa → publish → xóa; đối chiếu AuthorId, quyền sở hữu/Admin, RowVersion, refresh rotation, soft delete và cache. Kết quả **12/12 ca tích hợp đạt**, không bỏ qua ca nào trong lần chạy script tuần 8. Bộ hồi quy mặc định báo **132 đạt, 24 bỏ qua, 0 lỗi**; các ca có điều kiện không được tính thành đã đạt khi chưa mở môi trường tương ứng.
+
+Đã chuẩn bị script `test-chung-thien-y-tuan-8.ps1`: chế độ thường chạy kiểm thử và tự dọn container; chế độ `-Demo` chuẩn bị hai tài khoản Author, danh mục và một công thức nháp trong database mới. Frontend có thể trỏ tới API demo qua biến môi trường trong terminal, không sửa cấu hình local hoặc dùng dữ liệu nhóm/LMS. Kịch bản gồm đăng nhập, wizard tạo Recipe, sửa, publish, xem công khai và xóa mềm; phần kiểm chứng giao diện thật được ghi theo kết quả hiện tại trong báo cáo tuần 8.
+
+Qua kiểm tra giao diện phát hiện W8-UI-01: API đã xóa công thức nhưng Next.js còn giữ dữ liệu chi tiết trong 300 giây. Sau xác nhận, trang chi tiết chuyển sang `cache: "no-store"` riêng cho Recipe; cache danh mục 300 giây và Redis backend giữ nguyên. Kịch bản trình duyệt đã chạy lại thành công trên bản standalone Production với backend thật: đăng ký/đăng nhập → tạo → sửa → publish → xem công khai → xóa → tải lại trang và nhận “Không tìm thấy công thức”. Ảnh trước/sau sửa và giải thích ưu nhược điểm được bổ sung trong báo cáo tuần 8. Hai nhiệm vụ tuần 8 của Chung Thiện Ý đã hoàn thành trong phạm vi này.
+
+Phần này bổ sung kiểm thử, tài liệu và sửa cache trang chi tiết theo xác nhận, không nhận lại công việc nghiệp vụ Auth/xóa Recipe của thành viên khác. Không triển khai production hoặc thay các thành viên khác hoàn thành bộ kiểm thử toàn hệ thống. Chưa thay đổi cơ chế JWT stateless: logout thu hồi refresh token, còn access token đã phát vẫn hợp lệ tới hạn. Các chỉnh sửa nghiệp vụ phát sinh tiếp tục cần được giải thích và xác nhận riêng.
+
+## 18. Bổ sung Lab 8 theo phạm vi mở rộng đã xác nhận — 03/11/2026
+
+Sau giai đoạn kiểm thử ngày 28/10, phạm vi được xác nhận mở rộng để đáp ứng yêu cầu tối thiểu Lab8: điều chỉnh giao diện Recipe/dashboard, hoàn thiện upload ảnh MinIO, vòng đời công thức, trang danh sách người dùng dành cho Admin và logging dùng chung. Nội dung mở rộng có chạm phần ảnh/người dùng/logging ngoài phân công ban đầu; không đổi trạng thái phần việc của thành viên khác thành công việc cá nhân đã hoàn thành.
+
+- **Giao diện:** thu gọn vùng tiêu đề, sửa dải thông số, bố cục nguyên liệu/các bước responsive, ẩn dinh dưỡng rỗng, giảm khoảng cách footer; workspace lọc sở hữu/trạng thái trước phân trang.
+- **Ảnh:** multipart file/altText, JPEG/PNG/WebP/AVIF tối đa 5 MiB, đối chiếu đuôi/MIME/chữ ký; kiểm tra chủ sở hữu/Admin; object MinIO tên UUID; ảnh đầu tiên làm đại diện; PATCH đổi đại diện, transaction khi xóa và Hangfire dọn object sau commit.
+- **Recipe:** tích hợp tạo/sửa/Publish/Archive/khôi phục/xóa mềm và kiểm tra trang công khai sau thay đổi; giữ If-Match/RowVersion, Instructions tùy chọn và các quyết định SRS đã thống nhất.
+- **Người dùng:** API/trang Admin-only, tìm tên/email, lọc vai trò, phân trang; DTO không trả PasswordHash/SecurityStamp/token; frontend và backend cùng kiểm tra quyền.
+- **Logging:** HTTP method/path/status/elapsed/UserId/CorrelationId/TraceId; Console JSON, tệp JSONL theo ngày giữ 30 tệp, Seq Development; không ghi password/JWT/refresh/reset token.
+
+Kết quả ngày 03/11: **20/20 tích hợp đạt**, gồm 12 ca Auth+Recipe và 8 ca Lab8; hồi quy mặc định **144 đạt, 30 bỏ qua, 0 lỗi**. Frontend build Production đạt; Edge chạy với backend/PostgreSQL/Redis/MinIO thật đã kiểm chứng upload, đổi ảnh, vòng đời Recipe, phân quyền, danh sách Admin và desktop/mobile. Các ca bỏ qua trong hồi quy không được tính là đạt; host tích hợp không chạy toàn bộ Program.cs hoặc SMTP.
+
+Theo yêu cầu gỡ cấu hình riêng, đã bỏ các tệp override/local, frontend/.env.local và User Secrets; dừng đúng container Culinary dùng override cũ, giữ image/volume/LMS. Kiểm thử dùng container riêng và biến môi trường tiến trình, không tạo lại cấu hình đã gỡ. Bổ sung cấu hình chung phục vụ Lab8 chỉ gồm logging và public endpoint MinIO tương ứng.
+
+Chi tiết cách hoạt động, ưu nhược điểm, giới hạn và ảnh nằm trong [báo cáo Lab8](bao_cao_ChungThienY_tuan_8.md), [kịch bản demo](kich_ban_demo_ChungThienY_tuan_8.md) và [minh chứng ngày 03/11](minh_chung_lab8_2026_11_03/). Báo cáo Word theo mẫu Lab4: `spec/Lab8_2312804_ChungThienY.docx`. Chưa nhận hoàn thành thumbnail, quản trị sửa vai trò/khóa tài khoản, toàn bộ 34 FR hoặc triển khai máy chủ; Google OAuth chưa kiểm thử lại sau khi gỡ cấu hình riêng.

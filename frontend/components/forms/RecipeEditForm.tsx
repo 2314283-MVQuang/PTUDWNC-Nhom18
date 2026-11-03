@@ -10,15 +10,19 @@ import { IngredientsEditor } from "@/components/forms/IngredientsEditor";
 import { StepsEditor } from "@/components/forms/StepsEditor";
 import { StatusBadge } from "@/components/recipe/StatusBadge";
 import { useCategories } from "@/hooks/useCategories";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { ErrorBlock, LoadingBlock } from "@/components/ui/Spinner";
 import {
   useArchiveRecipe,
   useDeleteRecipe,
   usePublishRecipe,
-  useUnpublishRecipe,
   useUnarchiveRecipe,
   useUpdateRecipe,
 } from "@/hooks/useRecipes";
-import { recipeBasicInfoSchema, type RecipeBasicInfoValues } from "@/lib/validations/recipe.schema";
+import {
+  recipeBasicInfoSchema,
+  type RecipeBasicInfoValues,
+} from "@/lib/validations/recipe.schema";
 import { DIFFICULTY_LABEL } from "@/lib/utils";
 import { ApiError, apiErrorMessage } from "@/lib/api-client";
 import { ApiErrorCode } from "@/types/common";
@@ -35,18 +39,25 @@ import type { RecipeDetail } from "@/types/recipe";
  */
 export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
   const router = useRouter();
+  const { user, isAdmin, isLoading } = useCurrentUser();
   const { data: categories } = useCategories();
 
   const updateRecipe = useUpdateRecipe();
   const publishRecipe = usePublishRecipe();
-  const unpublishRecipe = useUnpublishRecipe();
   const archiveRecipe = useArchiveRecipe();
   const unarchiveRecipe = useUnarchiveRecipe();
   const deleteRecipe = useDeleteRecipe();
-  const isActionPending = updateRecipe.isPending || publishRecipe.isPending ||
-    unpublishRecipe.isPending || archiveRecipe.isPending || unarchiveRecipe.isPending || deleteRecipe.isPending;
-  const actionError = publishRecipe.error ?? unpublishRecipe.error ?? archiveRecipe.error ??
-    unarchiveRecipe.error ?? deleteRecipe.error;
+  const isActionPending =
+    updateRecipe.isPending ||
+    publishRecipe.isPending ||
+    archiveRecipe.isPending ||
+    unarchiveRecipe.isPending ||
+    deleteRecipe.isPending;
+  const actionError =
+    publishRecipe.error ??
+    archiveRecipe.error ??
+    unarchiveRecipe.error ??
+    deleteRecipe.error;
 
   const {
     register,
@@ -92,11 +103,18 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
         router.replace(`/dashboard/recipes/${updatedRecipe.slug}/edit`);
       }
     } catch (error) {
-      if (error instanceof ApiError && error.type === ApiErrorCode.RecipeConcurrencyConflict) {
+      if (
+        error instanceof ApiError &&
+        error.type === ApiErrorCode.RecipeConcurrencyConflict
+      ) {
         setError("root", {
-          message: "Dữ liệu đã bị thay đổi bởi người dùng khác. Vui lòng tải lại trang.",
+          message:
+            "Dữ liệu đã bị thay đổi bởi người dùng khác. Vui lòng tải lại trang.",
         });
-      } else if (error instanceof ApiError && error.type === ApiErrorCode.RecipeForbidden) {
+      } else if (
+        error instanceof ApiError &&
+        error.type === ApiErrorCode.RecipeForbidden
+      ) {
         setError("root", {
           message: "Bạn không có quyền chỉnh sửa công thức này.",
         });
@@ -109,14 +127,24 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
   }
 
   function handleDelete() {
-    if (!confirm("Xoá công thức này? Công thức sẽ được ẩn và dữ liệu được dọn sau 30 ngày.")) return;
+    if (
+      !confirm(
+        "Xoá công thức này? Công thức sẽ được ẩn và dữ liệu được dọn sau 30 ngày.",
+      )
+    )
+      return;
     deleteRecipe.mutate(recipe.id, {
       onSuccess: () => router.push("/dashboard/recipes"),
     });
   }
 
+  if (isLoading) return <LoadingBlock />;
+  if (!isAdmin && user?.id !== recipe.authorId)
+    return (
+      <ErrorBlock message="Bạn chỉ có thể chỉnh sửa công thức do mình tạo." />
+    );
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-neutral-200 bg-neutral-50 p-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-neutral-600">Trạng thái:</span>
@@ -135,18 +163,6 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
               Xuất bản
             </Button>
           )}
-          {recipe.status === "Published" && (
-            <Button
-              size="sm"
-              type="button"
-              disabled={isActionPending}
-              variant="outline"
-              isLoading={unpublishRecipe.isPending}
-              onClick={() => unpublishRecipe.mutate(recipe.id)}
-            >
-              Hủy xuất bản
-            </Button>
-          )}
           {recipe.status !== "Archived" && (
             <Button
               size="sm"
@@ -160,72 +176,137 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
             </Button>
           )}
           {recipe.status === "Archived" && (
-            <Button type="button" size="sm" variant="outline" disabled={isActionPending}
-              isLoading={unarchiveRecipe.isPending} onClick={() => unarchiveRecipe.mutate(recipe.id)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isActionPending}
+              isLoading={unarchiveRecipe.isPending}
+              onClick={() => unarchiveRecipe.mutate(recipe.id)}
+            >
               Bỏ lưu trữ
             </Button>
           )}
-          <Button type="button" size="sm" variant="danger" disabled={isActionPending} isLoading={deleteRecipe.isPending} onClick={handleDelete}>
+          <Button
+            type="button"
+            size="sm"
+            variant="danger"
+            disabled={isActionPending}
+            isLoading={deleteRecipe.isPending}
+            onClick={handleDelete}
+          >
             Xoá
           </Button>
         </div>
       </div>
       {publishRecipe.isSuccess && recipe.status === "Published" && (
-        <p role="status" className="rounded-lg bg-herb-50 px-3 py-2 text-sm text-herb-700">
+        <p
+          role="status"
+          className="rounded-lg bg-herb-50 px-3 py-2 text-sm text-herb-700"
+        >
           Công thức đã được xuất bản thành công.
         </p>
       )}
       {actionError && (
         // Hiển thị nguyên văn lỗi backend: công thức có thể thiếu bước, thiếu nguyên liệu, hoặc
         // thiếu cả hai — câu chữ cứng sẵn ở đây trước kia chỉ nhắc mỗi "bước" nên gây hiểu nhầm.
-        <p role="alert" className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700">
+        <p
+          role="alert"
+          className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700"
+        >
           {apiErrorMessage(actionError, "Thao tác thất bại, vui lòng thử lại.")}
         </p>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <h2 className="font-semibold text-neutral-900">Thông tin cơ bản</h2>
-        {errors.root && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{errors.root.message}</p>}
+        {errors.root && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {errors.root.message}
+          </p>
+        )}
 
-        <Input label="Tên công thức" error={errors.title?.message} {...register("title")} />
-        <Textarea label="Mô tả ngắn" error={errors.description?.message} {...register("description")} />
+        <Input
+          label="Tên công thức"
+          error={errors.title?.message}
+          {...register("title")}
+        />
+        <Textarea
+          label="Mô tả ngắn"
+          error={errors.description?.message}
+          {...register("description")}
+        />
         <Select
           label="Danh mục"
           error={errors.categoryId?.message}
-          options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))}
+          options={(categories ?? []).map((c) => ({
+            value: c.id,
+            label: c.name,
+          }))}
           {...register("categoryId")}
         />
         <div className="grid grid-cols-3 gap-4">
-          <Input label="Chuẩn bị (phút)" type="number" error={errors.prepTimeMinutes?.message} {...register("prepTimeMinutes")} />
-          <Input label="Thời gian nấu (phút)" type="number" error={errors.cookTimeMinutes?.message} {...register("cookTimeMinutes")} />
-          <Input label="Khẩu phần" type="number" error={errors.servings?.message} {...register("servings")} />
+          <Input
+            label="Chuẩn bị (phút)"
+            type="number"
+            error={errors.prepTimeMinutes?.message}
+            {...register("prepTimeMinutes")}
+          />
+          <Input
+            label="Thời gian nấu (phút)"
+            type="number"
+            error={errors.cookTimeMinutes?.message}
+            {...register("cookTimeMinutes")}
+          />
+          <Input
+            label="Khẩu phần"
+            type="number"
+            error={errors.servings?.message}
+            {...register("servings")}
+          />
         </div>
         <Select
           label="Độ khó"
-          options={Object.entries(DIFFICULTY_LABEL).map(([value, label]) => ({ value, label }))}
+          options={Object.entries(DIFFICULTY_LABEL).map(([value, label]) => ({
+            value,
+            label,
+          }))}
           error={errors.difficulty?.message}
           {...register("difficulty")}
         />
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={isActionPending} isLoading={isSubmitting || updateRecipe.isPending}>
+          <Button
+            type="submit"
+            disabled={isActionPending}
+            isLoading={isSubmitting || updateRecipe.isPending}
+          >
             Lưu thay đổi
           </Button>
         </div>
       </form>
 
       <div>
-        <h2 className="mb-3 font-semibold text-neutral-900">Ảnh ({recipe.images.length})</h2>
+        <h2 className="mb-3 font-semibold text-neutral-900">
+          Ảnh ({recipe.images.length})
+        </h2>
         <ImagesEditor recipeId={recipe.id} images={recipe.images} />
       </div>
 
       <div>
-        <h2 className="mb-3 font-semibold text-neutral-900">Nguyên liệu ({recipe.ingredients.length})</h2>
-        <IngredientsEditor recipeId={recipe.id} ingredients={recipe.ingredients} />
+        <h2 className="mb-3 font-semibold text-neutral-900">
+          Nguyên liệu ({recipe.ingredients.length})
+        </h2>
+        <IngredientsEditor
+          recipeId={recipe.id}
+          ingredients={recipe.ingredients}
+        />
       </div>
 
       <div>
-        <h2 className="mb-3 font-semibold text-neutral-900">Các bước thực hiện ({recipe.steps.length})</h2>
+        <h2 className="mb-3 font-semibold text-neutral-900">
+          Các bước thực hiện ({recipe.steps.length})
+        </h2>
         <StepsEditor recipeId={recipe.id} steps={recipe.steps} />
       </div>
     </div>

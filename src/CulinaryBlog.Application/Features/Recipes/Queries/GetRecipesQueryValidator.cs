@@ -41,6 +41,8 @@ public sealed class GetRecipesQueryValidator
             .When(x => x.Difficulty.HasValue)
             .WithMessage("Difficulty không hợp lệ.");
 
+        RuleFor(x => x.Status).IsInEnum().When(x => x.Status.HasValue);
+
         RuleFor(x => x.Sort)
             .Must(sort =>
                 string.IsNullOrWhiteSpace(sort) ||

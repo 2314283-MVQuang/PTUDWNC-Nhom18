@@ -1,0 +1,27 @@
+﻿{
+    "Timestamp":  "2026-11-03T22:01:20.0386970+07:00",
+    "Level":  "Information",
+    "MessageTemplate":  "HTTP {RequestMethod} {RequestPath} returned {StatusCode} in {Elapsed:0.000} ms",
+    "TraceId":  "15d5825b04ae5244c5f84ff3f45b82e5",
+    "SpanId":  "3c4ec27a993bf3e4",
+    "Properties":  {
+                       "UserId":  "9500315d-6b4f-4458-bd0e-c8e8e7166312",
+                       "CorrelationId":  "e3ef12ed-f686-48a0-a65d-0ed718666840",
+                       "TraceId":  "15d5825b04ae5244c5f84ff3f45b82e5",
+                       "RequestMethod":  "GET",
+                       "RequestPath":  "/api/v1/recipes/pho-bo-giao-dien-tuan-8-121155",
+                       "StatusCode":  200,
+                       "Elapsed":  269.2521,
+                       "SourceContext":  "Serilog.AspNetCore.RequestLoggingMiddleware",
+                       "RequestId":  "0HNPPNCBG0OQU:00000008",
+                       "ConnectionId":  "0HNPPNCBG0OQU"
+                   },
+    "Renderings":  {
+                       "Elapsed":  [
+                                       {
+                                           "Format":  "0.000",
+                                           "Rendering":  "269.252"
+                                       }
+                                   ]
+                   }
+}

@@ -145,6 +145,8 @@ public static class RecipesEndpoints
                 int? maxCookTime,
                 int? minServings,
                 string? sort,
+                bool? mine,
+                RecipeStatus? status,
                 ISender sender) =>
             {
                 var query =
@@ -157,7 +159,9 @@ public static class RecipesEndpoints
                         MinServings: minServings,
                         Sort: string.IsNullOrWhiteSpace(sort)
                             ? "-createdAt"
-                            : sort);
+                            : sort,
+                        Mine: mine ?? false,
+                        Status: status);
 
                 var result =
                     await sender.Send(query);

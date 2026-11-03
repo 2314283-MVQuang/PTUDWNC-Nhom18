@@ -1,0 +1,39 @@
+{
+  "student": "Chung Thiện Ý",
+  "studentId": "2312804",
+  "week": 8,
+  "verifiedDate": "2026-10-28",
+  "authRecipeIntegration": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "durationSecondsApproximate": 19,
+    "database": "PostgreSQL 16, temporary container/database",
+    "cache": "Redis 7, temporary container",
+    "resultFile": "TestResults/week8/auth-recipe-week8.trx"
+  },
+  "defaultRegression": {
+    "passed": 132,
+    "failed": 0,
+    "skipped": 24,
+    "runnerTotal": 156,
+    "resultFile": "TestResults/week8/regression-week8.trx",
+    "note": "Conditional integration and demo cases skipped without their environment; skipped theories are counted at method level by this runner."
+  },
+  "frontendTypeScript": "passed",
+  "frontendScriptEslint": "passed",
+  "frontendProductionBuild": "passed",
+  "realBackendBrowserFlow": {
+    "mode": "Production standalone",
+    "registerLoginCreateUpdatePublishPublicReadDelete": "passed",
+    "backendDetailAfterDeleteStatus": 404,
+    "frontendDetailAfterDelete": "passed: not-found message displayed after reload, old recipe heading absent",
+    "issue": "W8-UI-01 fixed: no-store for Recipe detail; category cache and backend Redis unchanged",
+    "businessFixApproval": "approved by user",
+    "ownerAndGuestJavaScriptErrors": 0,
+    "beforeFixEvidence": "spec/minh_chung_tuan_8/recipe-after-delete.png",
+    "afterFixEvidence": "spec/minh_chung_tuan_8/recipe-after-delete-fixed.png"
+  },
+  "productionSourceChanges": ["frontend/app/(public)/recipes/[slug]/page.tsx"],
+  "backendBusinessCodeChanged": false
+}

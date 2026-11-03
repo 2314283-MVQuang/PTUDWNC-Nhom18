@@ -4,12 +4,17 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import { ImageUp, Star, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { apiErrorMessage } from "@/lib/api-client";
-import { useDeleteImage, useUpdateImage, useUploadImage } from "@/hooks/useRecipeParts";
+import {
+  useDeleteImage,
+  useUpdateImage,
+  useUploadImage,
+} from "@/hooks/useRecipeParts";
 import { resolveMediaUrl } from "@/lib/utils";
 import type { RecipeImage } from "@/types/recipe";
 
-/** Khớp danh sách trong UploadRecipeImageCommandValidator ở backend. */
+/** Khớp danh sách trong RecipeImageFile.Validate ở backend. */
 const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp,image/avif";
 
 /**
@@ -19,10 +24,18 @@ const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp,image/avif";
  * nguyên văn cho người dùng, đừng thay bằng câu chung chung — đó là lúc duy nhất họ biết vì sao
  * một file trông "đúng đuôi .png" lại không lên được.
  */
-export function ImagesEditor({ recipeId, images }: { recipeId: string; images: RecipeImage[] }) {
+export function ImagesEditor({
+  recipeId,
+  images,
+}: {
+  recipeId: string;
+  images: RecipeImage[];
+}) {
   const uploadImage = useUploadImage(recipeId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [altText, setAltText] = useState("");
+  const [uploaded, setUploaded] = useState(false);
 
   const sorted = images.slice().sort((a, b) => a.orderIndex - b.orderIndex);
 
@@ -31,8 +44,23 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
     if (!file) return;
 
     setError(null);
+    setUploaded(false);
+    if (
+      !ACCEPTED_TYPES.split(",").includes(file.type) ||
+      file.size <= 0 ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      setError("Chọn ảnh JPEG, PNG, WebP hoặc AVIF có dung lượng tối đa 5 MB.");
+      event.target.value = "";
+      return;
+    }
     try {
-      await uploadImage.mutateAsync({ file });
+      await uploadImage.mutateAsync({
+        file,
+        altText: altText.trim() || undefined,
+      });
+      setUploaded(true);
+      setAltText("");
     } catch (err) {
       setError(apiErrorMessage(err, "Không upload được ảnh."));
     } finally {
@@ -43,9 +71,14 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4 rounded-card-lg border border-brand-100 bg-white p-5">
       {sorted.length === 0 && (
-        <p className="text-sm text-neutral-500">Chưa có ảnh nào cho công thức này.</p>
+        <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/50 p-7 text-center">
+          <ImageUp className="mx-auto mb-2 h-8 w-8 text-brand-500" />
+          <p className="text-sm text-neutral-600">
+            Thêm ảnh để món ăn dễ hình dung hơn.
+          </p>
+        </div>
       )}
 
       {sorted.length > 0 && (
@@ -60,15 +93,32 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
         ref={fileInputRef}
         type="file"
         accept={ACCEPTED_TYPES}
+        aria-label="Chọn ảnh công thức"
+        disabled={uploadImage.isPending}
         className="hidden"
         onChange={handleFileChange}
       />
 
       {error && (
-        <p className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700">{error}</p>
+        <p
+          role="alert"
+          className="rounded-lg bg-spice-50 px-3 py-2 text-sm text-spice-700"
+        >
+          {error}
+        </p>
       )}
 
       <div>
+        <div className="mb-3">
+          <Input
+            name={`image-alt-${recipeId}`}
+            label="Mô tả ảnh (tùy chọn)"
+            maxLength={200}
+            value={altText}
+            onChange={(event) => setAltText(event.target.value)}
+            placeholder="Ví dụ: Tô phở bò với rau thơm"
+          />
+        </div>
         <Button
           type="button"
           size="sm"
@@ -80,14 +130,26 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
           Tải ảnh lên
         </Button>
         <p className="mt-1 text-xs text-neutral-500">
-          JPEG, PNG, WebP hoặc AVIF, tối đa 5MB. Ảnh đầu tiên tự động thành ảnh đại diện.
+          JPEG, PNG, WebP hoặc AVIF, tối đa 5MB. Ảnh đầu tiên tự động thành ảnh
+          đại diện.
         </p>
       </div>
+      {uploaded && (
+        <p role="status" className="text-sm text-herb-700">
+          Đã tải ảnh lên thành công.
+        </p>
+      )}
     </div>
   );
 }
 
-function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }) {
+function ImageCard({
+  recipeId,
+  image,
+}: {
+  recipeId: string;
+  image: RecipeImage;
+}) {
   const updateImage = useUpdateImage(recipeId);
   const deleteImage = useDeleteImage(recipeId);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +159,10 @@ function ImageCard({ recipeId, image }: { recipeId: string; image: RecipeImage }
   async function handleSetPrimary() {
     setError(null);
     try {
-      await updateImage.mutateAsync({ imageId: image.id, input: { isPrimary: true } });
+      await updateImage.mutateAsync({
+        imageId: image.id,
+        input: { isPrimary: true },
+      });
     } catch (err) {
       setError(apiErrorMessage(err, "Không đặt được ảnh đại diện."));
     }

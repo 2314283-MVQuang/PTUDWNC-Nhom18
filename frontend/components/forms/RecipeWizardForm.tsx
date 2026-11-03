@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreateRecipe } from "@/hooks/useRecipes";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { apiUpload, apiErrorMessage } from "@/lib/api-client";
+import type { RecipeDetail, RecipeImage } from "@/types/recipe";
+import Link from "next/link";
 import {
   recipeBasicInfoSchema,
   recipeIngredientSchema,
@@ -31,14 +35,23 @@ type WizardStep = 1 | 2 | 3 | 4;
 export function RecipeWizardForm() {
   const router = useRouter();
   const [step, setStep] = useState<WizardStep>(1);
-  const [basicInfo, setBasicInfo] = useState<RecipeBasicInfoValues | null>(null);
+  const [basicInfo, setBasicInfo] = useState<RecipeBasicInfoValues | null>(
+    null,
+  );
   const [ingredients, setIngredients] = useState<RecipeIngredientValues[]>([]);
   const [steps, setSteps] = useState<RecipeStepValues[]>([]);
+  const [cover, setCover] = useState<File | null>(null);
+  const [savedDraft, setSavedDraft] = useState<RecipeDetail | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { accessToken } = useCurrentUser();
 
   const createRecipe = useCreateRecipe();
 
   async function handleFinalSubmit() {
-    if (!basicInfo) return;
+    if (!basicInfo || saving) return;
+    setSaving(true);
+    setSubmitError(null);
     const input: CreateRecipeInput = {
       title: basicInfo.title,
       description: basicInfo.description,
@@ -65,9 +78,27 @@ export function RecipeWizardForm() {
         timerMinutes: step.timerMinutes ?? null,
       })),
     };
-    const created = await createRecipe.mutateAsync(input);
-    // Trang chỉnh sửa hiện dùng slug làm định danh trên URL.
-    router.push(`/dashboard/recipes/${created.slug}/edit`);
+    let draft = savedDraft;
+    try {
+      draft ??= await createRecipe.mutateAsync(input);
+      setSavedDraft(draft);
+      if (cover) {
+        const body = new FormData();
+        body.append("file", cover);
+        body.append("altText", draft.title.slice(0, 200));
+        await apiUpload<RecipeImage>(
+          `/recipes/${draft.id}/images`,
+          body,
+          accessToken,
+        );
+      }
+      router.push(`/dashboard/recipes/${draft.slug}/edit`);
+    } catch (error) {
+      setSubmitError(
+        `${draft ? "Bản nháp đã được lưu. Tải ảnh chưa hoàn tất: " : ""}${apiErrorMessage(error, "Không thể lưu công thức, vui lòng thử lại.")}`,
+      );
+      setSaving(false);
+    }
   }
 
   return (
@@ -94,26 +125,91 @@ export function RecipeWizardForm() {
       )}
 
       {step === 3 && (
-        <StepsStep steps={steps} onChange={setSteps} onBack={() => setStep(2)} onNext={() => setStep(4)} />
+        <StepsStep
+          steps={steps}
+          onChange={setSteps}
+          onBack={() => setStep(2)}
+          onNext={() => setStep(4)}
+        />
       )}
 
+      {step === 4 && (
+        <div className="rounded-card border border-brand-100 bg-white p-4">
+          <label
+            htmlFor="recipe-cover"
+            className="mb-2 block text-sm font-semibold"
+          >
+            Ảnh món ăn (tùy chọn)
+          </label>
+          <input
+            id="recipe-cover"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            disabled={saving}
+            onChange={(event) => {
+              const selected = event.target.files?.[0] ?? null;
+              if (
+                selected &&
+                (selected.size > 5 * 1024 * 1024 ||
+                  selected.size === 0 ||
+                  ![
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/avif",
+                  ].includes(selected.type))
+              ) {
+                setSubmitError(
+                  "Chọn ảnh JPEG, PNG, WebP hoặc AVIF tối đa 5 MB.",
+                );
+                event.target.value = "";
+                setCover(null);
+                return;
+              }
+              setCover(selected);
+              setSubmitError(null);
+            }}
+            className="block w-full text-sm text-neutral-600 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:font-semibold file:text-brand-700"
+          />
+          <p className="mt-2 text-xs text-neutral-500">
+            Ảnh đầu tiên được dùng làm ảnh đại diện. Có thể quản lý thêm ảnh sau
+            khi lưu bản nháp.
+          </p>
+        </div>
+      )}
       {step === 4 && basicInfo && (
         <ReviewStep
           basicInfo={basicInfo}
           ingredients={ingredients}
           steps={steps}
-          onBack={() => setStep(3)}
+          onBack={() => {
+            if (!savedDraft) setStep(3);
+          }}
           onSubmit={handleFinalSubmit}
-          isSubmitting={createRecipe.isPending}
-          error={createRecipe.isError ? "Không thể tạo công thức, vui lòng thử lại." : null}
+          isSubmitting={saving}
+          error={submitError}
+          canGoBack={!savedDraft}
         />
+      )}
+      {savedDraft && submitError && (
+        <Link
+          className="text-sm font-semibold text-brand-700 underline"
+          href={`/dashboard/recipes/${savedDraft.slug}/edit`}
+        >
+          Tiếp tục chỉnh sửa bản nháp đã lưu
+        </Link>
       )}
     </div>
   );
 }
 
 function WizardStepper({ current }: { current: WizardStep }) {
-  const labels = ["Thông tin cơ bản", "Nguyên liệu", "Các bước thực hiện", "Xem lại & Lưu"];
+  const labels = [
+    "Thông tin cơ bản",
+    "Nguyên liệu",
+    "Các bước thực hiện",
+    "Xem lại & Lưu",
+  ];
   return (
     <ol className="flex flex-wrap gap-4 text-sm">
       {labels.map((label, i) => {
@@ -121,7 +217,16 @@ function WizardStepper({ current }: { current: WizardStep }) {
         const active = stepNumber === current;
         const done = stepNumber < current;
         return (
-          <li key={label} className={done ? "text-brand-600" : active ? "font-semibold text-neutral-900" : "text-neutral-400"}>
+          <li
+            key={label}
+            className={
+              done
+                ? "text-brand-600"
+                : active
+                  ? "font-semibold text-neutral-900"
+                  : "text-neutral-400"
+            }
+          >
             {i + 1}. {label}
           </li>
         );
@@ -143,27 +248,59 @@ function BasicInfoStep({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RecipeBasicInfoValues>({ resolver: zodResolver(recipeBasicInfoSchema), defaultValues });
+  } = useForm<RecipeBasicInfoValues>({
+    resolver: zodResolver(recipeBasicInfoSchema),
+    defaultValues,
+  });
 
   return (
     <form onSubmit={handleSubmit(onNext)} className="flex flex-col gap-4">
-      <Input label="Tên công thức" error={errors.title?.message} {...register("title")} />
-      <Textarea label="Mô tả ngắn" error={errors.description?.message} {...register("description")} />
+      <Input
+        label="Tên công thức"
+        error={errors.title?.message}
+        {...register("title")}
+      />
+      <Textarea
+        label="Mô tả ngắn"
+        error={errors.description?.message}
+        {...register("description")}
+      />
       <Select
         label="Danh mục"
         placeholder="Chọn danh mục"
         error={errors.categoryId?.message}
-        options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))}
+        options={(categories ?? []).map((c) => ({
+          value: c.id,
+          label: c.name,
+        }))}
         {...register("categoryId")}
       />
       <div className="grid grid-cols-3 gap-4">
-        <Input label="Chuẩn bị (phút)" type="number" error={errors.prepTimeMinutes?.message} {...register("prepTimeMinutes")} />
-        <Input label="Thời gian nấu (phút)" type="number" error={errors.cookTimeMinutes?.message} {...register("cookTimeMinutes")} />
-        <Input label="Khẩu phần" type="number" error={errors.servings?.message} {...register("servings")} />
+        <Input
+          label="Chuẩn bị (phút)"
+          type="number"
+          error={errors.prepTimeMinutes?.message}
+          {...register("prepTimeMinutes")}
+        />
+        <Input
+          label="Thời gian nấu (phút)"
+          type="number"
+          error={errors.cookTimeMinutes?.message}
+          {...register("cookTimeMinutes")}
+        />
+        <Input
+          label="Khẩu phần"
+          type="number"
+          error={errors.servings?.message}
+          {...register("servings")}
+        />
       </div>
       <Select
         label="Độ khó"
-        options={Object.entries(DIFFICULTY_LABEL).map(([value, label]) => ({ value, label }))}
+        options={Object.entries(DIFFICULTY_LABEL).map(([value, label]) => ({
+          value,
+          label,
+        }))}
         error={errors.difficulty?.message}
         {...register("difficulty")}
       />
@@ -191,7 +328,9 @@ function IngredientsStep({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<RecipeIngredientValues>({ resolver: zodResolver(recipeIngredientSchema) });
+  } = useForm<RecipeIngredientValues>({
+    resolver: zodResolver(recipeIngredientSchema),
+  });
 
   function addIngredient(values: RecipeIngredientValues) {
     onChange([...ingredients, values]);
@@ -200,9 +339,21 @@ function IngredientsStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={handleSubmit(addIngredient)} className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_auto]">
-        <Input placeholder="Tên nguyên liệu" error={errors.name?.message} {...register("name")} />
-        <Input placeholder="Số lượng" type="number" step="any" {...register("quantity")} />
+      <form
+        onSubmit={handleSubmit(addIngredient)}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_auto]"
+      >
+        <Input
+          placeholder="Tên nguyên liệu"
+          error={errors.name?.message}
+          {...register("name")}
+        />
+        <Input
+          placeholder="Số lượng"
+          type="number"
+          step="any"
+          {...register("quantity")}
+        />
         <Input placeholder="Đơn vị (gram, ml...)" {...register("unit")} />
         <Button type="submit" variant="outline">
           Thêm
@@ -210,15 +361,24 @@ function IngredientsStep({
       </form>
 
       <ul className="divide-y divide-neutral-100 rounded-card border border-neutral-200">
-        {ingredients.length === 0 && <li className="p-4 text-sm text-neutral-400">Chưa có nguyên liệu nào.</li>}
+        {ingredients.length === 0 && (
+          <li className="p-4 text-sm text-neutral-400">
+            Chưa có nguyên liệu nào.
+          </li>
+        )}
         {ingredients.map((ing, index) => (
-          <li key={index} className="flex items-center justify-between gap-2 p-3 text-sm">
+          <li
+            key={index}
+            className="flex items-center justify-between gap-2 p-3 text-sm"
+          >
             <span>
               {ing.name} — {ing.quantity ?? ""} {ing.unit ?? ""}
             </span>
             <button
               type="button"
-              onClick={() => onChange(ingredients.filter((_, i) => i !== index))}
+              onClick={() =>
+                onChange(ingredients.filter((_, i) => i !== index))
+              }
               className="text-neutral-400 hover:text-red-600"
               aria-label="Xoá nguyên liệu"
             >
@@ -266,11 +426,27 @@ function StepsStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={handleSubmit(addStep)} className="flex flex-col gap-3 rounded-card border border-neutral-200 p-4">
-        <Input placeholder="Tiêu đề bước" error={errors.title?.message} {...register("title")} />
-        <Textarea placeholder="Mô tả chi tiết" error={errors.description?.message} {...register("description")} />
+      <form
+        onSubmit={handleSubmit(addStep)}
+        className="flex flex-col gap-3 rounded-card border border-neutral-200 p-4"
+      >
+        <Input
+          placeholder="Tiêu đề bước"
+          error={errors.title?.message}
+          {...register("title")}
+        />
+        <Textarea
+          placeholder="Mô tả chi tiết"
+          error={errors.description?.message}
+          {...register("description")}
+        />
         <div className="flex items-center gap-3">
-          <Input placeholder="Thời gian (phút, tuỳ chọn)" type="number" className="max-w-xs" {...register("timerMinutes")} />
+          <Input
+            placeholder="Thời gian (phút, tuỳ chọn)"
+            type="number"
+            className="max-w-xs"
+            {...register("timerMinutes")}
+          />
           <Button type="submit" variant="outline">
             Thêm bước
           </Button>
@@ -278,9 +454,16 @@ function StepsStep({
       </form>
 
       <ol className="flex flex-col gap-2">
-        {steps.length === 0 && <p className="text-sm text-neutral-400">Chưa có bước nào — không thể publish nếu thiếu (FR-RCP-005).</p>}
+        {steps.length === 0 && (
+          <p className="text-sm text-neutral-400">
+            Thêm bước thực hiện để công thức sẵn sàng xuất bản.
+          </p>
+        )}
         {steps.map((s, index) => (
-          <li key={index} className="flex items-start justify-between gap-2 rounded-card border border-neutral-200 p-3 text-sm">
+          <li
+            key={index}
+            className="flex items-start justify-between gap-2 rounded-card border border-neutral-200 p-3 text-sm"
+          >
             <div>
               <span className="font-medium">
                 {index + 1}. {s.title}
@@ -319,6 +502,7 @@ function ReviewStep({
   onSubmit,
   isSubmitting,
   error,
+  canGoBack,
 }: {
   basicInfo: RecipeBasicInfoValues;
   ingredients: RecipeIngredientValues[];
@@ -327,6 +511,7 @@ function ReviewStep({
   onSubmit: () => void;
   isSubmitting: boolean;
   error: string | null;
+  canGoBack: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -338,14 +523,27 @@ function ReviewStep({
         </p>
       </div>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
 
       <p className="text-sm text-neutral-500">
-        Công thức sẽ được lưu ở trạng thái <strong>Bản nháp (Draft)</strong>. Bạn có thể publish sau khi kiểm tra lại ở trang chỉnh sửa.
+        Công thức sẽ được lưu ở trạng thái <strong>Bản nháp (Draft)</strong>.
+        Bạn có thể publish sau khi kiểm tra lại ở trang chỉnh sửa.
       </p>
 
       <div className="flex justify-between">
-        <Button type="button" variant="ghost" onClick={onBack}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onBack}
+          disabled={!canGoBack || isSubmitting}
+        >
           Quay lại
         </Button>
         <Button type="button" onClick={onSubmit} isLoading={isSubmitting}>

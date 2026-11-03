@@ -108,13 +108,15 @@
 
 ## 📅 Tuần 8 — Tích hợp, Kiểm thử, Triển khai (cả nhóm)
 
+**Mở rộng Lab8 đã được Chung Thiện Ý xác nhận:** bổ sung giao diện Recipe/dashboard, upload ảnh MinIO, vòng đời Recipe, danh sách người dùng Admin-only và logging dùng chung. Kết quả dưới đây chỉ cập nhật hai nhiệm vụ của Chung Thiện Ý; trạng thái các thành viên khác được giữ nguyên. Chi tiết phân biệt phần mới và phần tích hợp tại [báo cáo Lab8](bao_cao_ChungThienY_tuan_8.md).
+
 | Thành viên | Chức năng | Hướng đi | Kết quả khi hoàn thành |
 | :--- | :--- | :--- | :--- |
 | Mai Văn Quang | Integration test toàn hệ thống | Viết/ chạy test end-to-end (WebApplicationFactory) cho các luồng chính: đăng ký→đăng nhập→tạo công thức→publish→tìm kiếm→xóa | Toàn bộ luồng chính pass test, không còn lỗi 500 bất ngờ giữa các module |
-| Chung Thiện Ý | Test luồng Auth + Recipe | Test thủ công + tự động luồng Auth (đăng ký→đăng nhập→refresh) ghép với Recipe (tạo→sửa→publish→xóa) | Không phát sinh lỗi khi 2 module hoạt động cùng nhau (vd AuthorId, phân quyền Author-Owner) |
+| Chung Thiện Ý | Test luồng Auth + Recipe | Kiểm thử tài khoản/JWT thật, vòng đời Recipe, ảnh và quyền Admin trên PostgreSQL/Redis/MinIO tạm | ✅ 20/20 ca tích hợp đạt ngày 03/11/2026; frontend Production với API thật đạt cả desktop/mobile, upload, Publish/Archive/khôi phục/xóa và danh sách người dùng. Xem [báo cáo tuần 8](bao_cao_ChungThienY_tuan_8.md). |
 | Nguyễn Ngọc Bảo Thịnh | Test Category/Search/File | Test Category + Search + File Upload, đối chiếu với dữ liệu Recipe thật | 3 module hoạt động đúng khi có dữ liệu Recipe/Category thật từ các thành viên khác |
 | Hồ Quốc Tiến | Test Job/Observability/File | Kiểm tra Hangfire dashboard, Seq log, health check, sitemap sinh đúng khi hệ thống có dữ liệu thật | Toàn bộ background job chạy đúng lịch, log/trace/health check phản ánh đúng tình trạng hệ thống |
 | Mai Văn Quang | Triển khai & tổng hợp báo cáo | Viết `docker-compose.prod.yml`, deploy thử lên server/VM; tổng hợp toàn bộ nội dung vào báo cáo dự án (dựa trên `project_readme.md`) | Hệ thống chạy được bằng `docker compose up` trên môi trường production-like; có báo cáo hoàn chỉnh để nộp |
-| Chung Thiện Ý | Chuẩn bị demo phần Auth + Recipe | Chuẩn bị dữ liệu mẫu, kịch bản demo đăng nhập → tạo/publish công thức | Demo chạy trơn tru, không lỗi giữa các bước |
+| Chung Thiện Ý | Chuẩn bị demo phần Auth + Recipe | Script `-Demo` tạo API/database và MinIO tạm, Owner/Other Author/Admin, dữ liệu phân trang, danh mục và bản nháp; cập nhật [kịch bản](kich_ban_demo_ChungThienY_tuan_8.md) | ✅ Đã chạy kịch bản Production mở rộng Lab8; có ảnh và mẫu HTTP log, báo cáo Markdown/Word. Dùng biến môi trường tiến trình, không tạo lại cấu hình local đã gỡ. |
 | Nguyễn Ngọc Bảo Thịnh | Chuẩn bị demo phần Category/Search/File | Chuẩn bị dữ liệu mẫu, kịch bản demo tìm kiếm không dấu, upload ảnh | Demo chạy trơn tru, không lỗi giữa các bước |
 | Hồ Quốc Tiến | Chuẩn bị demo phần Job/Observability | Chuẩn bị màn hình Hangfire dashboard, Seq, health check để trình chiếu khi giảng viên hỏi về vận hành hệ thống | Có thể trình chiếu trực tiếp cho giảng viên thấy log/trace/job đang chạy thật, không chỉ là code tĩnh |

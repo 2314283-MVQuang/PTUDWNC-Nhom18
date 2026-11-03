@@ -494,3 +494,7 @@ src/CulinaryBlog.API/wwwroot/uploads/
 # Bản dump database xuất từ pg_dump — chứa PasswordHash/TokenHash, không đưa lên repo công khai.
 # Schema và dữ liệu mẫu đã có sẵn trong db/init/*.sql.
 /culinary.sql
+
+# Nhật ký hệ thống được sinh lúc chạy, không đưa dữ liệu vận hành vào Git.
+/logs/
+/src/CulinaryBlog.API/logs/

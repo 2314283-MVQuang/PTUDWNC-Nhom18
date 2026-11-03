@@ -141,7 +141,7 @@ builder.Services.AddHangfire(config =>
         config.UseInMemoryStorage();
     }
 });
-builder.Services.AddHangfireServer();
+builder.Services.AddHangfireServer(options => options.Queues = ["default", "recipe-images"]);
 
 builder.Services.AddApiSecurity(builder.Configuration);
 builder.Services.AddCulinaryApiVersioning();
@@ -242,6 +242,7 @@ catch (Exception ex)
 // Middleware pipeline
 // ---------------------------------------------------------------------------
 app.UseMiddleware<CorrelationIdMiddleware>(); // Đứng TRƯỚC GlobalException — request lỗi 500 vẫn cần có CorrelationId trong log.
+app.UseSystemRequestLogging();
 app.UseMiddleware<GlobalExceptionMiddleware>(); // Phải đứng ĐẦU pipeline (sau CorrelationId) để bắt mọi exception phía sau.
 
 app.MapCulinaryApiDocumentation();
@@ -303,6 +304,7 @@ RecurringJob.AddOrUpdate<PurgeDeletedRecipesJob>(
     "0 3 * * *");
 
 app.MapAuthEndpoints();
+app.MapUsersEndpoints();
 app.MapRecipeEndpoints();
 app.MapRecipeItemEndpoints(); // FR-RCP-008/009/010 (Tiến): nguyên liệu, bước, ảnh
 app.MapCategoryEndpoints();

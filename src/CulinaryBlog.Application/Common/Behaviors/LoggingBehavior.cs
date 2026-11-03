@@ -24,7 +24,14 @@ public class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TReque
 
         logger.LogInformation("Bắt đầu xử lý {RequestName}", requestName);
 
-        var response = await next();
+        TResponse response;
+        try { response = await next(); }
+        catch (Exception error)
+        {
+            logger.LogWarning("{RequestName} thất bại sau {ElapsedMilliseconds}ms: {ExceptionType}",
+                requestName, stopwatch.ElapsedMilliseconds, error.GetType().Name);
+            throw;
+        }
 
         stopwatch.Stop();
 

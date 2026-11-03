@@ -13,6 +13,17 @@ Radix Dialog cho mobile và component loading/error/empty. `npm test` chạy c�
 Hướng dẫn test PostgreSQL/Redis tạm và trình duyệt nằm ở mục 13.8–13.9 của báo cáo.
 Search vẫn trả mảng tối đa 50 kết quả; sorting/pagination API thuộc phần phân công khác.
 
+Lab 8 đã bổ sung workspace `/dashboard/recipes` (lọc chủ sở hữu/trạng thái), upload ảnh
+trong wizard và trang sửa, cùng `/dashboard/users` chỉ dành cho Admin. Ảnh nhận JPEG,
+PNG, WebP hoặc AVIF tối đa 5 MiB, gửi FormData đến API rồi lưu MinIO. Các thao tác
+Publish/Archive/khôi phục/xóa mềm được kiểm thử với API thật. Chi tiết giao diện, logging,
+20 ca tích hợp và minh chứng tại [báo cáo Lab8](../spec/bao_cao_ChungThienY_tuan_8.md).
+
+Nếu cần chạy mà không tạo lại `.env.local`, cấp biến môi trường trong terminal và dùng
+`node node_modules/next/dist/bin/next dev` hoặc `build` trực tiếp. Các lệnh npm bên dưới
+có pre-script tạo cấu hình local. Xem [demo Lab8](../spec/kich_ban_demo_ChungThienY_tuan_8.md)
+để chạy API/MinIO riêng bằng cổng ngẫu nhiên, không dùng dữ liệu nhóm/LMS.
+
 | Thư viện | Vai trò |
 |---|---|
 | Next.js 15 (App Router) | Framework React, SSR/ISR cho SEO |

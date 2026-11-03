@@ -1,0 +1,78 @@
+{
+  "completed": true,
+  "verifiedDate": "2026-11-03",
+  "student": "Chung Thiện Ý",
+  "studentId": "2312804",
+  "scope": "Lab8 mở rộng đã xác nhận: Recipe UI/lifecycle, MinIO image upload, Admin directory, system logging, integration/demo/report",
+  "integration": {
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0,
+    "total": 20,
+    "authRecipeCases": 12,
+    "lab8Cases": 8,
+    "resultFile": "TestResults/week8/auth-recipe-week8.trx",
+    "services": ["PostgreSQL 16", "Redis 7", "MinIO"],
+    "isolation": "Ba container tạm, cổng loopback ngẫu nhiên, không gắn volume nhóm/LMS",
+    "additionalAssertion": "Dọn ảnh từ chối URL ngoài dù trùng đường dẫn object; xóa ảnh hợp lệ vẫn chạy qua Hangfire"
+  },
+  "regression": {
+    "passed": 144,
+    "failed": 0,
+    "skipped": 30,
+    "total": 174,
+    "resultFile": "TestResults/week8/regression-week8.trx",
+    "note": "Ca cần cấu hình tích hợp được bỏ qua trong lần mặc định; không tính là đạt"
+  },
+  "frontend": {
+    "build": "passed",
+    "typescript": "passed",
+    "lint": "passed",
+    "buildCommand": "node node_modules/next/dist/bin/next build",
+    "localEnvFileCreated": false,
+    "browser": "Microsoft Edge headless",
+    "mode": "Production standalone",
+    "backend": "API thật của host demo, PostgreSQL/Redis/MinIO thật; không mock API",
+    "browserResult": "passed",
+    "javascriptErrors": 0,
+    "checks": [
+      "Đăng ký/đăng nhập với backend thật",
+      "Tạo Draft kèm ảnh từ wizard; sửa có RowVersion",
+      "Từ chối tệp PNG giả; upload ảnh thật; đổi ảnh đại diện",
+      "Publish; xem công khai và ảnh MinIO hiển thị",
+      "Archive; khách không còn xem được; khôi phục/xuất bản lại",
+      "Xóa mềm; API trả 404 và giao diện không giữ nội dung cũ",
+      "Author bị chặn trang người dùng",
+      "Admin xem danh sách, tìm kiếm, lọc Admin và phân trang",
+      "Desktop/mobile 390px không tràn ngang toàn trang"
+    ],
+    "script": "frontend/scripts/test-week8-auth-recipe-ui.mjs"
+  },
+  "evidence": [
+    "recipe-draft.png",
+    "recipe-images.png",
+    "recipe-published.png",
+    "recipe-public.png",
+    "recipe-mobile.png",
+    "recipe-after-delete-fixed.png",
+    "admin-users.png",
+    "admin-users-mobile.png",
+    "http-log-sample.json"
+  ],
+  "cleanup": {
+    "temporaryContainersRemoved": true,
+    "oldLocalCulinaryContainersStopped": true,
+    "imagesAndVolumesRetained": true,
+    "lmsPreserved": true,
+    "frontendEnvLocalAbsent": true,
+    "apiUserSecretsAbsent": true,
+    "sharedPortsUnchanged": true
+  },
+  "limits": [
+    "Host tích hợp không chạy toàn bộ Program.cs, SMTP hoặc recurring jobs",
+    "Chưa kết nối pipeline thumbnail và chưa bổ sung sửa vai trò/khóa người dùng",
+    "Google OAuth chưa kiểm thử lại sau khi xóa cấu hình riêng",
+    "Chưa triển khai máy chủ, commit, push hoặc merge",
+    "Kết quả không xác nhận toàn bộ 34 FR hoặc môi trường compose chính đã chạy thành công"
+  ]
+}

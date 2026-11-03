@@ -12,6 +12,8 @@ using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeImages;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeIngredients;
 using CulinaryBlog.Application.Features.Recipes.Queries.GetRecipeSteps;
 using MediatR;
+using CulinaryBlog.Application.Features.Recipes.Commands.UploadRecipeImage;
+using CulinaryBlog.Application.Common.Exceptions;
 
 namespace CulinaryBlog.API.Endpoints;
 
@@ -167,18 +169,20 @@ public static class RecipeItemEndpoints
         });
 
         // POST /api/v1/recipes/{id}/images
-        group.MapPost("/images", async (Guid id, AddRecipeImageRequest request, ISender sender, CancellationToken ct) =>
+        group.MapPost("/images", async (Guid id, HttpRequest request, ISender sender, CancellationToken ct) =>
         {
-            var command = new AddRecipeImageCommand(
-                id,
-                request.ImageUrl,
-                request.AltText,
-                request.IsPrimary,
-                request.OrderIndex);
-
-            var result = await sender.Send(command, ct);
+            if (!request.HasFormContentType) throw new InvalidFileException("Hãy gửi ảnh bằng multipart/form-data.");
+            if (request.ContentLength > RecipeImageFile.MaxBytes + 65536) throw new InvalidFileException("Ảnh tối đa 5 MB.");
+            var form = await request.ReadFormAsync(ct);
+            var file = form.Files.GetFile("file");
+            if (file is null || file.Length <= 0 || file.Length > RecipeImageFile.MaxBytes)
+                throw new InvalidFileException("Chọn một ảnh có dung lượng lớn hơn 0 và tối đa 5 MB.");
+            using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer, ct);
+            var result = await sender.Send(new UploadRecipeImageCommand(id, file.FileName, file.ContentType,
+                buffer.ToArray(), form["altText"].FirstOrDefault()), ct);
             return Results.Created($"/api/v1/recipes/{id}/images/{result.Id}", new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author);
+        }).RequireAuthorization(AuthorizationPolicies.Author).Accepts<IFormFile>("multipart/form-data");
 
         // PATCH /api/v1/recipes/{id}/images/{imageId}/primary
         group.MapPatch("/images/{imageId:guid}/primary", async (Guid id, Guid imageId, ISender sender, CancellationToken ct) =>

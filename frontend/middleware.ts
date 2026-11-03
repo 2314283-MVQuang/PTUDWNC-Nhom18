@@ -21,7 +21,7 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname.startsWith("/dashboard/categories") && !roles.includes("Admin")) {
+  if ((pathname.startsWith("/dashboard/categories") || pathname.startsWith("/dashboard/users")) && !roles.includes("Admin")) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 

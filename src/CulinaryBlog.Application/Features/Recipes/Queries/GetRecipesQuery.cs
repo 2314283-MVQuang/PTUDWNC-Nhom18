@@ -16,5 +16,7 @@ public sealed record GetRecipesQuery(
     RecipeDifficulty? Difficulty = null,
     int? MaxCookTime = null,
     int? MinServings = null,
-    string? Sort = "-createdAt")
+    string? Sort = "-createdAt",
+    bool Mine = false,
+    RecipeStatus? Status = null)
     : IRequest<PagedResult<RecipeSummaryDto>>;

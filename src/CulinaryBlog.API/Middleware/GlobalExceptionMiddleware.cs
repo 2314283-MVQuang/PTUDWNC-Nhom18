@@ -81,6 +81,9 @@ public class GlobalExceptionMiddleware(
                         "FILE_INVALID"
                     ),
 
+                FileStorageUnavailableException =>
+                    (503, "Kho ảnh tạm thời gián đoạn", "FILE_STORAGE_UNAVAILABLE"),
+
                 ValidationException =>
                     (
                         422,

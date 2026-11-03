@@ -32,7 +32,8 @@ function useRecipePartMutation() {
 
   return {
     accessToken,
-    invalidate: () => queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
+    invalidate: () =>
+      queryClient.invalidateQueries({ queryKey: recipeKeys.all }),
   };
 }
 
@@ -58,7 +59,13 @@ export function useUpdateStep(recipeId: string) {
   const { accessToken, invalidate } = useRecipePartMutation();
 
   return useMutation({
-    mutationFn: ({ stepId, input }: { stepId: string; input: UpdateStepInput }) =>
+    mutationFn: ({
+      stepId,
+      input,
+    }: {
+      stepId: string;
+      input: UpdateStepInput;
+    }) =>
       apiFetch<RecipeStep>(`/recipes/${recipeId}/steps/${stepId}`, {
         method: "PUT",
         body: input,
@@ -104,12 +111,21 @@ export function useUpdateIngredient(recipeId: string) {
   const { accessToken, invalidate } = useRecipePartMutation();
 
   return useMutation({
-    mutationFn: ({ ingredientId, input }: { ingredientId: string; input: UpdateIngredientInput }) =>
-      apiFetch<RecipeIngredient>(`/recipes/${recipeId}/ingredients/${ingredientId}`, {
-        method: "PUT",
-        body: input,
-        token: accessToken,
-      }),
+    mutationFn: ({
+      ingredientId,
+      input,
+    }: {
+      ingredientId: string;
+      input: UpdateIngredientInput;
+    }) =>
+      apiFetch<RecipeIngredient>(
+        `/recipes/${recipeId}/ingredients/${ingredientId}`,
+        {
+          method: "PUT",
+          body: input,
+          token: accessToken,
+        },
+      ),
     onSuccess: invalidate,
   });
 }
@@ -144,7 +160,11 @@ export function useUploadImage(recipeId: string) {
       const formData = new FormData();
       formData.append("file", file);
       if (altText) formData.append("altText", altText);
-      return apiUpload<RecipeImage>(`/recipes/${recipeId}/images`, formData, accessToken);
+      return apiUpload<RecipeImage>(
+        `/recipes/${recipeId}/images`,
+        formData,
+        accessToken,
+      );
     },
     onSuccess: invalidate,
   });
@@ -155,10 +175,9 @@ export function useUpdateImage(recipeId: string) {
   const { accessToken, invalidate } = useRecipePartMutation();
 
   return useMutation({
-    mutationFn: ({ imageId, input }: { imageId: string; input: UpdateImageInput }) =>
-      apiFetch<RecipeImage>(`/recipes/${recipeId}/images/${imageId}`, {
-        method: "PUT",
-        body: input,
+    mutationFn: ({ imageId }: { imageId: string; input: UpdateImageInput }) =>
+      apiFetch<RecipeImage>(`/recipes/${recipeId}/images/${imageId}/primary`, {
+        method: "PATCH",
         token: accessToken,
       }),
     onSuccess: invalidate,

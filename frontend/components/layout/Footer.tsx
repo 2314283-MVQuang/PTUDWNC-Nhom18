@@ -23,7 +23,7 @@ const LINK_GROUPS = [
 /** Footer hiển thị ở mọi trang — nền tối ấm, chia cột, có dải emoji món ăn chạy ngang. */
 export function Footer() {
   return (
-    <footer className="relative mt-20 overflow-hidden bg-neutral-900 text-neutral-300">
+    <footer className="relative mt-10 overflow-hidden bg-neutral-900 text-neutral-300">
       {/* Viền gradient mảnh ở mép trên */}
       <div className="h-1 w-full bg-brand-gradient" />
 

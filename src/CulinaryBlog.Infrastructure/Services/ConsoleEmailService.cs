@@ -9,7 +9,7 @@ namespace CulinaryBlog.Infrastructure.Services;
 /// MailKitWelcomeEmailSender. Các phương thức cũ giữ lại để tương thích interface.
 ///
 /// Tuần 3: thêm log cho 2 method mới (reset mật khẩu, xác nhận email) — CÙNG cách làm TẠM, chỉ in
-/// token ra log thay vì dựng link đầy đủ trỏ về frontend (frontend build link + gọi API tương ứng
+    /// sự kiện thay vì dựng link đầy đủ trỏ về frontend (frontend build link + gọi API tương ứng
 /// khi bấm nút trong email — base URL frontend chưa cấu hình ở backend nên chưa ghép được link).
 /// </summary>
 public class ConsoleEmailService(ILogger<ConsoleEmailService> logger) : IEmailService
@@ -26,9 +26,7 @@ public class ConsoleEmailService(ILogger<ConsoleEmailService> logger) : IEmailSe
     public Task SendPasswordResetEmailAsync(string toEmail, string displayName, string resetToken, CancellationToken ct = default)
     {
         logger.LogInformation(
-            "[EMAIL GIẢ LẬP] Gửi email đặt lại mật khẩu tới {Email} (tên hiển thị: {DisplayName}) — " +
-            "token (dùng cho POST /api/v1/auth/reset-password): {ResetToken}",
-            toEmail, displayName, resetToken);
+            "[EMAIL GIẢ LẬP] Yêu cầu email đặt lại mật khẩu (không ghi token)");
 
         return Task.CompletedTask;
     }
@@ -36,9 +34,7 @@ public class ConsoleEmailService(ILogger<ConsoleEmailService> logger) : IEmailSe
     public Task SendEmailConfirmationAsync(string toEmail, string displayName, string confirmationToken, CancellationToken ct = default)
     {
         logger.LogInformation(
-            "[EMAIL GIẢ LẬP] Gửi email xác nhận địa chỉ tới {Email} (tên hiển thị: {DisplayName}) — " +
-            "token (dùng cho POST /api/v1/auth/confirm-email): {ConfirmationToken}",
-            toEmail, displayName, confirmationToken);
+            "[EMAIL GIẢ LẬP] Yêu cầu email xác nhận địa chỉ (không ghi token)");
 
         return Task.CompletedTask;
     }

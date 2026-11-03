@@ -1,7 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChefHat, ChevronRight, Clock, Flame, ListOrdered, Timer, Users } from "lucide-react";
+import {
+  ChefHat,
+  ChevronRight,
+  Clock,
+  Flame,
+  ListOrdered,
+  Timer,
+  Users,
+} from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { DifficultyBadge } from "@/components/recipe/DifficultyBadge";
 import { IngredientList } from "@/components/recipe/IngredientList";
@@ -13,8 +21,8 @@ import type { Category } from "@/types/category";
 import type { Metadata } from "next";
 import { serializeJsonLd } from "@/lib/structured-data";
 
-// Mục 9: "/recipes/[slug]" — ISR revalidate=300 (5 phút).
-export const revalidate = 300;
+// Chỉ cache danh mục để tra slug; dữ liệu Recipe được kiểm tra lại qua backend mỗi request.
+const CATEGORY_CACHE_SECONDS = 300;
 
 interface RecipePageProps {
   params: Promise<{ slug: string }>;
@@ -27,28 +35,42 @@ interface RecipePageProps {
 /** Tra slug danh mục từ id. Lỗi mạng thì trả null và trang hiển thị tên danh mục không kèm link. */
 async function getCategorySlug(categoryId: string): Promise<string | null> {
   try {
-    const categories = await apiFetch<Category[]>("/categories", { next: { revalidate } });
-    return categories.find((category) => category.id === categoryId)?.slug ?? null;
+    const categories = await apiFetch<Category[]>("/categories", {
+      next: { revalidate: CATEGORY_CACHE_SECONDS },
+    });
+    return (
+      categories.find((category) => category.id === categoryId)?.slug ?? null
+    );
   } catch {
     return null;
   }
 }
 
 function getCoverUrl(recipe: RecipeDetail): string | null {
-  const primary = recipe.images.find((image) => image.isPrimary) ?? recipe.images[0];
+  const primary =
+    recipe.images.find((image) => image.isPrimary) ?? recipe.images[0];
   return resolveMediaUrl(primary?.originalUrl);
 }
 
 async function getRecipe(slug: string): Promise<RecipeDetail | null> {
   try {
-    return await apiFetch<RecipeDetail>(`/recipes/${slug}`, { next: { revalidate } });
+    // Backend đã cache bằng Redis và evict khi sửa/xóa. Không giữ thêm bản Recipe cũ ở Next.js.
+    return await apiFetch<RecipeDetail>(`/recipes/${slug}`, {
+      cache: "no-store",
+    });
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null;
+    if (
+      error instanceof ApiError &&
+      (error.status === 404 || error.status === 403)
+    )
+      return null;
     throw error;
   }
 }
 
-export async function generateMetadata({ params }: RecipePageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: RecipePageProps): Promise<Metadata> {
   const { slug } = await params;
   const recipe = await getRecipe(slug);
   if (!recipe) return { title: "Không tìm thấy công thức" };
@@ -75,9 +97,12 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
 
   const totalTime = recipe.prepTime + recipe.cookTime;
   const cover = getCoverUrl(recipe);
+  const hasNutrition = Object.values(recipe.nutrition).some(
+    (value) => value != null,
+  );
 
   // Bản chi tiết chỉ có categoryId + categoryName, không có slug danh mục, mà route danh mục lại
-  // là "/categories/[slug]". Nạp danh sách danh mục (nhỏ, đã cache ISR) rồi tra ngược ra slug.
+  // là "/categories/[slug]". Nạp danh sách danh mục (cache riêng 5 phút) rồi tra ngược ra slug.
   const categorySlug = await getCategorySlug(recipe.categoryId);
 
   // JSON-LD Schema.org Recipe markup (mục 5.7) — giúp Google hiển thị Rich Results
@@ -94,14 +119,19 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
     cookTime: `PT${recipe.cookTime}M`,
     totalTime: `PT${totalTime}M`,
     recipeYield: `${recipe.servings} khẩu phần`,
-    recipeIngredient: recipe.ingredients.map((i) => `${i.quantity ?? ""} ${i.unit ?? ""} ${i.name}`.trim()),
+    recipeIngredient: recipe.ingredients.map((i) =>
+      `${i.quantity ?? ""} ${i.unit ?? ""} ${i.name}`.trim(),
+    ),
     recipeInstructions: recipe.steps.map((s) => ({
       "@type": "HowToStep",
       name: s.title,
       text: s.description,
     })),
     ...(recipe.nutrition.calories != null && {
-      nutrition: { "@type": "NutritionInformation", calories: `${recipe.nutrition.calories} kcal` },
+      nutrition: {
+        "@type": "NutritionInformation",
+        calories: `${recipe.nutrition.calories} kcal`,
+      },
     }),
   };
 
@@ -114,12 +144,15 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
   ];
 
   return (
-    <article className="flex flex-col pb-20">
+    <article className="flex flex-col pb-8">
       {/* JSON-LD bắt buộc phải bơm bằng dangerouslySetInnerHTML — đây là cách Next.js khuyến nghị. */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+      />
 
       {/* ---------- Ảnh bìa + tiêu đề đè lên ảnh ---------- */}
-      <header className="relative isolate overflow-hidden bg-brand-gradient">
+      <header className="container-page relative isolate mt-6 overflow-hidden rounded-card-lg bg-brand-gradient">
         {cover && (
           <Image
             src={cover}
@@ -134,14 +167,17 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
         {/* Lớp phủ tối để chữ trắng luôn đọc được dù ảnh sáng hay tối */}
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/90 via-neutral-900/55 to-neutral-900/25" />
 
-        <div className="container-page relative pb-10 pt-16 sm:pb-14 sm:pt-24">
+        <div className="relative px-5 py-8 sm:px-8 sm:py-10">
           {/* Đường dẫn phân cấp */}
           <nav className="mb-4 flex animate-fade-up items-center gap-1.5 text-xs text-white/70">
             <Link href="/" className="transition-colors hover:text-white">
               Trang chủ
             </Link>
             <ChevronRight className="h-3.5 w-3.5" />
-            <Link href="/categories" className="transition-colors hover:text-white">
+            <Link
+              href="/categories"
+              className="transition-colors hover:text-white"
+            >
               Danh mục
             </Link>
             <ChevronRight className="h-3.5 w-3.5" />
@@ -157,7 +193,10 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
             )}
           </nav>
 
-          <div className="flex animate-fade-up flex-wrap items-center gap-3" style={{ animationDelay: "60ms" }}>
+          <div
+            className="flex animate-fade-up flex-wrap items-center gap-3"
+            style={{ animationDelay: "60ms" }}
+          >
             <DifficultyBadge difficulty={recipe.difficulty} />
             <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-md">
               {recipe.categoryName}
@@ -165,7 +204,7 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
           </div>
 
           <h1
-            className="mt-4 max-w-3xl animate-fade-up text-3xl font-bold leading-tight text-white sm:text-5xl"
+            className="mt-4 max-w-3xl animate-fade-up break-words text-3xl font-bold leading-tight text-white sm:text-4xl"
             style={{ animationDelay: "120ms" }}
           >
             {recipe.title}
@@ -185,26 +224,31 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
               <ChefHat className="h-4 w-4" />
             </span>
             <span>
-              Công thức bởi <strong className="font-semibold text-white">{recipe.authorDisplayName}</strong>
+              Công thức bởi{" "}
+              <strong className="font-semibold text-white">
+                {recipe.authorDisplayName}
+              </strong>
             </span>
           </div>
         </div>
       </header>
 
       {/* ---------- Dải thẻ chỉ số, nhô lên đè mép ảnh bìa ---------- */}
-      <div className="container-page -mt-8 sm:-mt-10">
+      <div className="container-page relative z-10 mt-4">
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card-lg bg-brand-100 shadow-lift lg:grid-cols-4">
           {metaTiles.map(({ icon: Icon, label, value }) => (
             <div
               key={label}
-              className="group flex items-center gap-3 bg-white px-5 py-5 transition-colors duration-300 hover:bg-brand-50"
+              className="group flex items-center gap-3 bg-white px-4 py-4 transition-colors duration-300 hover:bg-brand-50"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-all duration-300 ease-springy group-hover:scale-110 group-hover:bg-brand-gradient group-hover:text-white">
                 <Icon className="h-5 w-5" />
               </span>
               <span className="min-w-0">
                 <span className="block text-xs text-neutral-500">{label}</span>
-                <span className="block truncate font-semibold text-neutral-900">{value}</span>
+                <span className="block truncate font-semibold text-neutral-900">
+                  {value}
+                </span>
               </span>
             </div>
           ))}
@@ -212,12 +256,16 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
       </div>
 
       {/* ---------- Nội dung chính ---------- */}
-      <div className="container-page mt-12 grid grid-cols-1 gap-10 lg:grid-cols-3">
-        <div className="flex flex-col gap-8 lg:col-span-2">
-          {recipe.instructions && <section aria-label="Hướng dẫn bổ sung">
-            <h2 className="mb-4 text-xl font-bold">Hướng dẫn bổ sung</h2>
-            <p className="whitespace-pre-line leading-relaxed text-neutral-700">{recipe.instructions}</p>
-          </section>}
+      <div className="container-page mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          {recipe.instructions && (
+            <section aria-label="Hướng dẫn bổ sung">
+              <h2 className="mb-4 text-xl font-bold">Hướng dẫn bổ sung</h2>
+              <p className="whitespace-pre-line leading-relaxed text-neutral-700">
+                {recipe.instructions}
+              </p>
+            </section>
+          )}
           <section>
             <h2 className="mb-5 flex items-center gap-3 text-xl font-bold sm:text-2xl">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-soft">
@@ -241,15 +289,17 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
             <IngredientList ingredients={recipe.ingredients} />
           </section>
 
-          <section className="rounded-card-lg border border-brand-100 bg-white p-5 shadow-soft">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-              <span className="text-xl" aria-hidden>
-                📊
-              </span>
-              Dinh dưỡng / khẩu phần
-            </h2>
-            <NutritionTable nutrition={recipe.nutrition} />
-          </section>
+          {hasNutrition && (
+            <section className="rounded-card-lg border border-brand-100 bg-white p-5 shadow-soft">
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+                <span className="text-xl" aria-hidden>
+                  📊
+                </span>
+                Dinh dưỡng / khẩu phần
+              </h2>
+              <NutritionTable nutrition={recipe.nutrition} />
+            </section>
+          )}
 
           <Link
             href="/recipes"

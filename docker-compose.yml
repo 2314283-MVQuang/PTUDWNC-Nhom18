@@ -140,6 +140,7 @@ services:
       WelcomeEmail__Port: 1025
       WelcomeEmail__Security: None
       MinIO__Endpoint: minio:9000
+      MinIO__PublicEndpoint: http://localhost:9000
       # Jwt:Secret bình thường nằm trong User Secrets của máy dev, mà User Secrets
       # KHÔNG được copy vào image — không truyền vào đây thì API chết lúc đăng nhập.
       # Giá trị mặc định dưới đây CHỈ để chạy thử trên máy cá nhân; deploy thật thì

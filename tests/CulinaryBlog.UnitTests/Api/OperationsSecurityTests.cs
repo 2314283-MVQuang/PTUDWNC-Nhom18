@@ -8,6 +8,7 @@ using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Extensions;
 using CulinaryBlog.API.Middleware;
 using CulinaryBlog.API.Security;
+using CulinaryBlog.Application;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure.Jobs;
@@ -96,6 +97,29 @@ public class OperationsSecurityTests
     }
 
     [Fact]
+    public async Task UsersApi_OnlyAdmin_AnonymousGets401_AuthorGets403()
+    {
+        // Tuần 9 (Quang): trang quản lý người dùng — tác giả thường không được xem danh sách/khoá tài khoản.
+        await using var host = await OperationsHost.StartAsync();
+
+        using var anonymous = await host.Client.GetAsync("/api/v1/users");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        using var list = new HttpRequestMessage(HttpMethod.Get, "/api/v1/users");
+        list.Headers.Authorization = new AuthenticationHeaderValue("Bearer", host.Token("author-1", "Author"));
+        using var authorList = await host.Client.SendAsync(list);
+        Assert.Equal(HttpStatusCode.Forbidden, authorList.StatusCode);
+
+        using var patch = new HttpRequestMessage(HttpMethod.Patch, "/api/v1/users/author-2/status")
+        {
+            Content = new StringContent("{\"isActive\":false}", System.Text.Encoding.UTF8, "application/json"),
+        };
+        patch.Headers.Authorization = new AuthenticationHeaderValue("Bearer", host.Token("author-1", "Author"));
+        using var authorPatch = await host.Client.SendAsync(patch);
+        Assert.Equal(HttpStatusCode.Forbidden, authorPatch.StatusCode);
+    }
+
+    [Fact]
     public void SitemapJob_RetriesTwice_PerSrs()
     {
         var retry = typeof(GenerateSitemapJob).GetCustomAttribute<AutomaticRetryAttribute>();
@@ -169,6 +193,7 @@ internal sealed class OperationsHost(WebApplication app, JwtOptions jwt) : IAsyn
             ["Jwt:Secret"] = jwt.Secret, ["Jwt:Issuer"] = jwt.Issuer, ["Jwt:Audience"] = jwt.Audience,
             ["Cors:AllowedOrigins:0"] = "http://localhost:3000",
         });
+        builder.Services.AddApplication();
         builder.Services.AddApiSecurity(builder.Configuration);
         builder.Services.AddCulinaryApiVersioning();
         builder.Services.AddHangfire(config => config.UseInMemoryStorage());
@@ -185,6 +210,7 @@ internal sealed class OperationsHost(WebApplication app, JwtOptions jwt) : IAsyn
         app.UseRouting(); app.UseAuthentication(); app.UseAuthorization();
         app.UseHangfireDashboard("/hangfire", new DashboardOptions { Authorization = [new HangfireAdminAuthorizationFilter()] });
         app.MapSitemapEndpoints();
+        app.MapUsersEndpoints();
         app.MapHealthEndpoints();
         app.MapV1Group("/ops").MapGet("/admin", () => "ok").RequireAuthorization(AuthorizationPolicies.Admin);
         await app.StartAsync();

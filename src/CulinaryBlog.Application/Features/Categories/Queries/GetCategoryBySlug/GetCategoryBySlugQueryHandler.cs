@@ -47,9 +47,6 @@ public sealed class GetCategoryBySlugQueryHandler(
         IQueryable<Recipe> recipes = recipeRepository
             .Query()
             .AsNoTracking()
-            .Include(x => x.Category)
-            .Include(x => x.Author)
-            .Include(x => x.Images)
             .Where(x => x.CategoryId == category.Id)
             .Where(x =>
                 x.Status == RecipeStatus.Published ||
@@ -61,18 +58,19 @@ public sealed class GetCategoryBySlugQueryHandler(
 
         // Mới xuất bản lên trước; bản nháp (chưa có PublishedAt) xếp cuối, theo ngày tạo. Ghi rõ
         // "PublishedAt == null" lên đầu vì PostgreSQL mặc định xếp NULL lên TRƯỚC khi sắp giảm dần.
-        var entities =
+        // Chương 3 (3.5.3 — AsNoTracking + Projection): chỉ SELECT các cột của RecipeSummaryDto
+        // (tên danh mục, tên tác giả, 1 URL ảnh đầu tiên qua subquery) thay vì Include rồi nạp cả
+        // entity Recipe + Author + MỌI ảnh vào bộ nhớ. ThenBy(Id) giữ thứ tự ổn định giữa các trang.
+        var items =
             await recipes
                 .OrderBy(x => x.PublishedAt == null)
                 .ThenByDescending(x => x.PublishedAt)
                 .ThenByDescending(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
+                .Select(RecipeDtoMapping.SummaryProjection)
                 .ToListAsync(ct);
-
-        var items = entities
-            .Select(x => x.ToSummaryDto())
-            .ToList();
 
         return new CategoryDetailDto(
             new CategoryDto(

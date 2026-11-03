@@ -41,6 +41,7 @@ public static class DependencyInjection
         // từng loại. Đăng ký open generic: xin IRepository<T> sẽ nhận RepositoryBase<T>. Giữ lại vì
         // là hạ tầng dùng chung, không gắn riêng với module nào.
         services.AddScoped(typeof(IRepository<>), typeof(RepositoryBase<>));
+        services.AddScoped<IUserRoleReader, UserRoleReader>(); // 1 query role cho cả trang /users
 
         // --- ASP.NET Core Identity (CONS-004: PBKDF2, mục 5.2: policy mật khẩu + khóa 5 lần sai) ---
         services

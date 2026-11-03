@@ -21,7 +21,8 @@ public class RecipeIngredientConfiguration : IEntityTypeConfiguration<RecipeIngr
             .HasForeignKey(x => x.RecipeId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(x => x.RecipeId);
+        // Chương 3 (3.6): đọc theo RecipeId + ORDER BY OrderIndex → index ghép.
+        builder.HasIndex(x => new { x.RecipeId, x.OrderIndex }).HasDatabaseName("IX_RecipeIngredients_RecipeId_OrderIndex");
 
         builder.Property(x => x.RowVersion).IsRowVersion();
     }

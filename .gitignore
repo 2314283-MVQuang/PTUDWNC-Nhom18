@@ -500,3 +500,4 @@ logs/
 
 # Cấu hình production thật (Tuần 8) — chỉ commit file mẫu .env.prod.example
 .env.prod
+explain-analyze-ketqua.txt

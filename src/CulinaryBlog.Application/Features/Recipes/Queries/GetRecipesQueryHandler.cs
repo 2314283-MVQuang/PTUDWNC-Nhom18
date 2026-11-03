@@ -62,15 +62,16 @@ public sealed class GetRecipesQueryHandler(
                 x => x.Servings >= request.MinServings.Value);
         }
 
-        query = ApplySort(
+        var ordered = ApplySort(
             query,
             request.Sort);
 
         var totalCount =
             await query.CountAsync(ct);
 
+        // ThenBy(Id): 2 công thức trùng CreatedAt/Title không bị lặp hoặc mất giữa 2 trang.
         var items =
-            await query
+            await ordered.ThenBy(x => x.Id)
                 .Skip(
                     (request.Page - 1) *
                     request.PageSize)
@@ -85,7 +86,7 @@ public sealed class GetRecipesQueryHandler(
             totalCount);
     }
 
-    private static IQueryable<Recipe> ApplySort(
+    private static IOrderedQueryable<Recipe> ApplySort(
         IQueryable<Recipe> query,
         string? sort)
     {

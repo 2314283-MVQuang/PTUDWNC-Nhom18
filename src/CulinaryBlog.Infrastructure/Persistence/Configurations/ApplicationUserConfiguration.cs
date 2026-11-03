@@ -12,5 +12,7 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
     {
         builder.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
         builder.Property(x => x.AvatarUrl).HasMaxLength(500);
+        // FR-USR-001 (/dashboard/users sắp mới nhất trước) — khớp db/init/02-schema.sql.
+        builder.HasIndex(x => x.CreatedAt).IsDescending().HasDatabaseName("IX_AspNetUsers_CreatedAt");
     }
 }

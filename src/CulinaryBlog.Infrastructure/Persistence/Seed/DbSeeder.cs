@@ -20,6 +20,9 @@ namespace CulinaryBlog.Infrastructure.Persistence.Seed;
 /// </summary>
 public static class DbSeeder
 {
+    /// <summary>Seed Bogus cố định (Chương 3, 3.7.2) — dữ liệu dev tái lập được giữa các máy.</summary>
+    private const int DataSeed = 42;
+
     private const int MinCategories = 20;
     private const int MinRecipes = 100;
     private const int MinIngredientsPerRecipe = 10;
@@ -136,7 +139,8 @@ public static class DbSeeder
     /// <summary>Điểm vào duy nhất — gọi từ Program.cs khi app chạy ở môi trường Development.</summary>
     public static async Task SeedRandomDataAsync(CulinaryBlogDbContext context, ILogger? logger = null, CancellationToken ct = default)
     {
-        var faker = new Faker();
+        // Chương 3 (3.7.2): seed cố định → mỗi máy dev sinh CÙNG bộ dữ liệu, lỗi tái hiện được.
+        var faker = new Faker { Random = new Randomizer(DataSeed) };
 
         var categoryIds = await SeedCategoriesAsync(context, faker, logger, ct);
         await SeedRecipesAsync(context, faker, categoryIds, logger, ct);

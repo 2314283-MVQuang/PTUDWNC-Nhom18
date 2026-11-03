@@ -38,6 +38,19 @@ public class AddRecipeImageCommandHandler(
 
         await EnsureUploadedImageAsync(request.ImageUrl, ct);
 
+        // Tuần 8 (Thịnh) — lỗi phát hiện khi kiểm thử người dùng thật: cùng 1 file được gắn vào 2
+        // công thức thì xoá ảnh ở công thức này (FR-FILE-002 xoá file trên MinIO) làm ảnh ở công
+        // thức kia hỏng theo. Mỗi file tải lên chỉ được gắn MỘT lần (kể cả ảnh đã xoá mềm, vì file
+        // của nó đã/đang bị xoá khỏi MinIO).
+        var trimmedUrl = request.ImageUrl.Trim();
+        var alreadyAttached = await images.Query()
+            .IgnoreQueryFilters()
+            .AnyAsync(img => img.OriginalUrl == trimmedUrl, ct);
+        if (alreadyAttached)
+        {
+            throw new ConflictException("Ảnh này đã được gắn vào một công thức. Vui lòng tải ảnh lên lại để dùng cho công thức khác.");
+        }
+
         var existingImages = await images.Query()
             .Where(img => img.RecipeId == request.RecipeId)
             .ToListAsync(ct);

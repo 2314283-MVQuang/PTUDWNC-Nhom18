@@ -439,6 +439,27 @@ public class RecipeItemTests
     }
 
     [Fact]
+    public async Task AddImage_ShouldRejectSameUploadAttachedTwice_EvenByAdmin()
+    {
+        // Kiểm thử người dùng thật (Tuần 8): Admin gắn lại ảnh của Phở vào Bún chả rồi xoá ở Bún chả
+        // → job xoá file trên MinIO làm ảnh Phở bị 404. Giờ chặn ngay từ lúc gắn lần 2.
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        const string key = "recipes/2026/11/pho-dung-chung.jpg";
+        await SeedUploadAsync(db, storage, key, Jpeg, recipe.AuthorId);
+        var url = storage.GetPublicUrl(key);
+
+        await CreateAddImageHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage)
+            .Handle(new AddRecipeImageCommand(recipe.Id, url, null), CancellationToken.None);
+
+        var admin = new TestCurrentUser { UserId = "admin-1", Role = "Admin" };
+        await Assert.ThrowsAsync<ConflictException>(() => CreateAddImageHandler(db, admin, storage)
+            .Handle(new AddRecipeImageCommand(recipe.Id, url, null), CancellationToken.None));
+        Assert.Single(db.RecipeImages);
+    }
+
+    [Fact]
     public async Task AddImage_ShouldRejectAndDeleteFakeImage_ByMagicBytes()
     {
         using var db = CreateDbContext();

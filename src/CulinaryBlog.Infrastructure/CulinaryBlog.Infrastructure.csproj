@@ -18,6 +18,9 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+    <!-- FR-JOB-002 (Tiến): resize ảnh medium/thumbnail. Giữ bản 2.x (Apache-2.0); bản 3.x đổi
+         sang Six Labors Split License. -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.9" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
     <!-- Dùng để sinh dữ liệu mẫu ngẫu nhiên cho môi trường dev (xem Persistence/Seed/DbSeeder.cs) —
          theo đúng mục 4.4 tài liệu hướng dẫn ("Dữ liệu test/seed: dùng thư viện Bogus"). -->

@@ -167,4 +167,21 @@ Phạm vi Lab 8 đã xác nhận được hoàn thành và kiểm chứng như m
 
 Logout hiện thu hồi refresh token và xóa phiên frontend; JWT đã phát vẫn hợp lệ đến hạn nếu được giữ bên ngoài trình duyệt. Công thức xóa mềm và URL ảnh lịch sử ngoài tiền tố quản lý không bị xóa vật lý bởi job mới. Đây là hành vi/giới hạn được ghi nhận, không trình bày thành bảo đảm khác.
 
-Kịch bản trình bày theo [hướng dẫn demo](kich_ban_demo_ChungThienY_tuan_8.md). Báo cáo Word theo mẫu Lab4 nằm ở `spec/Lab8_2312804_ChungThienY.docx`; nội dung giải thích chi tiết và bằng chứng được liên kết trong bản Markdown này. Chưa thực hiện commit, push hoặc merge.
+Kịch bản trình bày theo [hướng dẫn demo](kich_ban_demo_ChungThienY_tuan_8.md). Báo cáo Word theo mẫu Lab4 nằm ở `spec/Lab8_2312804_ChungThienY.docx`; nội dung giải thích chi tiết và bằng chứng được liên kết trong bản Markdown này. Trạng thái đồng bộ GitHub được ghi nhận riêng ở phần dưới.
+
+## 11. Kiểm tra khi đồng bộ nhánh GitHub
+
+Phần Lab8 được lưu ở commit `f88555c`. Khi chuẩn bị push, nhánh GitHub đã có thêm các thay đổi đến `afeeaaf`, bao gồm xử lý ảnh, bảo vệ nội dung bản nháp, Search, thumbnail, dashboard và triển khai của nhóm. Những thay đổi này được tích hợp vào nhánh cá nhân, giữ lịch sử hai phía.
+
+Các điểm xử lý khi ghép mã:
+
+- Giữ giao diện và upload multipart JPEG/PNG/WebP/AVIF tối đa 5 MiB của Lab8. Endpoint cũng tiếp tục nhận JSON metadata để tương thích với helper presigned URL đã có của nhóm; giới hạn riêng của module File không được đổi theo giới hạn của form Lab8.
+- Giữ dialog xác nhận xóa ảnh, định dạng số thập phân và sidebar có đánh dấu mục đang mở. Trang người dùng vẫn chỉ dành cho Admin; quyền trang danh mục giữ theo nhánh nhóm.
+- Giữ kiểm tra quyền đọc bản nháp cho endpoint ảnh/nguyên liệu/bước. Kiểm thử đọc ảnh nháp được điều chỉnh để gửi token chủ sở hữu, không nới lỏng quyền backend.
+- Giữ job xóa các bản gốc/medium/thumbnail của nhóm, cùng transaction chuyển ảnh đại diện và queue dọn ảnh mới. Hai job có thể cùng nhận một object; thao tác xóa object được thực hiện theo cơ chế idempotent của MinIO.
+- Giữ `MinioBucketInitializer` từ nhánh nhóm. Service này áp dụng public-read cho bucket khi khởi động, khác với quyền chỉ tiền tố `recipes/*` trong adapter upload mới; cấu hình triển khai cần được đánh giá theo cả hai thành phần. Pipeline thumbnail hiện có của nhóm không được tính thành phần lập trình mới của Lab8 cá nhân.
+- Bỏ dòng PackageReference Serilog.Sinks.File bị lặp do hai phía cùng thêm. Không nâng các dependency hiện có trong bước đồng bộ này.
+
+Kiểm chứng sau tích hợp: **202 backend đạt, 32 bỏ qua, 0 lỗi**; **32/32 frontend unit đạt**; TypeScript, ESLint trong build và build Production đạt. Bộ tích hợp riêng vẫn **20/20 đạt**, bổ sung xác nhận JSON metadata tương thích và từ chối tác giả khác ở cả hai dạng upload. Kết quả tại [kiem_tra_sau_tich_hop.json](minh_chung_lab8_2026_11_03/kiem_tra_sau_tich_hop.json). Các ảnh trình duyệt phía trên phản ánh phiên kiểm tra Lab8 trước tích hợp; không tính thành lần chạy trình duyệt mới trên bản merge.
+
+Tài liệu Word/PDF tiếp tục nằm ngoài commit theo quy tắc `.gitignore` hiện có của nhóm; bản Markdown, mã nguồn và ảnh minh chứng được đưa vào nhánh.

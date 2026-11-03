@@ -171,6 +171,15 @@ public static class RecipeItemEndpoints
         // POST /api/v1/recipes/{id}/images
         group.MapPost("/images", async (Guid id, HttpRequest request, ISender sender, CancellationToken ct) =>
         {
+            // Giữ tương thích luồng presigned URL đã có trên nhánh nhóm; multipart là luồng Lab8 theo SRS.
+            if (request.HasJsonContentType())
+            {
+                var metadata = await request.ReadFromJsonAsync<AddRecipeImageRequest>(ct)
+                    ?? throw new InvalidFileException("Thiếu thông tin ảnh.");
+                var attached = await sender.Send(new AddRecipeImageCommand(id, metadata.ImageUrl,
+                    metadata.AltText, metadata.IsPrimary, metadata.OrderIndex), ct);
+                return Results.Created($"/api/v1/recipes/{id}/images/{attached.Id}", new { data = attached });
+            }
             if (!request.HasFormContentType) throw new InvalidFileException("Hãy gửi ảnh bằng multipart/form-data.");
             if (request.ContentLength > RecipeImageFile.MaxBytes + 65536) throw new InvalidFileException("Ảnh tối đa 5 MB.");
             var form = await request.ReadFormAsync(ct);
@@ -182,7 +191,7 @@ public static class RecipeItemEndpoints
             var result = await sender.Send(new UploadRecipeImageCommand(id, file.FileName, file.ContentType,
                 buffer.ToArray(), form["altText"].FirstOrDefault()), ct);
             return Results.Created($"/api/v1/recipes/{id}/images/{result.Id}", new { data = result });
-        }).RequireAuthorization(AuthorizationPolicies.Author).Accepts<IFormFile>("multipart/form-data");
+        }).RequireAuthorization(AuthorizationPolicies.Author).Accepts<IFormFile>("multipart/form-data", "application/json");
 
         // PATCH /api/v1/recipes/{id}/images/{imageId}/primary
         group.MapPatch("/images/{imageId:guid}/primary", async (Guid id, Guid imageId, ISender sender, CancellationToken ct) =>

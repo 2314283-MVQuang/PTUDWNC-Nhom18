@@ -498,3 +498,8 @@ src/CulinaryBlog.API/wwwroot/uploads/
 # Nhật ký hệ thống được sinh lúc chạy, không đưa dữ liệu vận hành vào Git.
 /logs/
 /src/CulinaryBlog.API/logs/
+# Serilog sink File (FR-OBS-002, Tuần 7): log chạy máy dev, không commit.
+logs/
+
+# Cấu hình production thật (Tuần 8) — chỉ commit file mẫu .env.prod.example
+.env.prod

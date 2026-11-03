@@ -42,7 +42,7 @@ public sealed class Lab8ApiTests(Week8ApiFixture api) : IClassFixture<Week8ApiFi
         Assert.True((await DataAsync(primary)).GetProperty("isPrimary").GetBoolean());
         using var delete = await SendAsync(client,HttpMethod.Delete,$"/api/v1/recipes/{id}/images/{second.GetProperty("id").GetGuid()}",token:account.AccessToken);
         Assert.Equal(HttpStatusCode.NoContent,delete.StatusCode);
-        using var list = await client.GetAsync($"/api/v1/recipes/{id}/images");
+        using var list = await SendAsync(client,HttpMethod.Get,$"/api/v1/recipes/{id}/images",token:account.AccessToken);
         var only = Assert.Single((await DataAsync(list)).EnumerateArray());
         Assert.Equal(first.GetProperty("id").GetGuid(),only.GetProperty("id").GetGuid());
         Assert.True(only.GetProperty("isPrimary").GetBoolean());
@@ -54,6 +54,13 @@ public sealed class Lab8ApiTests(Week8ApiFixture api) : IClassFixture<Week8ApiFi
             await Task.Delay(250);
         }
         Assert.True(removed,"Hangfire should remove the deleted image object from temporary MinIO.");
+
+        // Nhánh nhóm có luồng presigned + JSON metadata; vẫn gắn được ảnh đã tải lên.
+        using var legacyCreate = await SendAsync(client,HttpMethod.Post,"/api/v1/recipes",api.RecipeBody(),account.AccessToken);
+        var legacyRecipeId = (await DataAsync(legacyCreate,HttpStatusCode.Created)).GetProperty("id").GetGuid();
+        using var attachment = await SendAsync(client,HttpMethod.Post,$"/api/v1/recipes/{legacyRecipeId}/images",
+            new { imageUrl = first.GetProperty("originalUrl").GetString(), altText = "Ảnh qua luồng tương thích" },account.AccessToken);
+        Assert.True((await DataAsync(attachment,HttpStatusCode.Created)).GetProperty("isPrimary").GetBoolean());
     }
 
     [Week8Theory]
@@ -80,6 +87,9 @@ public sealed class Lab8ApiTests(Week8ApiFixture api) : IClassFixture<Week8ApiFi
         var id = (await DataAsync(create,HttpStatusCode.Created)).GetProperty("id").GetGuid();
         using var denied = await Upload(client,id,other.AccessToken,Png,"dish.png","image/png");
         Assert.Equal(HttpStatusCode.Forbidden,denied.StatusCode);
+        using var legacyDenied = await SendAsync(client,HttpMethod.Post,$"/api/v1/recipes/{id}/images",
+            new { imageUrl = "https://example.test/image.png" },other.AccessToken);
+        Assert.Equal(HttpStatusCode.Forbidden,legacyDenied.StatusCode);
     }
 
     [Week8Fact]

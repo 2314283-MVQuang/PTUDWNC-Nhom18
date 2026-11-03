@@ -24,4 +24,6 @@ export interface SearchFilterDraft {
   minCookTime: string;
   maxCookTime: string;
   minServings: string;
+  /** FR-SRCH-003: "" = theo độ liên quan; "-field" = giảm dần. */
+  sort: string;
 }

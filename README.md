@@ -199,7 +199,7 @@ Chi tiết endpoint và các hàm/lớp cần cài đặt cho từng FR trong m�
 | Mã FR | Chức năng | Endpoint | Các hàm / lớp cần cài đặt |
 | :-: | :--- | :--- | :--- |
 | FR-FILE-001 | Upload file lên MinIO | `POST /files/presigned-url` | `GetPresignedUploadUrlQuery`, `GetPresignedUploadUrlQueryHandler`, `IFileStorageService.GeneratePresignedUploadUrlAsync`, kiểm tra MIME (magic bytes) |
-| FR-FILE-002 | Xóa file khỏi MinIO | `DELETE /files/{key}` | `DeleteFileCommand`, `DeleteFileCommandHandler`, `IFileStorageService.DeleteAsync` |
+| FR-FILE-002 | Xóa file khỏi MinIO | Khi gỡ ảnh công thức và khi purge recipe quá hạn | `DeleteFileCommand`, `DeleteFileCommandHandler`, `IFileStorageService.DeleteAsync` |
 
 ### FR-JOB — Background Jobs
 
@@ -426,7 +426,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(recipes): implement FR-RCP-007 soft delete and FR-JOB-004 purge job per MT-01`
 
-**Hồ Quốc Tiến · FR-JOB-003 Sinh Sitemap** — ⬜ Chưa làm
+**Hồ Quốc Tiến · FR-JOB-003 Sinh Sitemap** — ✅ Hoàn thành
 
 - **Cách làm:** `GenerateSitemapJob` (Hangfire Recurring Job, 02:00 AM hàng ngày) build `sitemap.xml` từ toàn bộ recipe/category `Published`.
 
@@ -483,7 +483,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(search): implement FR-SRCH-003 whitelisted dynamic sorting`
 
-**Hồ Quốc Tiến · FR-SRCH-004 Phân trang kết quả tìm kiếm** — ⬜ Chưa làm
+**Hồ Quốc Tiến · FR-SRCH-004 Phân trang kết quả tìm kiếm** — ✅ Hoàn thành
 
 - **Cách làm:** thay giới hạn cứng 50 dòng trong `SearchRecipesAsync` bằng `page`/`pageSize` (giới hạn `pageSize` tối đa), trả `PagedResult` kèm `totalCount`/`totalPages`; giữ policy cache `Search` 1 phút (mâu thuẫn #4).
 
@@ -531,19 +531,19 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Bổ sung (OBS-001):** thêm check MinIO vào `AddHealthChecks()` (hiện mới có Postgres + Redis), gắn tag `ready` — tắt MinIO thì `/health/ready` trả 503.
 
-**Nguyễn Ngọc Bảo Thịnh · FR-FILE-002 Xóa file khỏi MinIO + bổ sung log ra file** — ⬜ Chưa làm
+**Nguyễn Ngọc Bảo Thịnh · FR-FILE-002 Xóa file khỏi MinIO + bổ sung log ra file** — ✅ Đã hoàn thành
 
-- **Cách làm:** `DeleteFileCommand`/`IFileStorageService.DeleteAsync` xóa object theo key; gọi từ 3 nơi: khi ảnh bị gỡ khỏi Recipe/Category (FR-RCP-008), và khi `PurgeDeletedRecipesJob` (MT-01, Buổi 5) chạy dọn recipe quá hạn.
+- **Cách làm:** `DeleteFileCommand`/`IFileStorageService.DeleteAsync` xóa object theo key; gọi khi ảnh bị gỡ khỏi Recipe (FR-RCP-008) và khi `PurgeDeletedRecipesJob` (MT-01, Buổi 5) chạy dọn recipe quá hạn. Serilog File sink ghi vào `logs/` theo ngày.
 
 - **Vì sao:** gom logic xóa file vào một service duy nhất (`IFileStorageService`) để không có chỗ nào gọi thẳng SDK MinIO riêng lẻ — dễ audit và dễ đổi provider lưu trữ sau này nếu cần.
 
-- **Xong khi:** gỡ ảnh khỏi recipe thì file cũng biến mất khỏi bucket; chạy thử `PurgeDeletedRecipesJob` xóa đúng ảnh của các recipe đã hết hạn 30 ngày.
+- **Xong khi:** gỡ ảnh khỏi recipe thì file cũng biến mất khỏi bucket; `PurgeDeletedRecipesJob` xóa ảnh của recipe đã hết hạn 30 ngày; log được xoay vòng theo ngày trong `logs/`.
 
 - **Commit:** `feat(files): implement FR-FILE-002 delete wired into recipe cleanup and purge job`
 
 - **Bổ sung (OBS-002):** thêm Serilog sink File (rolling theo ngày) bên cạnh Console + Seq đã có.
 
-**Hồ Quốc Tiến · FR-JOB-002 Sinh Thumbnail + migration bảng `UploadedFiles`** — ⬜ Chưa làm
+**Hồ Quốc Tiến · FR-JOB-002 Sinh Thumbnail + migration bảng `UploadedFiles`** — ✅ Hoàn thành
 
 - **Cách làm (JOB-002):** `GenerateThumbnailJob` (Hangfire) được enqueue sau khi upload ảnh, dùng `IImageProcessor.Resize` sinh bản medium và thumbnail, lưu lại `MediumUrl`/`ThumbnailUrl`.
 
@@ -588,3 +588,31 @@ Nhánh cá nhân không tách loại — mọi thay đổi (tính năng mới, s
 | 🐛 Sửa lỗi | `fix(<module>): ...` | `fix(recipes): make instructions column nullable per SRS v1.1.0 MT-10` |
 | ♻️ Tái cấu trúc | `refactor(<module>): ...` | `refactor(auth): unify UserProfileDto with displayName per SRS v1.1.0 MT-09` |
 | 📄 Tài liệu | `docs: ...` | `docs: update phân công công việc theo buổi` |
+
+---
+
+## 🌐 9. Triển khai cho người dùng thật (Tuần 8)
+
+Chạy toàn bộ hệ thống ở chế độ **Production** trên 1 máy chủ/VM có Docker (Ubuntu 22.04 hoặc Windows + Docker Desktop):
+
+1. **Tạo file cấu hình bí mật** (không commit):
+   ```bash
+   cp .env.prod.example .env.prod
+   ```
+   Sửa `.env.prod`: địa chỉ người dùng truy cập (`PUBLIC_WEB_URL`, `PUBLIC_API_URL`, `PUBLIC_STORAGE_URL` — IP/domain máy chủ), mật khẩu PostgreSQL/Redis/MinIO, `JWT_SECRET`/`AUTH_SECRET` (sinh bằng `openssl rand -base64 48`), tài khoản Admin đầu tiên và SMTP thật để gửi email.
+2. **Khởi động**:
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+   ```
+   - Database tạo từ `db/init/01-extensions.sql` + `02-schema.sql` (không seed dữ liệu giả).
+   - Tài khoản `ADMIN_EMAIL` được tạo tự động với quyền Admin + Author.
+   - Hangfire lưu job trong PostgreSQL; dashboard `/hangfire` chỉ Admin vào được.
+3. **Mở firewall** cổng 3000 (web), 5000 (API), 9000 (ảnh MinIO). PostgreSQL, Redis, Seq không mở ra ngoài; xem log qua SSH tunnel: `ssh -L 8081:127.0.0.1:8081 user@may-chu` rồi mở http://localhost:8081.
+4. **Khởi tạo dữ liệu**: đăng nhập web bằng tài khoản Admin → `/dashboard/categories` tạo danh mục → người dùng tự đăng ký tài khoản tại `/register` và đăng công thức.
+5. **Kiểm thử luồng người dùng thật** (đăng ký → đăng nhập → tạo → xuất bản → tìm kiếm không dấu → huỷ xuất bản → xoá, kèm kiểm tra phân quyền):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\test-e2e-nguoi-dung-that.ps1 -BaseUrl http://IP-may-chu:5000 -AdminEmail <ADMIN_EMAIL> -AdminPassword <ADMIN_PASSWORD>
+   ```
+6. **HTTPS / domain**: đặt Nginx hoặc Caddy làm reverse proxy trước 3 cổng trên, đổi các biến `PUBLIC_*` sang `https://...` rồi chạy lại lệnh ở bước 2 (frontend phải build lại vì `NEXT_PUBLIC_API_BASE_URL` được nhúng lúc build).
+
+Cập nhật phiên bản mới: `git pull` rồi chạy lại lệnh ở bước 2 — dữ liệu nằm trong Docker volume nên không mất.

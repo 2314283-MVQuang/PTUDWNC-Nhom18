@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
@@ -13,6 +14,8 @@ public class DeleteRecipeImageCommandHandler(
     IRepository<RecipeImage> images,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
+    IFileStorageService fileStorageService,
+    IFileDeletionScheduler fileDeletionScheduler,
     ICacheInvalidator? cacheInvalidator = null,
     IRecipeImageCleanup? cleanup = null,
     ILogger<DeleteRecipeImageCommandHandler>? logger = null)
@@ -41,6 +44,11 @@ public class DeleteRecipeImageCommandHandler(
             throw new NotFoundException(nameof(RecipeImage), request.ImageId);
         }
 
+        // FR-FILE-002: lấy object name của cả 3 bản ảnh TRƯỚC khi đánh dấu xoá, nhưng chỉ lên lịch xoá
+        // file SAU khi lưu DB thành công (SRS FR-RCP-008 bước 13–14) — lưu DB lỗi thì file vẫn còn.
+        var objectNames = FileStorageObjectNameResolver.FromImageUrls(
+            fileStorageService.BucketName, image.OriginalUrl, image.MediumUrl, image.ThumbnailUrl);
+
         bool wasPrimary = image.IsPrimary;
         image.IsDeleted = true;
         image.IsPrimary = false;
@@ -68,6 +76,10 @@ public class DeleteRecipeImageCommandHandler(
 
         try { cleanup?.Enqueue(request.RecipeId, image.OriginalUrl); }
         catch (Exception ex) { logger?.LogError(ex, "Could not enqueue image cleanup for RecipeId {RecipeId}, ImageId {ImageId}", request.RecipeId, image.Id); }
+
+        // Hangfire fire-and-forget, retry 3 lần: MinIO tạm lỗi không làm request xoá ảnh trả 500.
+        try { fileDeletionScheduler.Enqueue(objectNames); }
+        catch (Exception ex) { logger?.LogError(ex, "Could not enqueue legacy image cleanup for RecipeId {RecipeId}, ImageId {ImageId}", request.RecipeId, image.Id); }
 
         if (cacheInvalidator is not null)
         {

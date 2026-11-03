@@ -23,6 +23,8 @@ public class GetUploadedFileByIdQueryHandler(IUploadedFileRepository uploadedFil
             Size: file.Size,
             StorageKey: file.StorageKey,
             Url: file.Url,
+            MediumUrl: file.MediumUrl,
+            ThumbnailUrl: file.ThumbnailUrl,
             BucketName: file.BucketName,
             UploadedBy: file.UploadedBy,
             CreatedAt: file.CreatedAt

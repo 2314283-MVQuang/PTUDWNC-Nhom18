@@ -83,6 +83,12 @@ public class GlobalExceptionMiddleware(
 
                 FileStorageUnavailableException =>
                     (503, "Kho ảnh tạm thời gián đoạn", "FILE_STORAGE_UNAVAILABLE"),
+                InvalidSortException =>
+                    (
+                        (int)HttpStatusCode.BadRequest,
+                        "Tham số sắp xếp không hợp lệ",
+                        "INVALID_SORT"
+                    ),
 
                 ValidationException =>
                     (

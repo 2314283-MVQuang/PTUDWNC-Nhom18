@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -98,6 +99,11 @@ export function LoginForm({ demoEnabled = false, googleEnabled = false }: { demo
         error={errors.password?.message}
         {...register("password")}
       />
+      {!demoEnabled && (
+        <Link href="/forgot-password" className="-mt-2 self-end text-sm font-medium text-brand-700 hover:underline">
+          Quên mật khẩu?
+        </Link>
+      )}
 
       <Button type="submit" isLoading={isSubmitting} className="mt-2">
         Đăng nhập

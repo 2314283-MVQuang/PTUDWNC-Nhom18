@@ -10,7 +10,6 @@ import type {
   RecipeImage,
   RecipeIngredient,
   RecipeStep,
-  UpdateImageInput,
   UpdateIngredientInput,
   UpdateStepInput,
 } from "@/types/recipe";
@@ -148,9 +147,8 @@ export function useDeleteIngredient(recipeId: string) {
 // ---------------------------------------------------------------------------
 
 /**
- * Upload multipart. Backend kiểm cả Content-Type, dung lượng ≤ 5MB LẪN magic bytes của file thật,
- * nên file đổi đuôi thành .png vẫn bị chặn — component gọi hook này phải hiển thị thông báo lỗi
- * trả về thay vì nuốt đi, xem apiErrorMessage().
+ * FR-RCP-008: upload qua presigned URL MinIO (xem lib/recipe-images.ts). Lỗi trả về giữ nguyên
+ * thông báo của backend (sai loại/quá dung lượng) để component hiển thị cho người dùng.
  */
 export function useUploadImage(recipeId: string) {
   const { accessToken, invalidate } = useRecipePartMutation();
@@ -170,12 +168,15 @@ export function useUploadImage(recipeId: string) {
   });
 }
 
-/** Đổi altText hoặc đặt ảnh đại diện. Backend tự bỏ cờ của ảnh đại diện cũ trong cùng transaction. */
-export function useUpdateImage(recipeId: string) {
+/**
+ * PATCH /recipes/{id}/images/{imageId}/primary — đặt ảnh đại diện. Backend tự bỏ cờ của ảnh đại
+ * diện cũ trong cùng transaction (unique partial index chỉ cho 1 ảnh đại diện mỗi công thức).
+ */
+export function useSetPrimaryImage(recipeId: string) {
   const { accessToken, invalidate } = useRecipePartMutation();
 
   return useMutation({
-    mutationFn: ({ imageId }: { imageId: string; input: UpdateImageInput }) =>
+    mutationFn: (imageId: string) =>
       apiFetch<RecipeImage>(`/recipes/${recipeId}/images/${imageId}/primary`, {
         method: "PATCH",
         token: accessToken,

@@ -29,8 +29,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------
 // FR-OBS-002 (Tuần 3): Serilog thay Microsoft.Extensions.Logging mặc định — đọc cấu hình từ
-// section "Serilog" trong appsettings.json (sink Console + Seq, xem docker-compose.yml service
-// "seq"). ReadFrom.Services(services) cho phép Serilog dùng Enricher đăng ký qua DI nếu cần sau.
+// section "Serilog" trong appsettings.json (sink Console + Seq + File rolling theo ngày, xem
+// docker-compose.yml service "seq"). ReadFrom.Services(services) cho phép Serilog dùng Enricher
+// đăng ký qua DI nếu cần sau.
 // ---------------------------------------------------------------------------
 builder.Host.UseSerilog((context, services, configuration) => configuration
     .ReadFrom.Configuration(context.Configuration)
@@ -88,6 +89,14 @@ builder.Services.AddOutputCache(options =>
         .Tag("categories", "recipes"));
 
     // Recipe detail: TTL 5 phút (NFR-PERF-003, cache-aside pattern).
+    // Recipe list (FR-RCP-001, SRS policy "RecipeList"): vary theo toàn bộ query (page, filter, sort).
+    // Policy mặc định của Output Cache KHÔNG cache request có header Authorization, nên danh sách
+    // kèm bản nháp riêng của người đang đăng nhập không bao giờ bị lưu/lộ qua cache.
+    options.AddPolicy("RecipeList", policy => policy
+        .Expire(TimeSpan.FromMinutes(15))
+        .SetVaryByQuery("*")
+        .Tag("recipes"));
+
     options.AddPolicy("RecipeDetail", policy => policy
         .Expire(TimeSpan.FromMinutes(5))
         .Tag("recipes"));
@@ -110,8 +119,11 @@ builder.Services.AddHangfire(config =>
           .UseSimpleAssemblyNameTypeSerializer()
           .UseRecommendedSerializerSettings();
 
-    var useInMemory = true;
-    if (!string.IsNullOrEmpty(hangfireConnStr))
+    // Tuần 8 (Quang — triển khai): Production BẮT BUỘC lưu job trong PostgreSQL. Fallback in-memory
+    // chỉ dành cho máy dev chưa bật Postgres — ở production nó làm mất job (email chào mừng,
+    // thumbnail, xoá file...) mỗi khi API khởi động lại, mà không báo lỗi gì.
+    var useInMemory = !builder.Environment.IsProduction();
+    if (useInMemory && !string.IsNullOrEmpty(hangfireConnStr))
     {
         try
         {
@@ -194,41 +206,26 @@ var app = builder.Build();
 try
 {
     using var roleSeedScope = app.Services.CreateScope();
-    // FR-FILE-001 (Tiến): bảng metadata file upload. Database của nhóm có máy tạo bằng script SQL,
-    // có máy tạo bằng migration, nên tạo bảng bằng lệnh idempotent (IF NOT EXISTS) lúc khởi động để
-    // máy nào cũng chạy được module Files. Khi nhóm chốt dùng EF Migrations thì thay bằng
-    // "dotnet ef migrations add AddUploadedFiles" rồi xoá khối này.
     var filesDb = roleSeedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-    await filesDb.Database.ExecuteSqlRawAsync("""
-        CREATE TABLE IF NOT EXISTS "UploadedFiles" (
-            "Id" uuid NOT NULL,
-            "FileName" character varying(255) NOT NULL,
-            "ContentType" character varying(100) NOT NULL,
-            "Size" bigint NOT NULL,
-            "StorageKey" character varying(500) NOT NULL,
-            "Url" character varying(1000) NOT NULL,
-            "BucketName" character varying(100) NOT NULL,
-            "UploadedBy" character varying(256) NULL,
-            "CreatedAt" timestamp with time zone NOT NULL,
-            "UpdatedAt" timestamp with time zone NULL,
-            "IsDeleted" boolean NOT NULL DEFAULT FALSE,
-            "DeletedAt" timestamp with time zone NULL,
-            "RowVersion" bytea NOT NULL DEFAULT '\x'::bytea,
-            CONSTRAINT "PK_UploadedFiles" PRIMARY KEY ("Id")
-        );
-        """);
-
-    // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job purge
-    // 30 ngày). db/init/02-schema.sql chỉ chạy khi tạo database MỚI, nên database đã có sẵn trên máy
-    // các thành viên phải được thêm cột ở đây — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
-    await filesDb.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE "Categories"        ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "Recipes"           ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeSteps"       ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeIngredients" ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
-        """);
+    // FR-FILE-001/FR-JOB-002 (Tiến, Tuần 7): bảng "UploadedFiles" KHÔNG còn tạo ở đây nữa — database
+    // mới có bảng từ db/init/02-schema.sql (Docker) hoặc EF migration AddUploadedFiles
+    // ("dotnet ef database update"). Khối dưới chỉ bổ sung cột cho database ĐÃ có sẵn trên máy các
+    // thành viên (db/init chỉ chạy khi tạo database mới) — mọi lệnh đều idempotent.
+    if (filesDb.Database.IsRelational())
+    {
+        // FR-RCP-007 (Thịnh): BaseEntity có thêm cột "DeletedAt" (thời điểm xoá mềm, dùng cho job
+        // purge 30 ngày) — thiếu cột này thì mọi truy vấn vào 6 bảng dưới lỗi.
+        await filesDb.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE "Categories"        ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "Recipes"           ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeSteps"       ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeIngredients" ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "RecipeImages"      ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "MediumUrl" character varying(1000) NULL;
+            ALTER TABLE "UploadedFiles"     ADD COLUMN IF NOT EXISTS "ThumbnailUrl" character varying(1000) NULL;
+            """);
+    }
 
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await RoleSeeder.SeedRolesAsync(roleManager, app.Logger);
@@ -257,17 +254,31 @@ if (app.Environment.IsDevelopment())
     try
     {
         using var seedScope = app.Services.CreateScope();
-        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
-
         // Tài khoản Admin THẬT trong DB (chỉ Development) để test API cần quyền Admin.
         var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         await RoleSeeder.SeedDevAdminAsync(userManager, app.Logger);
+
+        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
+        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
     }
     catch (Exception ex)
     {
         app.Logger.LogWarning(ex, "Chưa thể kết nối tới cơ sở dữ liệu PostgreSQL để seed dữ liệu dev.");
     }
+}
+
+// Tuần 8 (Quang — triển khai): môi trường thật không có tài khoản Admin seed sẵn như Development.
+// Nếu cấu hình Admin:Email + Admin:Password (biến môi trường Admin__Email, Admin__Password trong
+// docker-compose.prod.yml) thì tạo/gán quyền Admin cho tài khoản đó khi khởi động. Idempotent.
+try
+{
+    using var adminScope = app.Services.CreateScope();
+    var adminUserManager = adminScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    await RoleSeeder.SeedConfiguredAdminAsync(adminUserManager, app.Configuration, app.Logger);
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Chưa tạo được tài khoản Admin từ cấu hình Admin:Email.");
 }
 
 app.UseHttpsRedirection();

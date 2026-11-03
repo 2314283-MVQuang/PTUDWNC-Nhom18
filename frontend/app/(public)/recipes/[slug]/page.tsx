@@ -15,7 +15,7 @@ import { DifficultyBadge } from "@/components/recipe/DifficultyBadge";
 import { IngredientList } from "@/components/recipe/IngredientList";
 import { StepList } from "@/components/recipe/StepList";
 import { NutritionTable } from "@/components/recipe/NutritionTable";
-import { formatMinutes, resolveMediaUrl } from "@/lib/utils";
+import { formatDecimal, formatMinutes, resolveMediaUrl } from "@/lib/utils";
 import type { RecipeDetail } from "@/types/recipe";
 import type { Category } from "@/types/category";
 import type { Metadata } from "next";
@@ -119,28 +119,23 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
     cookTime: `PT${recipe.cookTime}M`,
     totalTime: `PT${totalTime}M`,
     recipeYield: `${recipe.servings} khẩu phần`,
-    recipeIngredient: recipe.ingredients.map((i) =>
-      `${i.quantity ?? ""} ${i.unit ?? ""} ${i.name}`.trim(),
-    ),
+    recipeIngredient: recipe.ingredients.map((i) => `${formatDecimal(i.quantity)} ${i.unit ?? ""} ${i.name}`.trim()),
     recipeInstructions: recipe.steps.map((s) => ({
       "@type": "HowToStep",
       name: s.title,
       text: s.description,
     })),
     ...(recipe.nutrition.calories != null && {
-      nutrition: {
-        "@type": "NutritionInformation",
-        calories: `${recipe.nutrition.calories} kcal`,
-      },
+      nutrition: { "@type": "NutritionInformation", calories: `${formatDecimal(recipe.nutrition.calories)} kcal` },
     }),
   };
 
   /** Các chỉ số hiện thành dải thẻ nhỏ ngay dưới ảnh bìa. */
   const metaTiles = [
-    { icon: Timer, label: "Sơ chế", value: formatMinutes(recipe.prepTime) },
-    { icon: Flame, label: "Nấu", value: formatMinutes(recipe.cookTime) },
-    { icon: Clock, label: "Tổng cộng", value: formatMinutes(totalTime) },
-    { icon: Users, label: "Khẩu phần", value: `${recipe.servings} phần` },
+    { icon: Timer, label: "Sơ chế", description: "Thời gian sơ chế", value: formatMinutes(recipe.prepTime) },
+    { icon: Flame, label: "Nấu", description: "Thời gian nấu", value: formatMinutes(recipe.cookTime) },
+    { icon: Clock, label: "Tổng cộng", description: "Tổng thời gian", value: formatMinutes(totalTime) },
+    { icon: Users, label: "Khẩu phần", description: "Khẩu phần ăn", value: `${recipe.servings} phần` },
   ];
 
   return (

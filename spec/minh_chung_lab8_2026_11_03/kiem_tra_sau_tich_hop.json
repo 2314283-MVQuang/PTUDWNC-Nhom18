@@ -1,0 +1,31 @@
+{
+  "verifiedDate": "2026-11-03",
+  "branch": "2312804_ChungThienY_nhom18",
+  "lab8Commit": "f88555c",
+  "remoteBase": "afeeaaf",
+  "backend": {
+    "passed": 202,
+    "skipped": 32,
+    "failed": 0,
+    "total": 234,
+    "resultFile": "TestResults/week8/post-merge-regression.trx"
+  },
+  "integration": {
+    "passed": 20,
+    "skipped": 0,
+    "failed": 0,
+    "resultFile": "TestResults/week8/auth-recipe-week8.trx",
+    "compatibility": "Multipart Lab8 và JSON metadata của luồng presigned; cả hai giữ quyền chủ sở hữu/Admin"
+  },
+  "frontend": {
+    "unitPassed": 32,
+    "unitFailed": 0,
+    "typescript": "passed",
+    "lintInBuild": "passed",
+    "productionBuild": "passed",
+    "browser": "Không chạy lại trong bước đồng bộ; minh chứng trình duyệt trước merge được giữ riêng"
+  },
+  "temporaryContainersRemoved": true,
+  "forcePush": false,
+  "ignoredFilesIncluded": false
+}

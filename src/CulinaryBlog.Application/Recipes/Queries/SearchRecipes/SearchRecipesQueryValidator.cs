@@ -2,10 +2,20 @@ using FluentValidation;
 
 namespace CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
 
+/// <summary>
+/// FR-SRCH-002 (Ý): bộ lọc; FR-SRCH-004 (Tiến): page >= 1, pageSize 1–50 (sai trả 422).
+/// Tham số sort do SortParser kiểm tra riêng (FR-SRCH-003, sai trả 400 INVALID_SORT).
+/// </summary>
 public sealed class SearchRecipesQueryValidator : AbstractValidator<SearchRecipesQuery>
 {
     public SearchRecipesQueryValidator()
     {
+        RuleFor(x => x.Page)
+            .GreaterThanOrEqualTo(1)
+            .WithMessage("Page phải >= 1.");
+        RuleFor(x => x.PageSize)
+            .InclusiveBetween(1, SearchRecipesQuery.MaxPageSize)
+            .WithMessage($"PageSize phải nằm trong khoảng 1-{SearchRecipesQuery.MaxPageSize}.");
         RuleFor(x => x.CategoryId).NotEqual(Guid.Empty)
             .WithMessage("Danh mục không hợp lệ.");
         RuleFor(x => x.Difficulty).IsInEnum()

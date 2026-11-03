@@ -28,6 +28,12 @@ public class UploadedFileConfiguration : IEntityTypeConfiguration<UploadedFile>
             .HasMaxLength(1000)
             .IsRequired();
 
+        builder.Property(x => x.MediumUrl)
+            .HasMaxLength(1000);
+
+        builder.Property(x => x.ThumbnailUrl)
+            .HasMaxLength(1000);
+
         builder.Property(x => x.BucketName)
             .HasMaxLength(100)
             .IsRequired();

@@ -351,3 +351,37 @@ CREATE TABLE IF NOT EXISTS "RefreshTokens" (
 );
 CREATE INDEX IF NOT EXISTS "IX_RefreshTokens_UserId" ON "RefreshTokens" ("UserId");
 CREATE INDEX IF NOT EXISTS "IX_RefreshTokens_ExpiresAt" ON "RefreshTokens" ("ExpiresAt");
+
+
+-- =============================================================================
+--  UPLOADED FILES (FR-FILE-001, FR-JOB-002 — Tiến)
+--  Metadata mỗi lần cấp presigned URL upload ảnh lên MinIO. Trước Tuần 7 bảng này
+--  được tạo lúc API khởi động (Program.cs); nay khai báo ở đây cho database Docker
+--  mới và trong EF migration AddUploadedFiles cho máy dùng "dotnet ef database update".
+--  MediumUrl/ThumbnailUrl do GenerateThumbnailJob (FR-JOB-002) điền sau khi resize.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "UploadedFiles" (
+    "Id"           uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    "FileName"     varchar(255)  NOT NULL,
+    "ContentType"  varchar(100)  NOT NULL,
+    "Size"         bigint        NOT NULL,
+    "StorageKey"   varchar(500)  NOT NULL,
+    "Url"          varchar(1000) NOT NULL,
+    "MediumUrl"    varchar(1000),
+    "ThumbnailUrl" varchar(1000),
+    "BucketName"   varchar(100)  NOT NULL,
+    "UploadedBy"   varchar(256),
+
+    "CreatedAt"    timestamptz   NOT NULL DEFAULT now(),
+    "UpdatedAt"    timestamptz,
+    "IsDeleted"    boolean       NOT NULL DEFAULT false,
+    "DeletedAt"    timestamptz,
+    "RowVersion"   bytea         NOT NULL DEFAULT gen_random_bytes(8)
+);
+CREATE INDEX IF NOT EXISTS "IX_UploadedFiles_StorageKey" ON "UploadedFiles" ("StorageKey");
+
+DROP TRIGGER IF EXISTS "trg_UploadedFiles_touch" ON "UploadedFiles";
+CREATE TRIGGER "trg_UploadedFiles_touch"
+    BEFORE UPDATE ON "UploadedFiles"
+    FOR EACH ROW EXECUTE FUNCTION touch_row();

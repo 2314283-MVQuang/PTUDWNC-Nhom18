@@ -16,8 +16,14 @@
 BEGIN;
 
 -- ---------------------------------------------------------------------------
--- 0. Dữ liệu đo: 20 000 công thức (90% Published), chia đều các danh mục đang có.
+-- 0. Dữ liệu đo: đủ 20 danh mục (mức tối thiểu của DbSeeder) và 20 000 công thức (90% Published)
+--    chia đều các danh mục. Ít danh mục quá (vd 3) thì mỗi danh mục chiếm 1/3 bảng, PostgreSQL
+--    quét theo PublishedAt cũng nhanh — không phản ánh hệ thống thật.
 -- ---------------------------------------------------------------------------
+INSERT INTO "Categories" ("Name", "Slug", "OrderIndex")
+SELECT 'Danh mục đo ' || i, 'bench-cat-' || i, 1000 + i
+FROM generate_series(1, GREATEST(0, 20 - (SELECT count(*) FROM "Categories" WHERE NOT "IsDeleted"))) AS i;
+
 WITH cats AS (SELECT "Id", row_number() OVER (ORDER BY "Id") - 1 AS n FROM "Categories" WHERE NOT "IsDeleted"),
      ncat AS (SELECT count(*) AS c FROM cats),
      author AS (SELECT "Id" FROM "AspNetUsers" ORDER BY "CreatedAt" LIMIT 1)
@@ -106,19 +112,19 @@ SELECT r."Id" FROM "Recipes" r WHERE r."IsDeleted" AND r."DeletedAt" < now() - i
 \echo '#  Tìm kiếm (3.6.2): LIKE quét toàn bảng vs Full-Text Search dùng GIN       #'
 \echo '############################################################################'
 \echo
-\echo '== Q4a. LIKE (KHÔNG dùng được index B-tree vì % ở đầu) =='
+\echo '== Q4a. LIKE tìm 1 món cụ thể (không dùng được index B-tree vì % ở đầu → quét cả bảng) =='
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF)
 SELECT r."Id" FROM "Recipes" r
-WHERE NOT r."IsDeleted" AND r."Status" = 1 AND unaccent(lower(r."Title")) LIKE '%pho bo%'
+WHERE NOT r."IsDeleted" AND r."Status" = 1 AND unaccent(lower(r."Title")) LIKE '%bun cha kieu 12345%'
 LIMIT 12;
 
 \echo
-\echo '== Q4b. Full-Text Search tsvector @@ websearch_to_tsquery + ts_rank (code thật của FR-SRCH-001) =='
+\echo '== Q4b. Full-Text Search cùng món đó: tsvector @@ websearch_to_tsquery + ts_rank (code thật FR-SRCH-001, GIN) =='
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF)
 SELECT r."Id" FROM "Recipes" r
 WHERE NOT r."IsDeleted" AND r."Status" = 1
-  AND r."SearchVector" @@ websearch_to_tsquery('vietnamese', unaccent('pho bo'))
-ORDER BY ts_rank(r."SearchVector", websearch_to_tsquery('vietnamese', unaccent('pho bo'))) DESC, r."CreatedAt" DESC, r."Id"
+  AND r."SearchVector" @@ websearch_to_tsquery('vietnamese', unaccent('bún chả kiểu 12345'))
+ORDER BY ts_rank(r."SearchVector", websearch_to_tsquery('vietnamese', unaccent('bún chả kiểu 12345'))) DESC, r."CreatedAt" DESC, r."Id"
 LIMIT 12;
 
 \echo

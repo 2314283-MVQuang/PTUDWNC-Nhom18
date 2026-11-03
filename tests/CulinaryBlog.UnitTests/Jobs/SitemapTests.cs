@@ -172,6 +172,8 @@ public class SitemapTests : IDisposable
         // Assert
         Assert.NotNull(xmlContent);
         Assert.NotEmpty(xmlContent);
+        // Khai báo XML phải khớp header "application/xml; charset=utf-8" (trước đây ghi utf-16).
+        Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"", xmlContent);
 
         // Parse XML để xác minh cấu trúc chuẩn sitemaps.org
         var doc = XDocument.Parse(xmlContent);

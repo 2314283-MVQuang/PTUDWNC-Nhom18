@@ -43,9 +43,13 @@ public class SitemapBuilder(
         try
         {
             // 4. Các danh mục (chỉ lấy danh mục chưa xóa)
+            // Chương 3 (3.5.3): job chỉ đọc → AsNoTracking + chỉ SELECT slug và ngày, không nạp cả
+            // entity (Instructions, SearchVector...) vào Change Tracker cho hàng nghìn công thức.
             var categories = await categoryRepository.Query()
+                .AsNoTracking()
                 .Where(c => !c.IsDeleted)
                 .OrderBy(c => c.OrderIndex)
+                .Select(c => new { c.Slug, c.CreatedAt, c.UpdatedAt })
                 .ToListAsync(ct);
 
             foreach (var cat in categories)
@@ -56,8 +60,10 @@ public class SitemapBuilder(
 
             // 5. Các công thức đã Publish (chưa xóa và Status == Published)
             var publishedRecipes = await recipeRepository.Query()
+                .AsNoTracking()
                 .Where(r => !r.IsDeleted && r.Status == RecipeStatus.Published)
                 .OrderByDescending(r => r.PublishedAt)
+                .Select(r => new { r.Slug, r.PublishedAt, r.CreatedAt, r.UpdatedAt })
                 .ToListAsync(ct);
 
             foreach (var recipe in publishedRecipes)
@@ -76,7 +82,9 @@ public class SitemapBuilder(
             urlset
         );
 
-        using var sw = new StringWriter();
+        // StringWriter mặc định là UTF-16 nên khai báo XML ghi encoding="utf-16" trong khi file được
+        // phục vụ "application/xml; charset=utf-8" — Google Search Console báo lỗi encoding. Ép UTF-8.
+        using var sw = new Utf8StringWriter();
         doc.Save(sw);
         return sw.ToString();
     }
@@ -90,4 +98,9 @@ public class SitemapBuilder(
             new XElement(Ns + "priority", priority)
         );
     }
+}
+
+internal sealed class Utf8StringWriter : StringWriter
+{
+    public override System.Text.Encoding Encoding => new System.Text.UTF8Encoding(false);
 }

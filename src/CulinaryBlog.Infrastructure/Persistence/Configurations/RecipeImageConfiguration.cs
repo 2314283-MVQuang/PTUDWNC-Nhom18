@@ -21,7 +21,8 @@ public class RecipeImageConfiguration : IEntityTypeConfiguration<RecipeImage>
             .HasForeignKey(x => x.RecipeId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(x => x.RecipeId);
+        // Chương 3 (3.6): đọc theo RecipeId + ORDER BY OrderIndex → index ghép.
+        builder.HasIndex(x => new { x.RecipeId, x.OrderIndex }).HasDatabaseName("IX_RecipeImages_RecipeId_OrderIndex");
 
         // Chỉ 1 ảnh IsPrimary=true cho mỗi Recipe — partial unique index (khớp
         // "UQ_RecipeImages_OnePrimaryPerRecipe" trong db/init/02-schema.sql).

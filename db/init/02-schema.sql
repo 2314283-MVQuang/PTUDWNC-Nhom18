@@ -78,6 +78,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS "UserNameIndex"
     ON "AspNetUsers" ("NormalizedUserName");
 CREATE INDEX IF NOT EXISTS "EmailIndex"
     ON "AspNetUsers" ("NormalizedEmail");
+-- FR-USR-001: trang quản lý người dùng sắp mới nhất trước.
+CREATE INDEX IF NOT EXISTS "IX_AspNetUsers_CreatedAt" ON "AspNetUsers" ("CreatedAt" DESC);
 
 
 CREATE TABLE IF NOT EXISTS "AspNetRoleClaims" (
@@ -204,7 +206,16 @@ CREATE INDEX IF NOT EXISTS "IX_Recipes_CategoryId"  ON "Recipes" ("CategoryId");
 CREATE INDEX IF NOT EXISTS "IX_Recipes_AuthorId"    ON "Recipes" ("AuthorId");
 CREATE INDEX IF NOT EXISTS "IX_Recipes_Status"      ON "Recipes" ("Status");
 CREATE INDEX IF NOT EXISTS "IX_Recipes_Difficulty"  ON "Recipes" ("Difficulty");
-CREATE INDEX IF NOT EXISTS "IX_Recipes_PublishedAt" ON "Recipes" ("PublishedAt" DESC);
+-- (Đã bỏ "IX_Recipes_PublishedAt": EXPLAIN ANALYZE cho thấy planner chọn nó cho trang danh mục rồi
+--  phải bỏ qua hàng nghìn bản nháp có PublishedAt NULL nằm đầu index DESC; không truy vấn nào khác cần.)
+-- Chương 3 (3.6) — index theo câu truy vấn thật (xem db/explain-analyze.sql):
+--   GET /recipes sắp mặc định CreatedAt DESC; trang danh mục lọc CategoryId + Status, sắp PublishedAt;
+--   job purge chỉ quét hàng đã xoá mềm (partial index).
+CREATE INDEX IF NOT EXISTS "IX_Recipes_CreatedAt" ON "Recipes" ("CreatedAt" DESC);
+CREATE INDEX IF NOT EXISTS "IX_Recipes_CategoryId_Status_PublishedAt"
+    ON "Recipes" ("CategoryId", "Status", "PublishedAt" DESC);
+CREATE INDEX IF NOT EXISTS "IX_Recipes_DeletedAt_Purge"
+    ON "Recipes" ("DeletedAt") WHERE "IsDeleted";
 
 -- GIN index cho full-text search — thứ làm cho câu tìm kiếm nhanh dù có hàng triệu dòng.
 CREATE INDEX IF NOT EXISTS "IX_Recipes_SearchVector"
@@ -292,8 +303,8 @@ CREATE TABLE IF NOT EXISTS "RecipeIngredients" (
     "DeletedAt"  timestamptz,
     "RowVersion" bytea         NOT NULL DEFAULT gen_random_bytes(8)
 );
-CREATE INDEX IF NOT EXISTS "IX_RecipeIngredients_RecipeId"
-    ON "RecipeIngredients" ("RecipeId");
+CREATE INDEX IF NOT EXISTS "IX_RecipeIngredients_RecipeId_OrderIndex"
+    ON "RecipeIngredients" ("RecipeId", "OrderIndex");
 
 DROP TRIGGER IF EXISTS "trg_RecipeIngredients_touch" ON "RecipeIngredients";
 CREATE TRIGGER "trg_RecipeIngredients_touch"
@@ -321,7 +332,7 @@ CREATE TABLE IF NOT EXISTS "RecipeImages" (
     "DeletedAt"    timestamptz,
     "RowVersion"   bytea        NOT NULL DEFAULT gen_random_bytes(8)
 );
-CREATE INDEX IF NOT EXISTS "IX_RecipeImages_RecipeId" ON "RecipeImages" ("RecipeId");
+CREATE INDEX IF NOT EXISTS "IX_RecipeImages_RecipeId_OrderIndex" ON "RecipeImages" ("RecipeId", "OrderIndex");
 
 -- Mỗi công thức chỉ được có ĐÚNG 1 ảnh đại diện. Đây là "partial unique index":
 -- ràng buộc chỉ áp dụng cho các dòng có IsPrimary = true.

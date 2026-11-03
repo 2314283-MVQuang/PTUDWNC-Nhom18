@@ -31,17 +31,30 @@ public sealed class GetRecipeCommentsQueryHandler(
 
         var query = comments.Query().AsNoTracking().Where(c => c.RecipeId == request.RecipeId);
         var total = await query.CountAsync(ct);
+        // Projection (Chương 3, 3.5.3): chỉ SELECT 3 cột của người viết (Id, DisplayName, AvatarUrl)
+        // bằng JOIN, không nạp cả hàng AspNetUsers (PasswordHash, SecurityStamp...). Dùng index
+        // (RecipeId, CreatedAt) cho WHERE + ORDER BY.
         var rows = await query
             .OrderByDescending(c => c.CreatedAt)
             .ThenByDescending(c => c.Id)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Include(c => c.Author)
+            .Select(c => new
+            {
+                c.Id, c.RecipeId, c.Content, c.AuthorId, c.CreatedAt, c.UpdatedAt, c.IsEdited,
+                AuthorName = c.Author.DisplayName,
+                AuthorAvatar = c.Author.AvatarUrl,
+            })
             .ToListAsync(ct);
 
         var isAdmin = currentUser.IsInRole("Admin");
         var items = rows
-            .Select(c => CommentPermissions.ToDto(c, c.Author, recipe.AuthorId, currentUser.UserId, isAdmin))
+            .Select(c => new CommentDto(
+                c.Id, c.RecipeId, c.Content,
+                new CommentAuthorDto(c.AuthorId, c.AuthorName, c.AuthorAvatar),
+                c.CreatedAt, c.UpdatedAt, c.IsEdited,
+                CommentPermissions.CanEdit(c.AuthorId, currentUser.UserId),
+                CommentPermissions.CanDelete(c.AuthorId, recipe.AuthorId, currentUser.UserId, isAdmin)))
             .ToList();
 
         return PagedResult<CommentDto>.Create(items, request.Page, request.PageSize, total);

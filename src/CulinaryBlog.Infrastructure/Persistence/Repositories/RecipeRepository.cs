@@ -155,13 +155,35 @@ public class RecipeRepository(CulinaryBlogDbContext dbContext)
                 args))
             .ToListAsync(ct);
 
-        // Category/Author/Images để map RecipeSummaryDto (tên danh mục, tác giả, ảnh đại diện).
+        // Chương 3 (3.5.3 — Projection): chỉ lấy đúng các cột RecipeSummaryDto cần — tên danh mục,
+        // tên tác giả, 1 ảnh đầu tiên — thay vì Include cả hàng AspNetUsers (PasswordHash...) và MỌI
+        // ảnh của công thức. Trả về Recipe "mỏng" để giữ nguyên interface IRecipeRepository.
         var recipes = await DbSet
             .AsNoTracking()
-            .Include(x => x.Category)
-            .Include(x => x.Author)
-            .Include(x => x.Images)
             .Where(x => pageIds.Contains(x.Id) && x.Status == RecipeStatus.Published)
+            .Select(x => new Recipe
+            {
+                Id = x.Id,
+                Slug = x.Slug,
+                Title = x.Title,
+                Description = x.Description,
+                PrepTime = x.PrepTime,
+                CookTime = x.CookTime,
+                Servings = x.Servings,
+                Difficulty = x.Difficulty,
+                Status = x.Status,
+                CategoryId = x.CategoryId,
+                AuthorId = x.AuthorId,
+                PublishedAt = x.PublishedAt,
+                CreatedAt = x.CreatedAt,
+                Category = new Category { Id = x.CategoryId, Name = x.Category.Name, Slug = x.Category.Slug },
+                Author = new ApplicationUser { Id = x.AuthorId, DisplayName = x.Author.DisplayName },
+                Images = x.Images
+                    .OrderBy(i => i.OrderIndex)
+                    .Take(1)
+                    .Select(i => new RecipeImage { Id = i.Id, RecipeId = i.RecipeId, OriginalUrl = i.OriginalUrl, OrderIndex = i.OrderIndex })
+                    .ToList(),
+            })
             .ToListAsync(ct);
 
         var order = pageIds

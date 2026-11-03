@@ -276,6 +276,38 @@ try
         {
             app.Logger.LogWarning(ex, "Không tạo được bảng RecipeComments — chạy db/init/02-schema.sql để tạo thủ công.");
         }
+
+        // Chương 3 (Tối ưu truy vấn): index mới cho database tạo trước thay đổi này. Idempotent.
+        try
+        {
+            await filesDb.Database.ExecuteSqlRawAsync("""
+                -- Chương 3 (3.6) — index theo đúng các câu truy vấn thật (đo bằng db/explain-analyze.sql):
+                --   GET /recipes sắp mặc định CreatedAt DESC; trang danh mục lọc CategoryId + Status, sắp PublishedAt;
+                --   job purge tìm công thức đã xoá mềm quá 30 ngày (partial index chỉ chứa hàng IsDeleted).
+                CREATE INDEX IF NOT EXISTS "IX_Recipes_CreatedAt" ON "Recipes" ("CreatedAt" DESC);
+                -- Đo bằng EXPLAIN ANALYZE: index 1 cột này làm planner chọn sai cho trang danh mục
+                -- (bỏ qua hàng nghìn bản nháp PublishedAt NULL ở đầu index DESC) — index ghép bên dưới thay thế.
+                DROP INDEX IF EXISTS "IX_Recipes_PublishedAt";
+                CREATE INDEX IF NOT EXISTS "IX_Recipes_CategoryId_Status_PublishedAt"
+                    ON "Recipes" ("CategoryId", "Status", "PublishedAt" DESC);
+                CREATE INDEX IF NOT EXISTS "IX_Recipes_DeletedAt_Purge"
+                    ON "Recipes" ("DeletedAt") WHERE "IsDeleted";
+                -- Chi tiết công thức đọc nguyên liệu/ảnh theo RecipeId + ORDER BY OrderIndex → index ghép thay
+                -- index 1 cột (cột đầu RecipeId vẫn phục vụ được mọi truy vấn cũ).
+                CREATE INDEX IF NOT EXISTS "IX_RecipeIngredients_RecipeId_OrderIndex"
+                    ON "RecipeIngredients" ("RecipeId", "OrderIndex");
+                DROP INDEX IF EXISTS "IX_RecipeIngredients_RecipeId";
+                CREATE INDEX IF NOT EXISTS "IX_RecipeImages_RecipeId_OrderIndex"
+                    ON "RecipeImages" ("RecipeId", "OrderIndex");
+                DROP INDEX IF EXISTS "IX_RecipeImages_RecipeId";
+                -- Trang /dashboard/users (FR-USR-001) sắp người dùng mới nhất trước.
+                CREATE INDEX IF NOT EXISTS "IX_AspNetUsers_CreatedAt" ON "AspNetUsers" ("CreatedAt" DESC);
+                """);
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Không tạo được index tối ưu truy vấn — chạy db/init/02-schema.sql thủ công.");
+        }
     }
 
     var roleManager = roleSeedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();

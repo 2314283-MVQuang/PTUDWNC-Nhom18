@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Common.Models;
 using CulinaryBlog.Application.Features.Users.Dtos;
 using CulinaryBlog.Domain.Entities;
@@ -11,7 +12,8 @@ namespace CulinaryBlog.Application.Features.Users.Queries.GetUsers;
 
 public sealed class GetUsersQueryHandler(
     UserManager<ApplicationUser> userManager,
-    IRepository<Recipe> recipes)
+    IRepository<Recipe> recipes,
+    IUserRoleReader roleReader)
     : IRequestHandler<GetUsersQuery, PagedResult<UserSummaryDto>>
 {
     public async Task<PagedResult<UserSummaryDto>> Handle(GetUsersQuery request, CancellationToken ct)
@@ -66,10 +68,14 @@ public sealed class GetUsersQueryHandler(
             })
             .ToDictionaryAsync(x => x.AuthorId, ct);
 
+        // Chương 3 (3.5.1 — N+1): trước đây gọi GetRolesAsync cho TỪNG người (20 người = 20 query).
+        // Giờ 1 câu JOIN AspNetUserRoles + AspNetRoles cho cả trang.
+        var rolesByUser = await roleReader.GetRolesAsync(userIds, ct);
+
         var items = new List<UserSummaryDto>(users.Count);
         foreach (var user in users)
         {
-            var roles = (await userManager.GetRolesAsync(user)).OrderBy(r => r).ToList();
+            var roles = rolesByUser.TryGetValue(user.Id, out var found) ? found : Array.Empty<string>();
             counts.TryGetValue(user.Id, out var count);
             items.Add(new UserSummaryDto(
                 user.Id,

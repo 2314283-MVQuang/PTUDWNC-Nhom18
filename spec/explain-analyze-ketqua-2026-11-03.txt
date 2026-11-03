@@ -1,0 +1,174 @@
+
+############################################################################
+#  TRƯỚC: bỏ các index mới của Chương 3 (chỉ trong transaction này)        #
+############################################################################
+
+== [TRƯỚC] Q1. GET /recipes — mới nhất trước, trang 1 ==
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Limit (actual time=5.484..5.486 rows=12 loops=1)
+   Buffers: shared hit=1264
+   ->  Sort (actual time=5.482..5.483 rows=12 loops=1)
+         Sort Key: "CreatedAt" DESC, "Id"
+         Sort Method: top-N heapsort  Memory: 26kB
+         Buffers: shared hit=1264
+         ->  Seq Scan on "Recipes" r (actual time=0.010..3.324 rows=16973 loops=1)
+               Filter: ((NOT "IsDeleted") AND ("Status" = 1))
+               Rows Removed by Filter: 3031
+               Buffers: shared hit=1264
+ Planning:
+   Buffers: shared hit=89
+ Planning Time: 0.366 ms
+ Execution Time: 5.523 ms
+(14 rows)
+
+
+== [TRƯỚC] Q2. GET /categories/{slug} — công thức của 1 danh mục ==
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=1.563..1.564 rows=12 loops=1)
+   Buffers: shared hit=1293
+   ->  Incremental Sort (actual time=1.562..1.563 rows=12 loops=1)
+         Sort Key: "PublishedAt" DESC, "CreatedAt" DESC, "Id"
+         Presorted Key: "PublishedAt"
+         Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
+         Buffers: shared hit=1293
+         ->  Index Scan using "IX_Recipes_PublishedAt" on "Recipes" r (actual time=1.518..1.552 rows=13 loops=1)
+               Filter: ((NOT "IsDeleted") AND ("CategoryId" = '27c8ac4f-a31c-42c3-b378-f76ff9eaef61'::uuid) AND ("Status" = 1))
+               Rows Removed by Filter: 3092
+               Buffers: shared hit=1293
+ Planning:
+   Buffers: shared hit=6
+ Planning Time: 0.097 ms
+ Execution Time: 1.584 ms
+(15 rows)
+
+
+== [TRƯỚC] Q3. Job purge — công thức xoá mềm quá 30 ngày ==
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
+ Seq Scan on "Recipes" r (actual time=2.411..2.453 rows=200 loops=1)
+   Filter: ("IsDeleted" AND ("DeletedAt" < (now() - '30 days'::interval)))
+   Rows Removed by Filter: 19804
+   Buffers: shared hit=1264
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 0.051 ms
+ Execution Time: 2.463 ms
+(8 rows)
+
+
+############################################################################
+#  SAU: schema mới — index Chương 3, bỏ IX_Recipes_PublishedAt              #
+############################################################################
+
+== [SAU] Q1. GET /recipes — mới nhất trước, trang 1 ==
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
+ Limit (actual time=0.031..0.033 rows=12 loops=1)
+   Buffers: shared hit=2 read=2
+   ->  Incremental Sort (actual time=0.030..0.031 rows=12 loops=1)
+         Sort Key: "CreatedAt" DESC, "Id"
+         Presorted Key: "CreatedAt"
+         Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
+         Buffers: shared hit=2 read=2
+         ->  Index Scan using "IX_Recipes_CreatedAt" on "Recipes" r (actual time=0.018..0.022 rows=13 loops=1)
+               Filter: ((NOT "IsDeleted") AND ("Status" = 1))
+               Rows Removed by Filter: 2
+               Buffers: shared hit=2 read=2
+ Planning:
+   Buffers: shared hit=26 read=3
+ Planning Time: 0.229 ms
+ Execution Time: 0.053 ms
+(15 rows)
+
+
+== [SAU] Q2. GET /categories/{slug} — công thức của 1 danh mục ==
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=0.043..0.045 rows=12 loops=1)
+   Buffers: shared hit=13 read=2
+   ->  Incremental Sort (actual time=0.043..0.043 rows=12 loops=1)
+         Sort Key: "PublishedAt" DESC, "CreatedAt" DESC, "Id"
+         Presorted Key: "PublishedAt"
+         Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
+         Buffers: shared hit=13 read=2
+         ->  Index Scan using "IX_Recipes_CategoryId_Status_PublishedAt" on "Recipes" r (actual time=0.023..0.035 rows=13 loops=1)
+               Index Cond: (("CategoryId" = '27c8ac4f-a31c-42c3-b378-f76ff9eaef61'::uuid) AND ("Status" = 1))
+               Filter: (NOT "IsDeleted")
+               Buffers: shared hit=13 read=2
+ Planning:
+   Buffers: shared hit=4
+ Planning Time: 0.111 ms
+ Execution Time: 0.064 ms
+(15 rows)
+
+
+== [SAU] Q3. Job purge — công thức xoá mềm quá 30 ngày ==
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Index Scan using "IX_Recipes_DeletedAt_Purge" on "Recipes" r (actual time=0.017..0.068 rows=200 loops=1)
+   Index Cond: ("DeletedAt" < (now() - '30 days'::interval))
+   Buffers: shared hit=14 read=1
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 0.076 ms
+ Execution Time: 0.082 ms
+(7 rows)
+
+
+############################################################################
+#  Tìm kiếm (3.6.2): LIKE quét toàn bảng vs Full-Text Search dùng GIN       #
+############################################################################
+
+== Q4a. LIKE tìm 1 món cụ thể (không dùng được index B-tree vì % ở đầu → quét cả bảng) ==
+                                                          QUERY PLAN                                                           
+-------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=7.205..12.036 rows=1 loops=1)
+   Buffers: shared hit=1267
+   ->  Seq Scan on "Recipes" r (actual time=7.204..12.035 rows=1 loops=1)
+         Filter: ((NOT "IsDeleted") AND ("Status" = 1) AND (unaccent(lower(("Title")::text)) ~~ '%bun cha kieu 12345%'::text))
+         Rows Removed by Filter: 20003
+         Buffers: shared hit=1267
+ Planning Time: 0.048 ms
+ Execution Time: 12.068 ms
+(8 rows)
+
+
+== Q4b. Full-Text Search cùng món đó: tsvector @@ websearch_to_tsquery + ts_rank (code thật FR-SRCH-001, GIN) ==
+                                                                          QUERY PLAN                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=2.731..2.732 rows=1 loops=1)
+   Buffers: shared hit=381
+   ->  Sort (actual time=2.730..2.731 rows=1 loops=1)
+         Sort Key: (ts_rank("SearchVector", websearch_to_tsquery('vietnamese'::regconfig, unaccent('bún chả kiểu 12345'::text)))) DESC, "CreatedAt" DESC, "Id"
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=381
+         ->  Bitmap Heap Scan on "Recipes" r (actual time=2.689..2.689 rows=1 loops=1)
+               Recheck Cond: ("SearchVector" @@ websearch_to_tsquery('vietnamese'::regconfig, unaccent('bún chả kiểu 12345'::text)))
+               Filter: ((NOT "IsDeleted") AND ("Status" = 1))
+               Heap Blocks: exact=1
+               Buffers: shared hit=378
+               ->  Bitmap Index Scan on "IX_Recipes_SearchVector" (actual time=2.674..2.674 rows=1 loops=1)
+                     Index Cond: ("SearchVector" @@ websearch_to_tsquery('vietnamese'::regconfig, unaccent('bún chả kiểu 12345'::text)))
+                     Buffers: shared hit=377
+ Planning:
+   Buffers: shared hit=22
+ Planning Time: 0.204 ms
+ Execution Time: 2.778 ms
+(18 rows)
+
+
+== Q5. GET /recipes/{slug} — chi tiết (unique index trên Slug) ==
+                                          QUERY PLAN                                          
+----------------------------------------------------------------------------------------------
+ Index Scan using "Recipes_Slug_key" on "Recipes" r (actual time=0.011..0.012 rows=1 loops=1)
+   Index Cond: (("Slug")::text = 'bench-12345'::text)
+   Filter: (NOT "IsDeleted")
+   Buffers: shared hit=3
+ Planning Time: 0.058 ms
+ Execution Time: 0.021 ms
+(6 rows)
+
+
+Đã ROLLBACK — dữ liệu giả và thay đổi index không còn trong database.

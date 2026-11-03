@@ -71,7 +71,7 @@ public sealed class UserManagementTests : IAsyncLifetime
         AuthorId = authorId, CategoryId = categoryId, Status = status, IsDeleted = deleted,
     };
 
-    private GetUsersQueryHandler QueryHandler() => new(users, new RepositoryBase<Recipe>(db));
+    private GetUsersQueryHandler QueryHandler() => new(users, new RepositoryBase<Recipe>(db), new UserRoleReader(db));
 
     private SetUserStatusCommandHandler StatusHandler(string currentUserId) => new(
         users, new RepositoryBase<Recipe>(db), new RefreshTokenRepository(db), db,

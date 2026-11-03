@@ -137,6 +137,30 @@ public class GetCategoryBySlugQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ProjectionKeepsAuthorCategoryAndFirstImage()
+    {
+        // Chương 3 (3.5.3): handler giờ dùng Select(SummaryProjection) thay vì Include + nạp entity —
+        // DTO vẫn phải có tên tác giả, tên danh mục và ảnh đầu tiên (OrderIndex nhỏ nhất, bỏ ảnh đã xoá).
+        using var db = CreateDbContext();
+        var category = await SeedAsync(db);
+        var recipe = await db.Recipes.FirstAsync(r => r.Title == "Món 1");
+        db.RecipeImages.AddRange(
+            new RecipeImage { RecipeId = recipe.Id, OriginalUrl = "http://img/2.jpg", OrderIndex = 2 },
+            new RecipeImage { RecipeId = recipe.Id, OriginalUrl = "http://img/0-xoa.jpg", OrderIndex = 0, IsDeleted = true },
+            new RecipeImage { RecipeId = recipe.Id, OriginalUrl = "http://img/1.jpg", OrderIndex = 1 });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var result = await CreateHandler(db, Anonymous()).Handle(new GetCategoryBySlugQuery("mon-nuoc"), CancellationToken.None);
+
+        var row = Assert.Single(result.Recipes.Items, r => r.Id == recipe.Id);
+        Assert.Equal("Tác giả A", row.AuthorDisplayName);
+        Assert.Equal(category.Name, row.CategoryName);
+        Assert.Equal("http://img/1.jpg", row.PrimaryImageUrl);
+        Assert.Empty(db.ChangeTracker.Entries()); // AsNoTracking + projection: không entity nào bị theo dõi
+    }
+
+    [Fact]
     public async Task Handle_ShouldThrowCategoryNotFound_WhenSlugDoesNotExist()
     {
         using var db = CreateDbContext();

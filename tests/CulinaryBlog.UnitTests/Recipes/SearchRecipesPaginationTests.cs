@@ -236,11 +236,11 @@ public sealed class SearchRecipesPaginationTests
     }
 
     [Theory]
-    [InlineData(null)]
+    [InlineData("")]
     [InlineData("   ")]
     [InlineData("bo")]
     [InlineData("phở bò")]
-    public void SearchRecipesQueryValidator_KeywordMissingOrLongEnough_IsValid(string? keyword)
+    public void SearchRecipesQueryValidator_KeywordMissingOrLongEnough_IsValid(string keyword)
     {
         var result = new SearchRecipesQueryValidator().TestValidate(new SearchRecipesQuery(Keyword: keyword));
 

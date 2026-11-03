@@ -89,6 +89,14 @@ builder.Services.AddOutputCache(options =>
         .Tag("categories", "recipes"));
 
     // Recipe detail: TTL 5 phút (NFR-PERF-003, cache-aside pattern).
+    // Recipe list (FR-RCP-001, SRS policy "RecipeList"): vary theo toàn bộ query (page, filter, sort).
+    // Policy mặc định của Output Cache KHÔNG cache request có header Authorization, nên danh sách
+    // kèm bản nháp riêng của người đang đăng nhập không bao giờ bị lưu/lộ qua cache.
+    options.AddPolicy("RecipeList", policy => policy
+        .Expire(TimeSpan.FromMinutes(15))
+        .SetVaryByQuery("*")
+        .Tag("recipes"));
+
     options.AddPolicy("RecipeDetail", policy => policy
         .Expire(TimeSpan.FromMinutes(5))
         .Tag("recipes"));
@@ -111,8 +119,11 @@ builder.Services.AddHangfire(config =>
           .UseSimpleAssemblyNameTypeSerializer()
           .UseRecommendedSerializerSettings();
 
-    var useInMemory = true;
-    if (!string.IsNullOrEmpty(hangfireConnStr))
+    // Tuần 8 (Quang — triển khai): Production BẮT BUỘC lưu job trong PostgreSQL. Fallback in-memory
+    // chỉ dành cho máy dev chưa bật Postgres — ở production nó làm mất job (email chào mừng,
+    // thumbnail, xoá file...) mỗi khi API khởi động lại, mà không báo lỗi gì.
+    var useInMemory = !builder.Environment.IsProduction();
+    if (useInMemory && !string.IsNullOrEmpty(hangfireConnStr))
     {
         try
         {
@@ -253,6 +264,20 @@ if (app.Environment.IsDevelopment())
     {
         app.Logger.LogWarning(ex, "Chưa thể kết nối tới cơ sở dữ liệu PostgreSQL để seed dữ liệu dev.");
     }
+}
+
+// Tuần 8 (Quang — triển khai): môi trường thật không có tài khoản Admin seed sẵn như Development.
+// Nếu cấu hình Admin:Email + Admin:Password (biến môi trường Admin__Email, Admin__Password trong
+// docker-compose.prod.yml) thì tạo/gán quyền Admin cho tài khoản đó khi khởi động. Idempotent.
+try
+{
+    using var adminScope = app.Services.CreateScope();
+    var adminUserManager = adminScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    await RoleSeeder.SeedConfiguredAdminAsync(adminUserManager, app.Configuration, app.Logger);
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Chưa tạo được tài khoản Admin từ cấu hình Admin:Email.");
 }
 
 app.UseHttpsRedirection();

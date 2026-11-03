@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { AuthShell } from "@/components/layout/AuthShell";
-import { ConfirmEmailForm } from "@/components/forms/AccountForms";
+import { ConfirmEmailForm } from "@/components/forms/ConfirmEmailForm";
 
 export const metadata = { title: "Xác nhận email" };
 

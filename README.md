@@ -588,3 +588,31 @@ Nhánh cá nhân không tách loại — mọi thay đổi (tính năng mới, s
 | 🐛 Sửa lỗi | `fix(<module>): ...` | `fix(recipes): make instructions column nullable per SRS v1.1.0 MT-10` |
 | ♻️ Tái cấu trúc | `refactor(<module>): ...` | `refactor(auth): unify UserProfileDto with displayName per SRS v1.1.0 MT-09` |
 | 📄 Tài liệu | `docs: ...` | `docs: update phân công công việc theo buổi` |
+
+---
+
+## 🌐 9. Triển khai cho người dùng thật (Tuần 8)
+
+Chạy toàn bộ hệ thống ở chế độ **Production** trên 1 máy chủ/VM có Docker (Ubuntu 22.04 hoặc Windows + Docker Desktop):
+
+1. **Tạo file cấu hình bí mật** (không commit):
+   ```bash
+   cp .env.prod.example .env.prod
+   ```
+   Sửa `.env.prod`: địa chỉ người dùng truy cập (`PUBLIC_WEB_URL`, `PUBLIC_API_URL`, `PUBLIC_STORAGE_URL` — IP/domain máy chủ), mật khẩu PostgreSQL/Redis/MinIO, `JWT_SECRET`/`AUTH_SECRET` (sinh bằng `openssl rand -base64 48`), tài khoản Admin đầu tiên và SMTP thật để gửi email.
+2. **Khởi động**:
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+   ```
+   - Database tạo từ `db/init/01-extensions.sql` + `02-schema.sql` (không seed dữ liệu giả).
+   - Tài khoản `ADMIN_EMAIL` được tạo tự động với quyền Admin + Author.
+   - Hangfire lưu job trong PostgreSQL; dashboard `/hangfire` chỉ Admin vào được.
+3. **Mở firewall** cổng 3000 (web), 5000 (API), 9000 (ảnh MinIO). PostgreSQL, Redis, Seq không mở ra ngoài; xem log qua SSH tunnel: `ssh -L 8081:127.0.0.1:8081 user@may-chu` rồi mở http://localhost:8081.
+4. **Khởi tạo dữ liệu**: đăng nhập web bằng tài khoản Admin → `/dashboard/categories` tạo danh mục → người dùng tự đăng ký tài khoản tại `/register` và đăng công thức.
+5. **Kiểm thử luồng người dùng thật** (đăng ký → đăng nhập → tạo → xuất bản → tìm kiếm không dấu → huỷ xuất bản → xoá, kèm kiểm tra phân quyền):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\test-e2e-nguoi-dung-that.ps1 -BaseUrl http://IP-may-chu:5000 -AdminEmail <ADMIN_EMAIL> -AdminPassword <ADMIN_PASSWORD>
+   ```
+6. **HTTPS / domain**: đặt Nginx hoặc Caddy làm reverse proxy trước 3 cổng trên, đổi các biến `PUBLIC_*` sang `https://...` rồi chạy lại lệnh ở bước 2 (frontend phải build lại vì `NEXT_PUBLIC_API_BASE_URL` được nhúng lúc build).
+
+Cập nhật phiên bản mới: `git pull` rồi chạy lại lệnh ở bước 2 — dữ liệu nằm trong Docker volume nên không mất.

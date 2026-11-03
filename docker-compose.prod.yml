@@ -1,0 +1,150 @@
+# =============================================================================
+#  docker-compose.prod.yml — Tuần 8 (Quang): chạy Culinary Blog cho NGƯỜI DÙNG THẬT
+#
+#  Khác docker-compose.yml (dev):
+#    - ASPNETCORE_ENVIRONMENT=Production: không seed dữ liệu giả, không tài khoản admin mặc định,
+#      Hangfire bắt buộc lưu job trong PostgreSQL, không bật Scalar UI.
+#    - MỌI mật khẩu/khoá lấy từ file .env.prod (không có giá trị mặc định — thiếu là compose báo lỗi
+#      ngay thay vì chạy với mật khẩu yếu). Tạo file: cp .env.prod.example .env.prod rồi sửa.
+#    - PostgreSQL, Redis, Seq không mở cổng ra ngoài; chỉ mở frontend (3000), API (5000) và
+#      MinIO S3 (9000, trình duyệt tải/đưa ảnh trực tiếp qua presigned URL).
+#    - Không có Adminer, MailHog: email gửi qua SMTP thật cấu hình trong .env.prod.
+#
+#  Chạy:   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#  Xem log: docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f api
+#  Có domain + HTTPS: đặt reverse proxy (Nginx/Caddy) trước cổng 3000, 5000, 9000 rồi đổi các
+#  biến PUBLIC_* trong .env.prod sang https://... và build lại frontend.
+# =============================================================================
+name: culinaryblog-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: culinaryblog
+      POSTGRES_USER: culinary
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Đặt POSTGRES_PASSWORD trong .env.prod}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Schema + extension (unaccent, pg_trgm, cấu hình FTS "vietnamese") chỉ chạy lần đầu tạo volume.
+      - ./db/init/01-extensions.sql:/docker-entrypoint-initdb.d/01-extensions.sql:ro
+      - ./db/init/02-schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      # KHÔNG mount 03-seed.sql: production bắt đầu với database trống (chỉ có danh mục do Admin tạo).
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U culinary -d culinaryblog"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # AOF để cache/rate-limit không mất hết khi khởi động lại (SRS 2.4.1: Redis persistent AOF).
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Đặt REDIS_PASSWORD trong .env.prod}"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    restart: unless-stopped
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest-dev
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Đặt MINIO_ROOT_USER trong .env.prod}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Đặt MINIO_ROOT_PASSWORD (>= 8 ký tự) trong .env.prod}
+    ports:
+      # Trình duyệt PUT ảnh lên và tải ảnh xuống trực tiếp từ đây (presigned URL, bucket public-read).
+      - "9000:9000"
+      # Console quản trị chỉ mở trên chính máy chủ (SSH tunnel khi cần).
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+    restart: unless-stopped
+
+  seq:
+    image: datalust/seq:latest
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      # Giao diện xem log chỉ mở trên máy chủ (SSH tunnel: ssh -L 8081:127.0.0.1:8081 ...).
+      - "127.0.0.1:8081:80"
+    volumes:
+      - seqdata:/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: src/CulinaryBlog.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=culinaryblog;Username=culinary;Password=${POSTGRES_PASSWORD}"
+      Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD},abortConnect=false"
+      Jwt__Secret: ${JWT_SECRET:?Đặt JWT_SECRET (>= 32 ký tự ngẫu nhiên) trong .env.prod}
+      Cors__AllowedOrigins__0: ${PUBLIC_WEB_URL:?Đặt PUBLIC_WEB_URL, vd http://IP-may-chu:3000}
+      Frontend__BaseUrl: ${PUBLIC_WEB_URL}
+      MinIO__Endpoint: "minio:9000"
+      MinIO__AccessKey: ${MINIO_ROOT_USER}
+      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD}
+      MinIO__PublicEndpoint: ${PUBLIC_STORAGE_URL:?Đặt PUBLIC_STORAGE_URL, vd http://IP-may-chu:9000}
+      Serilog__WriteTo__1__Args__serverUrl: "http://seq:5341"
+      WelcomeEmail__Host: ${SMTP_HOST:?Đặt SMTP_HOST trong .env.prod}
+      WelcomeEmail__Port: ${SMTP_PORT:-587}
+      WelcomeEmail__Security: ${SMTP_SECURITY:-StartTls}
+      WelcomeEmail__Username: ${SMTP_USERNAME:-}
+      WelcomeEmail__Password: ${SMTP_PASSWORD:-}
+      WelcomeEmail__FromEmail: ${SMTP_FROM_EMAIL:?Đặt SMTP_FROM_EMAIL trong .env.prod}
+      WelcomeEmail__AppUrl: ${PUBLIC_WEB_URL}
+      Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      # Tài khoản Admin đầu tiên (RoleSeeder.SeedConfiguredAdminAsync) — tạo 1 lần khi khởi động.
+      Admin__Email: ${ADMIN_EMAIL:?Đặt ADMIN_EMAIL trong .env.prod}
+      Admin__Password: ${ADMIN_PASSWORD:?Đặt ADMIN_PASSWORD (>= 8 ký tự, có hoa, số, ký tự đặc biệt)}
+    ports:
+      - "5000:8080"
+    volumes:
+      - apilogs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Nhúng vào bundle trình duyệt lúc build — đổi địa chỉ API thì phải build lại.
+        NEXT_PUBLIC_API_BASE_URL: ${PUBLIC_API_URL:?Đặt PUBLIC_API_URL, vd http://IP-may-chu:5000/api/v1}
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?Đặt AUTH_SECRET (npx auth secret) trong .env.prod}
+      AUTH_URL: ${PUBLIC_WEB_URL}
+      NEXTAUTH_URL: ${PUBLIC_WEB_URL}
+      AUTH_TRUST_HOST: "true"
+      # Server Next.js gọi API qua mạng nội bộ Docker, không vòng ra Internet.
+      API_INTERNAL_BASE_URL: http://api:8080/api/v1
+      AUTH_DEMO_ENABLED: "false"
+      AUTH_GOOGLE_ID: ${GOOGLE_CLIENT_ID:-}
+      AUTH_GOOGLE_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  seqdata:
+  apilogs:

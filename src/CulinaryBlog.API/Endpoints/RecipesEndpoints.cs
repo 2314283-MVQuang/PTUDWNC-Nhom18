@@ -163,7 +163,9 @@ public static class RecipesEndpoints
                     await sender.Send(query);
 
                 return result.ToPagedResponse();
-            });
+            })
+            // Tuần 8: SRS FR-RCP-001 policy "RecipeList" — chỉ cache request ẩn danh (xem Program.cs).
+            .CacheOutput("RecipeList");
 
         // -----------------------------------------------------------
         // GET /api/v1/recipes/search?q=   (FR-SRCH-001/003 — Thịnh, FR-SRCH-002 — Ý, FR-SRCH-004 — Tiến)

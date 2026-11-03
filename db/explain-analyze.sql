@@ -16,7 +16,7 @@
 BEGIN;
 
 -- ---------------------------------------------------------------------------
--- 0. Dữ liệu đo: đủ 20 danh mục (mức tối thiểu của DbSeeder) và 20 000 công thức (90% Published)
+-- 0. Dữ liệu đo: đủ 20 danh mục (mức tối thiểu của DbSeeder) và 20 000 công thức (~86% Published)
 --    chia đều các danh mục. Ít danh mục quá (vd 3) thì mỗi danh mục chiếm 1/3 bảng, PostgreSQL
 --    quét theo PublishedAt cũng nhanh — không phản ánh hệ thống thật.
 -- ---------------------------------------------------------------------------
@@ -34,9 +34,9 @@ SELECT (ARRAY['Phở bò', 'Bún chả', 'Cơm tấm', 'Bánh xèo', 'Gỏi cu�
        'bench-' || g,
        'Công thức đo hiệu năng số ' || g || ', nước dùng thơm, dễ nấu tại nhà.',
        5 + g % 55, 10 + g % 170, 1 + g % 6, 1 + g % 4,
-       CASE WHEN g % 10 = 0 THEN 0 ELSE 1 END,
+       CASE WHEN g % 7 = 0 THEN 0 ELSE 1 END,
        cats."Id", author."Id",
-       CASE WHEN g % 10 = 0 THEN NULL ELSE now() - make_interval(mins => g) END,
+       CASE WHEN g % 7 = 0 THEN NULL ELSE now() - make_interval(mins => g) END,
        now() - make_interval(mins => g)
 FROM generate_series(1, 20000) AS g
 CROSS JOIN ncat
@@ -48,7 +48,8 @@ UPDATE "Recipes" SET "IsDeleted" = TRUE, "DeletedAt" = now() - interval '40 days
 WHERE "Slug" LIKE 'bench-%' AND ("Slug" ~ '00$');
 
 -- EF Core gửi CategoryId dạng tham số → PostgreSQL lập kế hoạch với giá trị thật; ở đây dùng biến psql.
-SELECT "Id" AS cat_id FROM "Categories" WHERE NOT "IsDeleted" ORDER BY "Id" LIMIT 1 \gset
+SELECT "CategoryId" AS cat_id FROM "Recipes" WHERE "Status" = 1 AND NOT "IsDeleted"
+GROUP BY "CategoryId" ORDER BY count(*) DESC LIMIT 1 \gset
 
 \echo
 \echo '############################################################################'

@@ -69,7 +69,7 @@ test("đăng nhập gọi đúng 1 request POST /auth/login và dùng JWT thật
 
 test("đăng nhập thất bại trả mã lỗi đúng theo status backend", async () => {
   for (const [status, expected] of [
-    [401, "invalid_credentials"], [423, "account_locked"], [429, "rate_limited"], [500, "backend_unavailable"],
+    [401, "invalid_credentials"], [403, "account_disabled"], [423, "account_locked"], [429, "rate_limited"], [500, "backend_unavailable"],
   ]) {
     const { restore } = mockFetch(() => problem(status, "X", "lỗi"));
     try {

@@ -51,6 +51,13 @@ public class RefreshTokenCommandHandler(
         var user = await userManager.FindByIdAsync(existingToken.UserId)
             ?? throw new UnauthorizedException("Refresh token không hợp lệ hoặc đã hết hạn.");
 
+        // FR-AUTH-004 A4 / SRS AUTH_ACCOUNT_DISABLED: tài khoản bị Admin vô hiệu hoá thì không cấp
+        // token mới (403). Kiểm tra SAU mật khẩu để không lộ trạng thái tài khoản cho người lạ.
+        if (!user.IsActive)
+        {
+            throw new ForbiddenAccessException("Tài khoản đã bị vô hiệu hoá. Vui lòng liên hệ quản trị viên.");
+        }
+
         var roles = await userManager.GetRolesAsync(user);
         var accessToken = jwtService.GenerateAccessToken(user, roles);
         var (newRawToken, newTokenHash) = jwtService.GenerateRefreshToken();

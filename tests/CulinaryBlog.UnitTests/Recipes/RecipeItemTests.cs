@@ -245,7 +245,8 @@ public class RecipeItemTests
 
         var handler = new GetRecipeIngredientsQueryHandler(
             new RepositoryBase<Recipe>(db),
-            new RepositoryBase<RecipeIngredient>(db));
+            new RepositoryBase<RecipeIngredient>(db),
+            new TestCurrentUser { UserId = recipe.AuthorId });
 
         var list = await handler.Handle(new GetRecipeIngredientsQuery(recipe.Id), CancellationToken.None);
 
@@ -253,6 +254,36 @@ public class RecipeItemTests
         Assert.Equal("Xương bò", list[0].Name);
         Assert.Equal("Hành tây", list[1].Name);
         Assert.Equal("Bánh phở", list[2].Name);
+    }
+
+    /// <summary>Tuần 8 (Ý): người lạ / tác giả khác không đọc được phần con của bản nháp.</summary>
+    [Fact]
+    public async Task GetParts_ShouldForbidStrangers_WhenRecipeIsDraft()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db); // Draft
+        var anonymous = new TestCurrentUser { UserId = null, Role = "" };
+        var otherAuthor = new TestCurrentUser { UserId = "user-author-2" };
+
+        foreach (var user in new[] { anonymous, otherAuthor })
+        {
+            await Assert.ThrowsAsync<ForbiddenAccessException>(() => new GetRecipeIngredientsQueryHandler(
+                new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeIngredient>(db), user)
+                .Handle(new GetRecipeIngredientsQuery(recipe.Id), CancellationToken.None));
+            await Assert.ThrowsAsync<ForbiddenAccessException>(() => new GetRecipeStepsQueryHandler(
+                new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeStep>(db), user)
+                .Handle(new GetRecipeStepsQuery(recipe.Id), CancellationToken.None));
+            await Assert.ThrowsAsync<ForbiddenAccessException>(() => new GetRecipeImagesQueryHandler(
+                new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeImage>(db), user)
+                .Handle(new GetRecipeImagesQuery(recipe.Id), CancellationToken.None));
+        }
+
+        // Admin vẫn xem được.
+        var admin = new TestCurrentUser { UserId = "admin-1", Role = "Admin" };
+        var steps = await new GetRecipeStepsQueryHandler(
+            new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeStep>(db), admin)
+            .Handle(new GetRecipeStepsQuery(recipe.Id), CancellationToken.None);
+        Assert.NotNull(steps);
     }
 
     // ==========================================================

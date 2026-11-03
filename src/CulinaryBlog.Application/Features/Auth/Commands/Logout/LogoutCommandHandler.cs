@@ -20,7 +20,11 @@ public class LogoutCommandHandler(
         var existingToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash, ct);
 
         // Idempotent: không tìm thấy vẫn coi như thành công, không tiết lộ trạng thái.
-        if (existingToken is not null && existingToken.RevokedAt is null)
+        // Tuần 8: chỉ thu hồi refresh token của CHÍNH người đang đăng nhập — không cho dùng JWT của
+        // mình để đăng xuất phiên của người khác khi lấy được refresh token của họ.
+        if (existingToken is not null
+            && existingToken.RevokedAt is null
+            && (request.UserId is null || existingToken.UserId == request.UserId))
         {
             existingToken.RevokedAt = DateTimeOffset.UtcNow;
             refreshTokenRepository.Update(existingToken);

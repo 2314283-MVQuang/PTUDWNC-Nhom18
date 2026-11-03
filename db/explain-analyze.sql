@@ -11,6 +11,8 @@
 --  Cần sẵn ít nhất 1 danh mục và 1 người dùng (tạo bằng web hoặc test-e2e-nguoi-dung-that.ps1).
 -- =============================================================================
 \set ON_ERROR_STOP on
+-- Ẩn NOTICE kiểu "index already exists, skipping" — PowerShell 5.1 coi mọi dòng stderr là lỗi.
+SET client_min_messages = warning;
 \pset pager off
 \timing off
 BEGIN;

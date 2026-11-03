@@ -17,6 +17,8 @@ $OutputEncoding = $utf8
 [Console]::OutputEncoding = $utf8
 $sql = Join-Path $PSScriptRoot 'db\explain-analyze.sql'
 Write-Host "Dang do truy van tren $Container/$Database ..." -ForegroundColor Cyan
+# PowerShell 5.1: dong stderr cua lenh ngoai (vd NOTICE cua psql) bi coi la loi khi 'Stop'.
+$ErrorActionPreference = 'Continue'
 Get-Content -Raw -Encoding UTF8 $sql | docker exec -i -e PGCLIENTENCODING=UTF8 $Container psql -U $User -d $Database -X -q 2>&1 |
     Out-File -Encoding utf8 $Output
 Write-Host "Xong. Ket qua: $Output" -ForegroundColor Green

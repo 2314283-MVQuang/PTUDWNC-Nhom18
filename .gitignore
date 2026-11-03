@@ -503,3 +503,10 @@ logs/
 
 # Cấu hình production thật (Tuần 8) — chỉ commit file mẫu .env.prod.example
 .env.prod
+
+# Cấu hình OAuth thật nằm ngoài Git; chỉ chia sẻ các tệp mẫu.
+.env.*
+!.env.example
+!.env.*.example
+client_secret*.json
+credentials.json

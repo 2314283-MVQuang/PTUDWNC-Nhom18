@@ -81,7 +81,8 @@ Hệ thống vận hành theo kiến trúc **API-Driven** độc lập giữa Fr
 | `Redis__ConnectionString` | Kết nối Redis (Output Cache) | `localhost:6379` |
 | `MinIO__Endpoint` / `MinIO__AccessKey` / `MinIO__SecretKey` / `MinIO__BucketName` | Kết nối Object Storage MinIO | `localhost:9000` / `minioadmin` / `minioadmin` / `recipe-images` |
 | `Jwt__SecretKey` / `Jwt__Issuer` | Khóa ký & issuer cho JWT (HS256) | Chuỗi bí mật ngẫu nhiên ≥ 32 ký tự |
-| `Google__ClientId` / `Google__ClientSecret` | OAuth Client cho đăng nhập Google | Lấy từ Google Cloud Console |
+| `Google__ClientId` | API kiểm tra audience của Google ID token; lấy cùng `GOOGLE_CLIENT_ID` dùng cho frontend | Cấp qua môi trường chạy, không cố định Client ID cá nhân trong mã |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Cấu hình website chung trong `.env.prod`; Compose chuyển sang `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` của server Next.js | Lấy từ Google Cloud Console; không commit Client Secret |
 | `Smtp__Host` / `Smtp__Port` / `Smtp__Username` / `Smtp__Password` | Gửi email (Welcome Email) | Dev: MailHog `localhost` / `1025` (không cần auth) |
 | `Seq__ServerUrl` | Server nhận log tập trung | `http://localhost:5341` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint nhận trace/metrics (OpenTelemetry) | Dev: trỏ về Seq OTLP |
@@ -125,7 +126,7 @@ Trong quá trình đọc và phân tích SRS v1.0.0, nhóm phát hiện **11 đi
 | 5 | **Mã lỗi HTTP khi xung đột RowVersion**: FR-RCP-004 nói trả **409**, nhưng Phụ lục A/B lại ghi **422**. | Thống nhất dùng **409 Conflict** cho mọi xung đột concurrency; sửa lại Phụ lục A/B. | 409 đúng ngữ nghĩa HTTP cho xung đột trạng thái tài nguyên (RFC 9110); 422 chỉ nên dùng cho lỗi validate dữ liệu đầu vào, không phù hợp với concurrency conflict. |
 | 6 | **Xử lý trùng slug Recipe**: Phụ lục B / Category thì tự thêm hậu tố, còn FR-RCP-003 lại quy định trả lỗi **409**. | Áp dụng **tự động thêm hậu tố** cho Recipe giống Category (ví dụ `pho-bo-2`); bỏ nhánh trả lỗi 409 do trùng slug. | Trải nghiệm người dùng tốt hơn (không bị chặn khi đặt tên trùng), đồng thời đồng bộ cơ chế với Category đã áp dụng. |
 | 7 | **Điều kiện để publish công thức**: FR-RCP-005 chỉ yêu cầu có bước thực hiện (`steps > 0`), nhưng mã lỗi `RECIPE_PUBLISH_INCOMPLETE` ở Phụ lục B lại ngụ ý cần cả nguyên liệu. | Yêu cầu **cả hai**: ≥ 1 `RecipeStep` **và** ≥ 1 `RecipeIngredient` mới cho publish. | Một công thức không có nguyên liệu thì không thể coi là hoàn chỉnh; cách này khớp với mã lỗi đã định nghĩa sẵn ở Phụ lục B. |
-| 8 | **Luồng Google OAuth**: FR-AUTH-003 mô tả Authorization Code Flow + PKCE, nhưng đặc tả API (mục 8.1) lại chỉ nhận `idToken`. | Dùng **Authorization Code Flow + PKCE** (Auth.js v5 ở frontend); sửa lại body request backend nhận `{email, displayName, avatarUrl, providerKey}` thay vì `{idToken}`. | Đây là flow mặc định và an toàn hơn của Auth.js v5 (thư viện nhóm chọn) — không để lộ token nhạy cảm ở phía client như flow chỉ dùng idToken. |
+| 8 | **Luồng Google OAuth**: cần thống nhất vai trò Auth.js và API. | Auth.js xử lý OAuth phía server; sau trao đổi code, gửi `{idToken}` tới `POST /api/v1/auth/google`. API xác minh chữ ký, audience và email đã xác minh trước khi cấp JWT ứng dụng. | Hai bước này thuộc cùng luồng đăng nhập. Không dùng email/profile do trình duyệt tự gửi làm bằng chứng danh tính; Client Secret chỉ nằm trên server Next.js. |
 | 9 | **Tên trường người dùng không nhất quán**: Chương 3 dùng `fullName`/`userName`, còn Data Model/API lại dùng `displayName`; DTO trả về cũng không đồng nhất (có nơi thiếu `bio`/`emailConfirmed`/`createdAt`). | Chuẩn hóa dùng **`displayName`** ở mọi nơi hiển thị; `userName` chỉ giữ làm định danh đăng nhập nội bộ của Identity; thống nhất `UserProfileDto = {id, email, displayName, avatarUrl, bio, roles, emailConfirmed, createdAt}`. | Tránh nhầm lẫn giữa "tên đăng nhập" và "tên hiển thị"; một DTO duy nhất giúp frontend và backend không bị lệch field khi phát triển song song. |
 | 10 | **Cột `Recipe.Instructions`**: được khai báo NOT NULL trong Data Model, nhưng đặc tả request lại đánh dấu field này là optional (`instructions?`). | Đổi cột thành **nullable**. | `Instructions` được ghi chú là field "legacy" — nội dung thật của công thức đã chuyển sang bảng `RecipeStep`; bắt buộc NOT NULL sẽ chặn nhầm các request hợp lệ không còn dùng field cũ. |
 | 11 | **`RefreshToken` có kế thừa `BaseEntity` không?** — Phần mô tả chung nói mọi entity kế thừa `BaseEntity`, nhưng bảng cột của `RefreshToken` lại thiếu `IsDeleted`/`UpdatedAt`/`RowVersion`. | Giữ nguyên code: `RefreshToken` **không** kế thừa `BaseEntity`; chỉnh lại câu mô tả chung ở mục 6.4/Chương 7 để nêu rõ đây là trường hợp ngoại lệ. | `RefreshToken` là bản ghi audit dạng append-only (không cần soft delete hay update) — thêm các cột của `BaseEntity` vào đây là dư thừa và không có ý nghĩa. |
@@ -616,3 +617,22 @@ Chạy toàn bộ hệ thống ở chế độ **Production** trên 1 máy chủ
 6. **HTTPS / domain**: đặt Nginx hoặc Caddy làm reverse proxy trước 3 cổng trên, đổi các biến `PUBLIC_*` sang `https://...` rồi chạy lại lệnh ở bước 2 (frontend phải build lại vì `NEXT_PUBLIC_API_BASE_URL` được nhúng lúc build).
 
 Cập nhật phiên bản mới: `git pull` rồi chạy lại lệnh ở bước 2 — dữ liệu nằm trong Docker volume nên không mất.
+
+### Google trên website chung
+
+Mã nguồn và tệp mẫu được chia sẻ qua GitHub. Google Client Secret được cấp riêng trong
+`.env.prod` trên máy chủ hoặc biến môi trường của nền tảng triển khai; không đưa vào Git,
+Docker build args, image hoặc biến `NEXT_PUBLIC_*`. Người dùng truy cập website chung không
+cần được cấp khóa. Người clone mã chạy trên máy khác vẫn cần cấu hình môi trường riêng.
+
+Compose dùng **một** `GOOGLE_CLIENT_ID` cho cả API và frontend; `GOOGLE_CLIENT_SECRET` chỉ
+được cấp cho server Next.js khi khởi động. Có thể kiểm tra trước khi chạy container:
+
+```bash
+node scripts/check-google-config.mjs
+```
+
+Lệnh chỉ đọc cấu hình, không khởi động dịch vụ và không in khóa. Nó kiểm tra cặp Google,
+Client ID hai phía, domain HTTPS và callback; chưa xác nhận khóa có hợp lệ với Google.
+Xem [hướng dẫn Google cho website chung](spec/cau_hinh_google_website_chung.md) để khai báo
+Google Console, chuẩn bị `.env.prod`, cập nhật phiên bản và kiểm chứng đăng nhập thật.

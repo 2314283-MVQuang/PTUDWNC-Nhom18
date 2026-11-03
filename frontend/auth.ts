@@ -1,6 +1,7 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import { getGoogleOAuthConfiguration } from "@/lib/google-auth-config";
 import { AUTH_ERROR, type AuthErrorCode } from "@/lib/auth-errors";
 import { BackendAuthError, loginWithBackend, revokeBackendSession } from "@/lib/backend-auth";
 
@@ -25,6 +26,8 @@ class BackendCredentialsSignin extends CredentialsSignin {
     this.code = code;
   }
 }
+
+const googleConfiguration = getGoogleOAuthConfiguration();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -94,8 +97,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
     // FR-AUTH-003: Đăng nhập Google OAuth 2.0. Chỉ bật khi có đủ env — tránh crash lúc dev
     // nếu intern chưa xin được Google Client ID/Secret.
-    ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
-      ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET })]
+    ...(googleConfiguration
+      ? [Google(googleConfiguration)]
       : []),
   ],
 });

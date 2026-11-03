@@ -12,7 +12,16 @@ async function loadTs(relativePath) {
 }
 
 const mode = await loadTs("../lib/auth-mode.ts");
+const google = await loadTs("../lib/google-auth-config.ts");
 const schemas = await loadTs("../lib/validations/auth.schema.ts");
+
+test("Google chỉ bật khi có đủ cặp cấu hình server, cùng điều kiện cho provider và giao diện", () => {
+  for (const env of [{}, { AUTH_GOOGLE_ID: "client" }, { AUTH_GOOGLE_SECRET: "secret" },
+    { AUTH_GOOGLE_ID: "  ", AUTH_GOOGLE_SECRET: "secret" }])
+    assert.equal(google.getGoogleOAuthConfiguration(env), null);
+  assert.deepEqual(google.getGoogleOAuthConfiguration({ AUTH_GOOGLE_ID: " client ", AUTH_GOOGLE_SECRET: " secret " }),
+    { clientId: "client", clientSecret: "secret" });
+});
 
 test("demo chỉ bật ở Development và khi cờ được bật rõ ràng", () => {
   const previousNode = process.env.NODE_ENV;

@@ -66,6 +66,11 @@ khi tải lại trang hoặc chọn **Thử lại**; không có cơ chế tự c
 | `NEXTAUTH_URL` | URL của chính app này, để `http://localhost:3000` khi chạy local |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Lấy từ Google Cloud Console. Để trống cũng chạy được — nút "Đăng nhập với Google" sẽ tự ẩn |
 
+Với website chung, cấu hình `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` trong `.env.prod` trên
+máy chủ. Compose cấp cặp `AUTH_GOOGLE_*` cho server Next.js khi khởi động và cấp cùng Client ID
+cho API. Docker build không cần khóa Google; cập nhật mã không ghi đè tệp môi trường.
+Không đặt secret trong `NEXT_PUBLIC_*`. Xem [hướng dẫn triển khai Google](../spec/cau_hinh_google_website_chung.md).
+
 > Đừng bao giờ commit `.env.local` lên git — file này đã nằm trong `.gitignore` sẵn.
 
 Đăng nhập backend thật bằng **email**. Khi đăng ký, mật khẩu cần ít nhất 8 ký tự, có chữ hoa,

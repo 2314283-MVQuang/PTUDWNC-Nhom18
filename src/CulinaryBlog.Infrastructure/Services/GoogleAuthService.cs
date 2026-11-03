@@ -13,6 +13,9 @@ public class GoogleAuthService(IOptions<GoogleOptions> options) : IGoogleAuthSer
 
     public async Task<GoogleUserInfo> ValidateIdTokenAsync(string idToken, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(_options.ClientId))
+            throw new UnauthorizedException("Đăng nhập Google chưa được cấu hình trên máy chủ.");
+
         try
         {
             var payload = await GoogleJsonWebSignature.ValidateAsync(

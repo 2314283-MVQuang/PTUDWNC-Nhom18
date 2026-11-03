@@ -62,7 +62,7 @@ Tài liệu này ghi lại các mâu thuẫn/nghịch lý phát hiện được 
 
 **Chốt: dùng Authorization Code Flow + PKCE (theo FR-AUTH-003), sửa lại API 8.1 cho khớp.**
 - Lý do: Auth.js v5 (đã chọn làm thư viện auth ở Frontend theo mục 6.1) mặc định implement Google provider theo Authorization Code Flow, không phải flow nhận idToken trực tiếp từ Google Identity Services JS SDK. Dùng đúng cơ chế Auth.js hỗ trợ sẵn sẽ tiết kiệm code hơn nhiều so với tự tích hợp Google Sign-In JS SDK riêng.
-- Sửa request body của `POST /auth/google` ở mục 8.1: đổi từ `{ idToken }` thành `{ email, displayName, avatarUrl, providerKey }` (thông tin Auth.js đã lấy được từ Google profile sau khi exchange code), khớp với luồng `GoogleLoginCommandHandler` đã mô tả ở FR-AUTH-003 bước 6–8.
+- Đồng bộ với triển khai đã kiểm tra: Auth.js trao đổi code phía server, sau đó gửi `{ idToken }` tới `POST /auth/google`. API xác minh chữ ký Google, audience bằng `Google:ClientId` và `EmailVerified` trước khi tạo/liên kết tài khoản và phát JWT ứng dụng. Không dùng các trường email/profile do trình duyệt tự khai báo để xác thực. Hướng dẫn cấp khóa theo môi trường ở [cấu hình Google website chung](cau_hinh_google_website_chung.md).
 
 ## 9. Field đặt tên người dùng (fullName/userName vs displayName)
 

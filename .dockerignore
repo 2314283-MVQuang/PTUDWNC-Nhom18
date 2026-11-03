@@ -2,3 +2,14 @@
 **/obj/
 .vs/
 .idea/
+
+# Không đưa cấu hình bí mật vào build context của API hoặc image được chia sẻ.
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/client_secret*.json
+**/credentials.json
+.git/
+**/node_modules/
+**/.next/

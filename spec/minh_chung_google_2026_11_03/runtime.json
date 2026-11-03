@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-03",
+  "mode": "Production standalone",
+  "sameBuild": true,
+  "cases": [
+    {
+      "mode": "disabled",
+      "passed": true,
+      "googleProvider": false,
+      "secretInResponsesOrLogs": false
+    },
+    {
+      "mode": "partial",
+      "passed": true,
+      "googleProvider": false,
+      "secretInResponsesOrLogs": false
+    },
+    {
+      "mode": "enabled",
+      "passed": true,
+      "googleProvider": true,
+      "secretInResponsesOrLogs": false
+    }
+  ],
+  "realGoogleLoginVerified": false,
+  "note": "Chỉ dùng khóa giả để kiểm tra cấu hình runtime và phản hồi. Chưa trao đổi code/token với Google hoặc đăng nhập tài khoản thật."
+}

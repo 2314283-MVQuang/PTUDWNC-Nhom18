@@ -2,6 +2,7 @@ import { isDemoAuthEnabled } from "@/lib/auth-mode";
 import { Suspense } from "react";
 import { AuthShell } from "@/components/layout/AuthShell";
 import { AuthCombinedForm } from "@/components/forms/AuthCombinedForm";
+import { getGoogleOAuthConfiguration } from "@/lib/google-auth-config";
 
 export const metadata = { title: "Đăng nhập / Đăng ký" };
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default function LoginPage() {
       subtitle="Đăng nhập hoặc đăng ký tài khoản để khám phá và quản lý công thức"
     >
       <Suspense fallback={<div className="skeleton h-56 w-full" />}>
-        <AuthCombinedForm initialTab="login" demoEnabled={isDemoAuthEnabled()} googleEnabled={!!(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET)} />
+        <AuthCombinedForm initialTab="login" demoEnabled={isDemoAuthEnabled()} googleEnabled={!!getGoogleOAuthConfiguration()} />
       </Suspense>
     </AuthShell>
   );

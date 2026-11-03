@@ -16,7 +16,8 @@ COPY . .
 # Các biến NEXT_PUBLIC_* phải có mặt LÚC BUILD (Next.js inline chúng vào bundle client).
 ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
-RUN npm run build
+# Không chạy prebuild/setup-env: secret chỉ được cấp khi khởi động container.
+RUN node node_modules/next/dist/bin/next build
 
 # ---- Stage 3: chạy production ----
 # next.config.ts đã bật `output: "standalone"` nên chỉ cần copy đúng 3 thứ dưới đây,

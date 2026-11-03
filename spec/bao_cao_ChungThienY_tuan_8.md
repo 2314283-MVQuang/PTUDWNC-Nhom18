@@ -185,3 +185,9 @@ Các điểm xử lý khi ghép mã:
 Kiểm chứng sau tích hợp: **202 backend đạt, 32 bỏ qua, 0 lỗi**; **32/32 frontend unit đạt**; TypeScript, ESLint trong build và build Production đạt. Bộ tích hợp riêng vẫn **20/20 đạt**, bổ sung xác nhận JSON metadata tương thích và từ chối tác giả khác ở cả hai dạng upload. Kết quả tại [kiem_tra_sau_tich_hop.json](minh_chung_lab8_2026_11_03/kiem_tra_sau_tich_hop.json). Các ảnh trình duyệt phía trên phản ánh phiên kiểm tra Lab8 trước tích hợp; không tính thành lần chạy trình duyệt mới trên bản merge.
 
 Tài liệu Word/PDF tiếp tục nằm ngoài commit theo quy tắc `.gitignore` hiện có của nhóm; bản Markdown, mã nguồn và ảnh minh chứng được đưa vào nhánh.
+
+## 12. Bổ sung cấu hình Google cho website chung
+
+Theo xác nhận ngày 03/11/2026, phương án được chọn là website dùng chung: mã và cấu hình mẫu đưa lên GitHub, khóa thật được cấp riêng trên máy chủ. Phần bổ sung chuẩn hóa đọc cấu hình frontend, bỏ Client ID cá nhân khỏi API, bảo vệ tệp môi trường/credentials khỏi Git và Docker build context, bổ sung kiểm tra Compose và hướng dẫn triển khai.
+
+Đã kiểm chứng 36 ca frontend unit, 204 ca backend đạt/32 ca có điều kiện bỏ qua; ba chế độ runtime dùng khóa giả kiểm tra provider/nút và sự vắng mặt của Secret trong phản hồi/log. Hướng dẫn, ưu nhược điểm và các bước quản trị cần thực hiện ở [cấu hình Google website chung](cau_hinh_google_website_chung.md). Bước này chưa triển khai máy chủ hoặc hoàn tất đăng nhập Google thật; cần domain HTTPS và OAuth Client Production được người quản trị cấp ngoài Git.

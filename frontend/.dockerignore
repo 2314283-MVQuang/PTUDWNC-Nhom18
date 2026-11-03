@@ -10,6 +10,11 @@ coverage
 
 .env
 .env*.local
+.env.*
+!.env.example
+!.env.*.example
+client_secret*.json
+credentials.json
 
 .git
 .gitignore

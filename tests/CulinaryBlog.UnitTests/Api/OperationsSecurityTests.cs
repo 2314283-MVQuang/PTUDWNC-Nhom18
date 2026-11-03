@@ -251,6 +251,11 @@ internal sealed class OperationsHost(WebApplication app, JwtOptions jwt) : IAsyn
     public async ValueTask DisposeAsync()
     {
         Client.Dispose();
+        // AddHangfire gắn LogProvider TĨNH của Hangfire vào LoggerFactory của host này. Phải gỡ ra
+        // TRƯỚC khi dispose host, nếu không test khác chạy sau (new AutomaticRetryAttribute(), job
+        // Hangfire...) gọi vào LoggerFactory đã dispose → ObjectDisposedException (CI #53 đỏ ngẫu nhiên
+        // tuỳ thứ tự test).
+        Hangfire.Logging.LogProvider.SetCurrentLogProvider(null);
         await app.DisposeAsync();
     }
 }

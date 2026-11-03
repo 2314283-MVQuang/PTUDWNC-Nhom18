@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Recipes.Commands.AddRecipeImage;
 using CulinaryBlog.Application.Features.Recipes.Commands.AddRecipeIngredient;
@@ -45,6 +46,8 @@ public class TestRecipeFileStorageService : IFileStorageService
 {
     public string BucketName => "recipe-images";
     public List<string> DeletedObjects { get; } = [];
+    /// <summary>Nội dung các object "đã upload" (Tuần 8: AddRecipeImage đọc magic bytes).</summary>
+    public Dictionary<string, byte[]> Objects { get; } = new();
 
     public Task<string> GeneratePresignedUploadUrlAsync(
         string key,
@@ -56,7 +59,9 @@ public class TestRecipeFileStorageService : IFileStorageService
     public string GetPublicUrl(string key) => $"http://minio:9000/{BucketName}/{key}";
 
     public Task<Stream> GetFileStreamAsync(string key, CancellationToken ct = default) =>
-        Task.FromResult<Stream>(new MemoryStream());
+        Objects.TryGetValue(key, out var bytes)
+            ? Task.FromResult<Stream>(new MemoryStream(bytes))
+            : throw new FileNotFoundException(key);
 
     public Task<string> UploadFileAsync(string key, Stream content, string contentType, CancellationToken ct = default) =>
         Task.FromResult(GetPublicUrl(key));
@@ -377,17 +382,109 @@ public class RecipeItemTests
         var recipe = await SeedRecipeAsync(db);
         var currentUser = new TestCurrentUser { UserId = recipe.AuthorId };
 
-        var handler = new AddRecipeImageCommandHandler(
-            new RepositoryBase<Recipe>(db),
-            new RepositoryBase<RecipeImage>(db),
-            db,
-            currentUser);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/10/pho1.jpg", Jpeg, recipe.AuthorId);
+        var handler = CreateAddImageHandler(db, currentUser, storage);
 
-        var command = new AddRecipeImageCommand(recipe.Id, "http://minio:9000/recipe-images/pho1.jpg", "Tô phở thơm ngon");
+        var command = new AddRecipeImageCommand(recipe.Id, "http://minio:9000/recipe-images/recipes/2026/10/pho1.jpg", "Tô phở thơm ngon");
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.True(result.IsPrimary);
+    }
+
+    // Tuần 8 (Thịnh) — ảnh phải do chính người dùng tải lên bucket của hệ thống, nội dung đúng là ảnh.
+    private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46, 0x49, 0x46, 0, 1];
+
+    private static async Task SeedUploadAsync(
+        CulinaryBlogDbContext db, TestRecipeFileStorageService storage, string key, byte[] content, string? uploadedBy)
+    {
+        storage.Objects[key] = content;
+        db.UploadedFiles.Add(new UploadedFile
+        {
+            FileName = "anh.jpg", ContentType = "image/jpeg", Size = content.Length, StorageKey = key,
+            Url = storage.GetPublicUrl(key), BucketName = storage.BucketName, UploadedBy = uploadedBy,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    private static AddRecipeImageCommandHandler CreateAddImageHandler(
+        CulinaryBlogDbContext db, TestCurrentUser user, TestRecipeFileStorageService storage) =>
+        new(new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeImage>(db), db, user,
+            storage, new UploadedFileRepository(db));
+
+    [Fact]
+    public async Task AddImage_ShouldRejectExternalUrl()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var handler = CreateAddImageHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, new TestRecipeFileStorageService());
+
+        await Assert.ThrowsAsync<InvalidFileException>(() => handler.Handle(
+            new AddRecipeImageCommand(recipe.Id, "https://example.com/anh-ngoai.jpg", null), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddImage_ShouldRejectFileUploadedByAnotherUser()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/10/cua-nguoi-khac.jpg", Jpeg, "user-author-2");
+        var handler = CreateAddImageHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => handler.Handle(
+            new AddRecipeImageCommand(recipe.Id, storage.GetPublicUrl("recipes/2026/10/cua-nguoi-khac.jpg"), null),
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddImage_ShouldRejectSameUploadAttachedTwice_EvenByAdmin()
+    {
+        // Kiểm thử người dùng thật (Tuần 8): Admin gắn lại ảnh của Phở vào Bún chả rồi xoá ở Bún chả
+        // → job xoá file trên MinIO làm ảnh Phở bị 404. Giờ chặn ngay từ lúc gắn lần 2.
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        const string key = "recipes/2026/11/pho-dung-chung.jpg";
+        await SeedUploadAsync(db, storage, key, Jpeg, recipe.AuthorId);
+        var url = storage.GetPublicUrl(key);
+
+        await CreateAddImageHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage)
+            .Handle(new AddRecipeImageCommand(recipe.Id, url, null), CancellationToken.None);
+
+        var admin = new TestCurrentUser { UserId = "admin-1", Role = "Admin" };
+        await Assert.ThrowsAsync<ConflictException>(() => CreateAddImageHandler(db, admin, storage)
+            .Handle(new AddRecipeImageCommand(recipe.Id, url, null), CancellationToken.None));
+        Assert.Single(db.RecipeImages);
+    }
+
+    [Fact]
+    public async Task AddImage_ShouldRejectAndDeleteFakeImage_ByMagicBytes()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        // File thực thi Windows (MZ) đổi đuôi thành .png.
+        await SeedUploadAsync(db, storage, "recipes/2026/10/virus.png", [0x4D, 0x5A, 0x90, 0, 3, 0, 0, 0, 4, 0, 0, 0], recipe.AuthorId);
+        var handler = CreateAddImageHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage);
+
+        await Assert.ThrowsAsync<InvalidFileException>(() => handler.Handle(
+            new AddRecipeImageCommand(recipe.Id, storage.GetPublicUrl("recipes/2026/10/virus.png"), null), CancellationToken.None));
+        Assert.Contains("recipes/2026/10/virus.png", storage.DeletedObjects);
+        Assert.Empty(db.RecipeImages);
+    }
+
+    [Theory]
+    [InlineData(new byte[] { 0xFF, 0xD8, 0xFF, 0xDB, 0, 0, 0, 0, 0, 0, 0, 0 }, "image/jpeg")]
+    [InlineData(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 }, "image/png")]
+    [InlineData(new byte[] { 0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4, 0x57, 0x45, 0x42, 0x50 }, "image/webp")]
+    [InlineData(new byte[] { 0, 0, 0, 0x1C, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66 }, "image/avif")]
+    [InlineData(new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0, 0, 0, 0, 0 }, null)] // GIF không được nhận
+    [InlineData(new byte[] { 0x3C, 0x68, 0x74, 0x6D, 0x6C, 0x3E, 0, 0, 0, 0, 0, 0 }, null)] // <html>
+    public void ImageFileSignature_ShouldDetectRealImageTypes(byte[] header, string? expected)
+    {
+        Assert.Equal(expected, ImageFileSignature.Detect(header));
     }
 
     [Fact]

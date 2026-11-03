@@ -5,11 +5,19 @@ namespace CulinaryBlog.Application.Recipes.Queries.SearchRecipes;
 /// <summary>
 /// FR-SRCH-002 (Ý): bộ lọc; FR-SRCH-004 (Tiến): page >= 1, pageSize 1–50 (sai trả 422).
 /// Tham số sort do SortParser kiểm tra riêng (FR-SRCH-003, sai trả 400 INVALID_SORT).
+/// Tuần 8 (Thịnh): FR-SRCH-001 — từ khoá q nếu có phải >= 2 ký tự (sau khi bỏ khoảng trắng), sai trả 422.
+/// Không truyền q (chỉ lọc theo danh mục/thời gian...) vẫn hợp lệ.
 /// </summary>
 public sealed class SearchRecipesQueryValidator : AbstractValidator<SearchRecipesQuery>
 {
+    public const int MinKeywordLength = 2;
+
     public SearchRecipesQueryValidator()
     {
+        RuleFor(x => x.Keyword)
+            .Must(k => k!.Trim().Length >= MinKeywordLength)
+            .When(x => !string.IsNullOrWhiteSpace(x.Keyword))
+            .WithMessage($"Từ khoá tìm kiếm phải có ít nhất {MinKeywordLength} ký tự.");
         RuleFor(x => x.Page)
             .GreaterThanOrEqualTo(1)
             .WithMessage("Page phải >= 1.");

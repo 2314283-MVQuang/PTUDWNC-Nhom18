@@ -34,12 +34,11 @@ public class UpdateCategoryCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldUpdateNameAndGenerateSlug_WhenNoConflict()
+    public async Task Handle_ShouldUpdateNameButKeepSlug_WhenRenamed()
     {
         // Arrange
         using var db = CreateDbContext();
         var catRepo = new RepositoryBase<Category>(db);
-        var slugGen = new SlugGenerator(db);
         var cacheInv = new TestCacheInvalidator();
 
         var category = new Category
@@ -53,7 +52,7 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddAsync(category);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, slugGen, cacheInv);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, cacheInv);
         var command = new UpdateCategoryCommand(
             category.Id,
             "Món Khai Vị Đặc Biệt",
@@ -66,19 +65,18 @@ public class UpdateCategoryCommandHandlerTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal("Món Khai Vị Đặc Biệt", result.Name);
-        Assert.Equal("mon-khai-vi-dac-biet", result.Slug);
+        Assert.Equal("mon-khai-vi", result.Slug); // SRS FR-CAT-004: slug không đổi khi đổi tên
         Assert.Equal("Mô tả mới", result.Description);
         Assert.Equal("https://example.com/new.jpg", result.ImageUrl);
         Assert.Contains("categories", cacheInv.EvictedTags);
     }
 
     [Fact]
-    public async Task Handle_ShouldAutoSuffixSlug_WhenSlugConflictsWithExistingCategory()
+    public async Task Handle_ShouldNotTouchSlug_WhenNewNameWouldCollideWithAnotherSlug()
     {
         // Arrange: Đã tồn tại Category 1 tên "Mon Chay" (không dấu) có slug "mon-chay"
         using var db = CreateDbContext();
         var catRepo = new RepositoryBase<Category>(db);
-        var slugGen = new SlugGenerator(db);
         var cacheInv = new TestCacheInvalidator();
 
         var existingCategory = new Category
@@ -96,26 +94,25 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddRangeAsync(existingCategory, targetCategory);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, slugGen, cacheInv);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, cacheInv);
 
         // Act: Đổi tên targetCategory thành "Món Chay" — TÊN khác "Mon Chay" nhưng SLUG trùng "mon-chay"
         var command = new UpdateCategoryCommand(targetCategory.Id, "Món Chay");
         var result = await handler.Handle(command, CancellationToken.None);
 
-        // Assert: slug trùng thì tự thêm hậu tố -2, không báo lỗi
+        // Assert: đổi tên thành công, slug giữ nguyên nên không có xung đột slug nào (FR-CAT-004)
         Assert.NotNull(result);
         Assert.Equal("Món Chay", result.Name);
-        Assert.Equal("mon-chay-2", result.Slug);
+        Assert.Equal("mon-man", result.Slug);
         Assert.Contains("categories", cacheInv.EvictedTags);
     }
 
     [Fact]
-    public async Task Handle_ShouldIncrementSuffix_WhenMultipleConflictsExist()
+    public async Task Handle_ShouldKeepOriginalSlug_WhenRenamedMultipleTimes()
     {
         // Arrange: Đã tồn tại "mon-trang-mieng" và "mon-trang-mieng-2"
         using var db = CreateDbContext();
         var catRepo = new RepositoryBase<Category>(db);
-        var slugGen = new SlugGenerator(db);
 
         var cat1 = new Category { Id = Guid.NewGuid(), Name = "Mon Trang Mieng", Slug = "mon-trang-mieng" };
         var cat2 = new Category { Id = Guid.NewGuid(), Name = "Món Tráng Miệng 2", Slug = "mon-trang-mieng-2" };
@@ -124,14 +121,16 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddRangeAsync(cat1, cat2, catToUpdate);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, slugGen);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db);
 
         // Act: Đổi tên catToUpdate thành "Món Tráng Miệng"
         var command = new UpdateCategoryCommand(catToUpdate.Id, "Món Tráng Miệng");
         var result = await handler.Handle(command, CancellationToken.None);
 
-        // Assert: Tự sinh "mon-trang-mieng-3"
-        Assert.Equal("mon-trang-mieng-3", result.Slug);
+        // Assert: slug vẫn là slug gốc
+        Assert.Equal("do-uong", result.Slug);
+        var again = await handler.Handle(new UpdateCategoryCommand(catToUpdate.Id, "Tráng Miệng Mùa Hè"), CancellationToken.None);
+        Assert.Equal("do-uong", again.Slug);
     }
 
     [Fact]
@@ -140,13 +139,12 @@ public class UpdateCategoryCommandHandlerTests
         // Arrange: Category cập nhật mô tả nhưng tên giữ nguyên
         using var db = CreateDbContext();
         var catRepo = new RepositoryBase<Category>(db);
-        var slugGen = new SlugGenerator(db);
 
         var category = new Category { Id = Guid.NewGuid(), Name = "Hải Sản", Slug = "hai-san" };
         await db.Categories.AddAsync(category);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, slugGen);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db);
 
         // Act
         var command = new UpdateCategoryCommand(category.Id, "Hải Sản", "Mô tả mới");
@@ -162,14 +160,13 @@ public class UpdateCategoryCommandHandlerTests
         // Arrange: tên danh mục là duy nhất (SRS FR-CAT-003) — đổi sang tên đã có phải trả 409
         using var db = CreateDbContext();
         var catRepo = new RepositoryBase<Category>(db);
-        var slugGen = new SlugGenerator(db);
 
         var existing = new Category { Id = Guid.NewGuid(), Name = "Món Chay", Slug = "mon-chay" };
         var target = new Category { Id = Guid.NewGuid(), Name = "Món Mặn", Slug = "mon-man" };
         await db.Categories.AddRangeAsync(existing, target);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, slugGen);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db);
         var command = new UpdateCategoryCommand(target.Id, "Món Chay");
 
         // Act & Assert
@@ -182,8 +179,7 @@ public class UpdateCategoryCommandHandlerTests
         // Arrange
         using var db = CreateDbContext();
         var catRepo = new RepositoryBase<Category>(db);
-        var slugGen = new SlugGenerator(db);
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, slugGen);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db);
 
         var command = new UpdateCategoryCommand(Guid.NewGuid(), "Tên Bất Kỳ");
 

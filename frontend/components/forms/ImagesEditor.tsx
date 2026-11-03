@@ -87,7 +87,7 @@ export function ImagesEditor({ recipeId, images }: { recipeId: string; images: R
           Tải ảnh lên
         </Button>
         <p className="mt-1 text-xs text-neutral-500">
-          JPEG, PNG, WebP hoặc GIF, tối đa 10MB. Ảnh đầu tiên tự động thành ảnh đại diện.
+          JPEG, PNG, WebP hoặc AVIF, tối đa 5MB. Ảnh đầu tiên tự động thành ảnh đại diện.
         </p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-using CulinaryBlog.Application.Common.Interfaces;
+﻿using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Auth.Commands.Register;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Linq;
 using Xunit;
 
 namespace CulinaryBlog.UnitTests.Jobs;
@@ -86,11 +87,18 @@ public class WelcomeEmailTests
     [Fact]
     public void RetryPolicy_MatchesSrs_AndRetainsFailedJobs()
     {
-        var attribute = Assert.Single(typeof(WelcomeEmailJob).GetMethod(nameof(WelcomeEmailJob.ExecuteAsync))!
-            .GetCustomAttributes(typeof(AutomaticRetryAttribute), false).Cast<AutomaticRetryAttribute>());
-        Assert.Equal(3, attribute.Attempts);
-        Assert.Equal(new[] { 60, 300, 1800 }, attribute.DelaysInSeconds);
-        Assert.Equal(AttemptsExceededAction.Fail, attribute.OnAttemptsExceeded);
+        // Dung GetCustomAttributesData() thay vi GetCustomAttributes() de tranh goi constructor
+        // cua AutomaticRetryAttribute (Hangfire dung ambient LoggerFactory trong ctor, co the bi
+        // disposed trong test-runner isolation dan toi ObjectDisposedException).
+        var method = typeof(WelcomeEmailJob).GetMethod(nameof(WelcomeEmailJob.ExecuteAsync))!;
+        var attrData = Assert.Single(method.GetCustomAttributesData()
+            .Where(a => a.AttributeType == typeof(AutomaticRetryAttribute)));
+
+        // Doc cac named argument tu metadata ma khong khoi tao instance.
+        var named = attrData.NamedArguments.ToDictionary(a => a.MemberName, a => a.TypedValue.Value);
+        Assert.Equal(3, (int)named[nameof(AutomaticRetryAttribute.Attempts)]!);
+        Assert.Equal(new[] { 60, 300, 1800 }, ((System.Collections.ObjectModel.ReadOnlyCollection<System.Reflection.CustomAttributeTypedArgument>)named[nameof(AutomaticRetryAttribute.DelaysInSeconds)]!).Select(x => (int)x.Value!).ToArray());
+        Assert.Equal(AttemptsExceededAction.Fail, (AttemptsExceededAction)named[nameof(AutomaticRetryAttribute.OnAttemptsExceeded)]!);
     }
 
     [Theory]

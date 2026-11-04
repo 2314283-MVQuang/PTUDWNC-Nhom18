@@ -1,4 +1,4 @@
-using CulinaryBlog.Application.Common.Interfaces;
+﻿using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure.Jobs;
 using CulinaryBlog.Infrastructure.Persistence;
@@ -187,12 +187,16 @@ public class GenerateThumbnailJobTests
     [Fact]
     public void ExecuteAsync_ShouldRetryThreeTimes_PerSrs()
     {
-        var retry = typeof(GenerateThumbnailJob).GetMethod(nameof(GenerateThumbnailJob.ExecuteAsync))!
-            .GetCustomAttributes(typeof(AutomaticRetryAttribute), false)
-            .Cast<AutomaticRetryAttribute>()
-            .Single();
+        // Dung GetCustomAttributesData() thay vi GetCustomAttributes() de tranh goi constructor
+        // cua AutomaticRetryAttribute (Hangfire dung ambient LoggerFactory trong ctor, co the bi
+        // disposed trong test-runner isolation dan toi ObjectDisposedException).
+        var method = typeof(GenerateThumbnailJob).GetMethod(nameof(GenerateThumbnailJob.ExecuteAsync))!;
+        var attrData = method.GetCustomAttributesData()
+            .Single(a => a.AttributeType == typeof(AutomaticRetryAttribute));
 
-        Assert.Equal(3, retry.Attempts);
+        // Doc named argument "Attempts" tu metadata ma khong khoi tao instance.
+        var attemptsArg = attrData.NamedArguments.Single(a => a.MemberName == nameof(AutomaticRetryAttribute.Attempts));
+        Assert.Equal(3, (int)attemptsArg.TypedValue.Value!);
     }
 
     [Fact]

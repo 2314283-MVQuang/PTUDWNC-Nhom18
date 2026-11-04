@@ -1,4 +1,4 @@
-using CulinaryBlog.Application.Common.Helpers;
+﻿using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Features.Files.Commands.DeleteFile;
 using CulinaryBlog.Infrastructure.Jobs;
 using Hangfire;
@@ -76,12 +76,16 @@ public class FileDeletionJobTests
     [Fact]
     public void DeleteFileJob_ShouldRetryThreeTimes_PerSrs()
     {
-        var retry = typeof(DeleteFileJob).GetMethod(nameof(DeleteFileJob.ExecuteAsync))!
-            .GetCustomAttributes(typeof(AutomaticRetryAttribute), false)
-            .Cast<AutomaticRetryAttribute>()
-            .Single();
+        // Dung GetCustomAttributesData() thay vi GetCustomAttributes() de tranh goi constructor
+        // cua AutomaticRetryAttribute (Hangfire dung ambient LoggerFactory trong ctor, co the bi
+        // disposed trong test-runner isolation dan toi ObjectDisposedException).
+        var method = typeof(DeleteFileJob).GetMethod(nameof(DeleteFileJob.ExecuteAsync))!;
+        var attrData = method.GetCustomAttributesData()
+            .Single(a => a.AttributeType == typeof(AutomaticRetryAttribute));
 
-        Assert.Equal(3, retry.Attempts);
+        // Doc named argument "Attempts" tu metadata ma khong khoi tao instance.
+        var attemptsArg = attrData.NamedArguments.Single(a => a.MemberName == nameof(AutomaticRetryAttribute.Attempts));
+        Assert.Equal(3, (int)attemptsArg.TypedValue.Value!);
     }
 
     [Fact]

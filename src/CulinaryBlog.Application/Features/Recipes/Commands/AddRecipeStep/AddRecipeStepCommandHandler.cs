@@ -14,6 +14,7 @@ public class AddRecipeStepCommandHandler(
     IRepository<RecipeStep> steps,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
+    RecipeImageUploadGuard imageGuard,
     ICacheInvalidator? cacheInvalidator = null)
     : IRequestHandler<AddRecipeStepCommand, RecipeStepItemDto>
 {
@@ -30,6 +31,13 @@ public class AddRecipeStepCommandHandler(
         if (currentUser.UserId != recipe.AuthorId && !currentUser.IsInRole("Admin"))
         {
             throw new ForbiddenAccessException("Bạn không có quyền thêm bước thực hiện cho công thức này.");
+        }
+
+        // Tuần 10 (Quang): ảnh minh hoạ của bước phải là ảnh chính người dùng tải lên hệ thống.
+        var imageUrl = NullIfBlank(request.ImageUrl);
+        if (imageUrl is not null)
+        {
+            await imageGuard.EnsureCanAttachAsync(imageUrl, exceptStepId: null, ct);
         }
 
         var existingSteps = await steps.Query()
@@ -55,7 +63,7 @@ public class AddRecipeStepCommandHandler(
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),
             TimerMinutes = request.TimerMinutes,
-            ImageUrl = NullIfBlank(request.ImageUrl)
+            ImageUrl = imageUrl
         };
 
         var stepsToShift = existingSteps.Where(s => s.StepNumber >= targetStepNumber).ToList();

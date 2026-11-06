@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Behaviors;
+using CulinaryBlog.Application.Common.Helpers;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,9 @@ public static class DependencyInjection
         // TODO (nhóm làm tiếp): thêm CachingBehavior + CacheInvalidationBehavior khi tích hợp Redis.
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+        // Tuần 10 (Quang): kiểm tra ảnh trước khi gắn vào công thức / bước thực hiện.
+        services.AddScoped<RecipeImageUploadGuard>();
 
         return services;
     }

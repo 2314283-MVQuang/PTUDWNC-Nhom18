@@ -1,6 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Helpers;
-using CulinaryBlog.Application.Features.Files.Commands.GeneratePresignedUrl;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Recipes.Dtos;
 using CulinaryBlog.Domain.Entities;
@@ -15,8 +14,7 @@ public class AddRecipeImageCommandHandler(
     IRepository<RecipeImage> images,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    IFileStorageService fileStorageService,
-    IUploadedFileRepository uploadedFiles,
+    RecipeImageUploadGuard imageGuard,
     ICacheInvalidator? cacheInvalidator = null,
     IThumbnailJobScheduler? thumbnailJobScheduler = null)
     : IRequestHandler<AddRecipeImageCommand, RecipeImageItemDto>
@@ -36,20 +34,9 @@ public class AddRecipeImageCommandHandler(
             throw new ForbiddenAccessException("Bạn không có quyền thêm ảnh cho công thức này.");
         }
 
-        await EnsureUploadedImageAsync(request.ImageUrl, ct);
-
-        // Tuần 8 (Thịnh) — lỗi phát hiện khi kiểm thử người dùng thật: cùng 1 file được gắn vào 2
-        // công thức thì xoá ảnh ở công thức này (FR-FILE-002 xoá file trên MinIO) làm ảnh ở công
-        // thức kia hỏng theo. Mỗi file tải lên chỉ được gắn MỘT lần (kể cả ảnh đã xoá mềm, vì file
-        // của nó đã/đang bị xoá khỏi MinIO).
-        var trimmedUrl = request.ImageUrl.Trim();
-        var alreadyAttached = await images.Query()
-            .IgnoreQueryFilters()
-            .AnyAsync(img => img.OriginalUrl == trimmedUrl, ct);
-        if (alreadyAttached)
-        {
-            throw new ConflictException("Ảnh này đã được gắn vào một công thức. Vui lòng tải ảnh lên lại để dùng cho công thức khác.");
-        }
+        // Tuần 8 (Thịnh) + Tuần 10: ảnh phải do chính người dùng tải lên bucket của hệ thống, đúng là
+        // ảnh, và mỗi file chỉ gắn MỘT chỗ (ảnh công thức hoặc ảnh bước) — xem RecipeImageUploadGuard.
+        await imageGuard.EnsureCanAttachAsync(request.ImageUrl, exceptStepId: null, ct);
 
         var existingImages = await images.Query()
             .Where(img => img.RecipeId == request.RecipeId)
@@ -109,51 +96,6 @@ public class AddRecipeImageCommandHandler(
             newImage.AltText,
             newImage.IsPrimary,
             newImage.OrderIndex);
-    }
-
-    /// <summary>
-    /// Tuần 8 (Thịnh) — FR-RCP-008/FR-FILE-001: chỉ nhận ảnh người dùng vừa tải lên MinIO của hệ
-    /// thống qua POST /files/presigned-url:
-    ///   1. URL phải nằm trong bucket của hệ thống (không nhận link ảnh ngoài);
-    ///   2. có bản ghi UploadedFiles và do CHÍNH người này tải lên (hoặc Admin);
-    ///   3. nội dung thật là ảnh JPEG/PNG/WebP/AVIF (magic bytes) và không vượt 5MB — presigned PUT
-    ///      không kiểm được nội dung nên kiểm ở đây; file sai bị xoá khỏi bucket.
-    /// </summary>
-    private async Task EnsureUploadedImageAsync(string imageUrl, CancellationToken ct)
-    {
-        var storageKey = FileStorageObjectNameResolver.FromPublicUrl(imageUrl?.Trim(), fileStorageService.BucketName);
-        var uploaded = storageKey is null ? null : await uploadedFiles.GetByStorageKeyAsync(storageKey, ct);
-        if (storageKey is null || uploaded is null)
-        {
-            throw new InvalidFileException("Ảnh phải được tải lên qua hệ thống (POST /api/v1/files/presigned-url).");
-        }
-
-        if (!currentUser.IsInRole("Admin") && !string.Equals(uploaded.UploadedBy, currentUser.UserId, StringComparison.Ordinal))
-        {
-            throw new ForbiddenAccessException("Bạn không thể dùng ảnh do người khác tải lên.");
-        }
-
-        byte[] content;
-        try
-        {
-            await using var stream = await fileStorageService.GetFileStreamAsync(storageKey, ct);
-            using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer, ct);
-            content = buffer.ToArray();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            throw new InvalidFileException("Không tìm thấy file ảnh trên kho lưu trữ. Vui lòng tải ảnh lên lại.");
-        }
-
-        var detected = ImageFileSignature.Detect(content.AsSpan(0, Math.Min(content.Length, ImageFileSignature.HeaderLength)));
-        if (detected is null || content.Length > GeneratePresignedUrlCommandHandler.MaxFileSizeBytes)
-        {
-            await fileStorageService.DeleteAsync(storageKey, ct);
-            throw new InvalidFileException(detected is null
-                ? "File không hợp lệ: nội dung không phải ảnh JPEG, PNG, WebP hoặc AVIF."
-                : "Kích thước file vượt quá giới hạn 5MB.");
-        }
     }
 
     private static string? NullIfBlank(string? value)

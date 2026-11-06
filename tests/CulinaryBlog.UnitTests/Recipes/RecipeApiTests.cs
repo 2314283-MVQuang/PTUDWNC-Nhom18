@@ -83,6 +83,9 @@ public sealed class RecipeApiFixture : IAsyncLifetime
         builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
         builder.Services.AddScoped(typeof(IRepository<>), typeof(RepositoryBase<>));
         builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CulinaryBlogDbContext>());
+        // Tuần 10: CreateRecipe kiểm tra ảnh của từng bước qua RecipeImageUploadGuard.
+        builder.Services.AddSingleton<IFileStorageService>(new TestRecipeFileStorageService());
+        builder.Services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
         if (!string.IsNullOrWhiteSpace(redis))
         {
             builder.Services.AddStackExchangeRedisOutputCache(options =>

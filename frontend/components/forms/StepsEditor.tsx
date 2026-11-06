@@ -1,12 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useAddStep, useDeleteStep, useUpdateStep } from "@/hooks/useRecipeParts";
-import { formatMinutes } from "@/lib/utils";
+import { formatMinutes, resolveMediaUrl } from "@/lib/utils";
+import { StepImageField } from "./StepImageField";
 import type { RecipeStep } from "@/types/recipe";
 
 /**
@@ -14,11 +16,14 @@ import type { RecipeStep } from "@/types/recipe";
  *
  * KHÔNG có ô nhập số thứ tự: backend tự đánh số khi thêm và tự đánh số lại toàn bộ khi xoá, nên
  * để người dùng tự gõ chỉ tạo cơ hội đụng ràng buộc UNIQUE(RecipeId, StepNumber) trong database.
+ *
+ * Tuần 10: mỗi bước có thể kèm 1 ảnh minh hoạ (StepImageField). PUT gửi lại đủ trường nên luôn
+ * gửi kèm imageUrl hiện tại — bỏ trống nghĩa là gỡ ảnh (trước đây sửa chữ làm mất ảnh của bước).
  */
 export function StepsEditor({ recipeId, steps }: { recipeId: string; steps: RecipeStep[] }) {
   const addStep = useAddStep(recipeId);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: "", description: "", timerMinutes: "" });
+  const [draft, setDraft] = useState({ title: "", description: "", timerMinutes: "", imageUrl: null as string | null });
 
   const sorted = steps.slice().sort((a, b) => a.stepNumber - b.stepNumber);
 
@@ -33,8 +38,9 @@ export function StepsEditor({ recipeId, steps }: { recipeId: string; steps: Reci
         title: draft.title.trim(),
         description: draft.description.trim(),
         timerMinutes: draft.timerMinutes ? Number(draft.timerMinutes) : null,
+        imageUrl: draft.imageUrl,
       });
-      setDraft({ title: "", description: "", timerMinutes: "" });
+      setDraft({ title: "", description: "", timerMinutes: "", imageUrl: null });
     } catch (err) {
       setError(apiErrorMessage(err, "Không thêm được bước."));
     }
@@ -72,6 +78,12 @@ export function StepsEditor({ recipeId, steps }: { recipeId: string; steps: Reci
             value={draft.description}
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
           />
+          <StepImageField
+            value={draft.imageUrl}
+            onChange={(imageUrl) => setDraft((current) => ({ ...current, imageUrl }))}
+            alt={draft.title || "Ảnh minh hoạ bước mới"}
+            disabled={addStep.isPending}
+          />
         </div>
 
         {error && <p className="mt-2 text-sm text-spice-600">{error}</p>}
@@ -97,7 +109,21 @@ function StepRow({ recipeId, step }: { recipeId: string; step: RecipeStep }) {
     title: step.title,
     description: step.description,
     timerMinutes: step.timerMinutes?.toString() ?? "",
+    imageUrl: step.imageUrl,
   });
+  const imageSrc = resolveMediaUrl(step.imageUrl);
+
+  function startEditing() {
+    // Lấy lại dữ liệu mới nhất của bước mỗi lần mở form sửa.
+    setDraft({
+      title: step.title,
+      description: step.description,
+      timerMinutes: step.timerMinutes?.toString() ?? "",
+      imageUrl: step.imageUrl,
+    });
+    setError(null);
+    setIsEditing(true);
+  }
 
   async function handleSave() {
     setError(null);
@@ -108,6 +134,7 @@ function StepRow({ recipeId, step }: { recipeId: string; step: RecipeStep }) {
           title: draft.title.trim(),
           description: draft.description.trim(),
           timerMinutes: draft.timerMinutes ? Number(draft.timerMinutes) : null,
+          imageUrl: draft.imageUrl,
         },
       });
       setIsEditing(false);
@@ -155,6 +182,12 @@ function StepRow({ recipeId, step }: { recipeId: string; step: RecipeStep }) {
               value={draft.description}
               onChange={(e) => setDraft({ ...draft, description: e.target.value })}
             />
+            <StepImageField
+              value={draft.imageUrl}
+              onChange={(imageUrl) => setDraft((current) => ({ ...current, imageUrl }))}
+              alt={draft.title || `Ảnh minh hoạ bước ${step.stepNumber}`}
+              disabled={updateStep.isPending}
+            />
 
             {error && <p className="text-sm text-spice-600">{error}</p>}
 
@@ -183,7 +216,7 @@ function StepRow({ recipeId, step }: { recipeId: string; step: RecipeStep }) {
                   type="button"
                   aria-label={`Sửa bước ${step.stepNumber}`}
                   className="rounded-lg p-1.5 text-neutral-500 hover:bg-brand-50 hover:text-brand-700"
-                  onClick={() => setIsEditing(true)}
+                  onClick={startEditing}
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
@@ -199,6 +232,11 @@ function StepRow({ recipeId, step }: { recipeId: string; step: RecipeStep }) {
               </div>
             </div>
             <p className="mt-1 text-sm text-neutral-600">{step.description}</p>
+            {imageSrc && (
+              <div className="relative mt-2 aspect-video w-full max-w-xs overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100">
+                <Image src={imageSrc} alt={step.title} fill sizes="320px" className="object-cover" unoptimized />
+              </div>
+            )}
             {error && <p className="mt-1 text-sm text-spice-600">{error}</p>}
           </>
         )}

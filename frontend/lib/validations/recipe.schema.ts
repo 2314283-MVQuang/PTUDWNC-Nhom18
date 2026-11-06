@@ -26,6 +26,8 @@ export const recipeStepSchema = z.object({
   title: z.string().min(1, "Vui lòng nhập tiêu đề bước").max(200),
   description: z.string().min(1, "Vui lòng mô tả bước thực hiện").max(2000, "Tối đa 2000 ký tự"),
   timerMinutes: z.coerce.number().int().min(0).optional(),
+  /** Tuần 10: URL ảnh minh hoạ đã tải lên MinIO (StepImageField), không phải ô nhập tay. */
+  imageUrl: z.string().max(500).nullable().optional(),
 });
 export type RecipeStepValues = z.infer<typeof recipeStepSchema>;
 

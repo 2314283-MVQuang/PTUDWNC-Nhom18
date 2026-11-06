@@ -35,9 +35,18 @@ public sealed class PurgeDeletedRecipesJob(
             .Select(image => new { image.OriginalUrl, image.MediumUrl, image.ThumbnailUrl })
             .ToListAsync(cancellationToken);
 
+        // Tuần 10 (Quang): ảnh minh hoạ của từng bước cũng nằm trên MinIO — cascade xoá RecipeSteps
+        // thì file thành rác nếu không lấy URL trước.
+        var stepImageUrls = await dbContext.RecipeSteps
+            .IgnoreQueryFilters()
+            .Where(step => step.ImageUrl != null && expiredRecipes.Select(recipe => recipe.Id).Contains(step.RecipeId))
+            .Select(step => step.ImageUrl)
+            .ToListAsync(cancellationToken);
+
         var objectNames = imageUrls
             .SelectMany(image => FileStorageObjectNameResolver.FromImageUrls(
                 fileStorageService.BucketName, image.OriginalUrl, image.MediumUrl, image.ThumbnailUrl))
+            .Concat(FileStorageObjectNameResolver.FromImageUrls(fileStorageService.BucketName, stepImageUrls.ToArray()))
             .Distinct(StringComparer.Ordinal)
             .ToList();
 

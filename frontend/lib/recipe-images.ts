@@ -51,12 +51,16 @@ export function validateImageFile(file: { name: string; type: string; size: numb
   return null;
 }
 
-export async function uploadRecipeImage(
-  recipeId: string,
+/**
+ * Bước 1 + 2 của luồng upload: xin presigned URL rồi PUT file lên MinIO. Trả về `publicUrl` để gắn
+ * vào nơi cần dùng — ảnh công thức (uploadRecipeImage) hoặc ảnh minh hoạ của từng bước
+ * (FR-RCP-010, Tuần 10). Backend chỉ nhận URL do chính người dùng tải lên theo cách này.
+ */
+export async function uploadImageFile(
   file: File,
-  options: { token?: string; altText?: string; fetchImpl?: typeof fetch } = {},
-): Promise<RecipeImage> {
-  const { token, altText, fetchImpl = fetch } = options;
+  options: { token?: string; fetchImpl?: typeof fetch } = {},
+): Promise<string> {
+  const { token, fetchImpl = fetch } = options;
   const invalid = validateImageFile(file);
   if (invalid) throw new StorageUploadError(invalid);
 
@@ -87,10 +91,21 @@ export async function uploadRecipeImage(
     throw new StorageUploadError(`MinIO từ chối tải ảnh (HTTP ${storageResponse.status}${reason}).`);
   }
 
+  return presigned.publicUrl;
+}
+
+export async function uploadRecipeImage(
+  recipeId: string,
+  file: File,
+  options: { token?: string; altText?: string; fetchImpl?: typeof fetch } = {},
+): Promise<RecipeImage> {
+  const { token, altText, fetchImpl } = options;
+  const imageUrl = await uploadImageFile(file, { token, fetchImpl });
+
   // 3. Gắn ảnh vào công thức.
   return apiFetch<RecipeImage>(`/recipes/${recipeId}/images`, {
     method: "POST",
-    body: { imageUrl: presigned.publicUrl, altText: altText?.trim() || null },
+    body: { imageUrl, altText: altText?.trim() || null },
     token,
   });
 }

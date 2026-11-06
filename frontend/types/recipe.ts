@@ -137,7 +137,7 @@ export interface CreateRecipeInput {
    * Khác hẳn POST /recipes/{id}/steps (nơi backend tự đánh số): ở đây CreateRecipeStepInput bắt
    * buộc có `stepNumber` và validator yêu cầu > 0. Thiếu nó thì nhận 0 rồi trả 422.
    */
-  steps?: Array<Pick<RecipeStep, "stepNumber" | "title" | "description" | "timerMinutes">>;
+  steps?: Array<Pick<RecipeStep, "stepNumber" | "title" | "description" | "timerMinutes" | "imageUrl">>;
   /** Tương tự, `orderIndex` là bắt buộc (đếm từ 0) chứ không optional như khi thêm lẻ. */
   ingredients?: Array<Pick<RecipeIngredient, "name" | "quantity" | "unit" | "notes" | "orderIndex">>;
 }

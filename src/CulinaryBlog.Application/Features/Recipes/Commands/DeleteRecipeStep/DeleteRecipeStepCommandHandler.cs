@@ -13,7 +13,9 @@ public class DeleteRecipeStepCommandHandler(
     IRepository<RecipeStep> steps,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    ICacheInvalidator? cacheInvalidator = null)
+    ICacheInvalidator? cacheInvalidator = null,
+    RecipeImageUploadGuard? imageGuard = null,
+    IFileDeletionScheduler? fileDeletionScheduler = null)
     : IRequestHandler<DeleteRecipeStepCommand>
 {
     public async Task Handle(DeleteRecipeStepCommand request, CancellationToken ct)
@@ -47,6 +49,11 @@ public class DeleteRecipeStepCommandHandler(
             .Where(s => s.RecipeId == request.RecipeId)
             .MaxAsync(s => (int?)s.StepNumber, ct) ?? 0;
 
+        // Tuần 10 (Quang): bước bị xoá thì ảnh minh hoạ của nó trên MinIO thành rác.
+        IReadOnlyList<string> obsoleteObjects = imageGuard is null
+            ? []
+            : await imageGuard.ObjectNamesToDeleteAsync(step.ImageUrl, step.Id, ct);
+
         step.IsDeleted = true;
         step.StepNumber = Math.Max(maxStepNumber, RecipeStepNumbering.DeletedBase) + 1;
         steps.Update(step);
@@ -78,6 +85,11 @@ public class DeleteRecipeStepCommandHandler(
         else
         {
             await unitOfWork.SaveChangesAsync(ct);
+        }
+
+        if (obsoleteObjects.Count > 0)
+        {
+            fileDeletionScheduler?.Enqueue(obsoleteObjects);
         }
 
         if (cacheInvalidator is not null)

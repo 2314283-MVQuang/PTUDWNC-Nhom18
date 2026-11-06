@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -17,7 +18,8 @@ import {
   type RecipeIngredientValues,
   type RecipeStepValues,
 } from "@/lib/validations/recipe.schema";
-import { DIFFICULTY_LABEL } from "@/lib/utils";
+import { DIFFICULTY_LABEL, resolveMediaUrl } from "@/lib/utils";
+import { StepImageField } from "./StepImageField";
 import type { CreateRecipeInput } from "@/types/recipe";
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -63,6 +65,7 @@ export function RecipeWizardForm() {
         title: step.title,
         description: step.description,
         timerMinutes: step.timerMinutes ?? null,
+        imageUrl: step.imageUrl ?? null,
       })),
     };
     const created = await createRecipe.mutateAsync(input);
@@ -258,10 +261,13 @@ function StepsStep({
     reset,
     formState: { errors },
   } = useForm<RecipeStepValues>({ resolver: zodResolver(recipeStepSchema) });
+  // Ảnh minh hoạ của bước đang nhập (Tuần 10) — tải lên MinIO ngay khi chọn, gửi URL khi lưu công thức.
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   function addStep(values: RecipeStepValues) {
-    onChange([...steps, values]);
+    onChange([...steps, { ...values, imageUrl }]);
     reset({ title: "", description: "", timerMinutes: undefined });
+    setImageUrl(null);
   }
 
   return (
@@ -269,6 +275,7 @@ function StepsStep({
       <form onSubmit={handleSubmit(addStep)} className="flex flex-col gap-3 rounded-card border border-neutral-200 p-4">
         <Input placeholder="Tiêu đề bước" error={errors.title?.message} {...register("title")} />
         <Textarea placeholder="Mô tả chi tiết" error={errors.description?.message} {...register("description")} />
+        <StepImageField value={imageUrl} onChange={setImageUrl} alt="Ảnh minh hoạ bước mới" />
         <div className="flex items-center gap-3">
           <Input placeholder="Thời gian (phút, tuỳ chọn)" type="number" className="max-w-xs" {...register("timerMinutes")} />
           <Button type="submit" variant="outline">
@@ -286,6 +293,11 @@ function StepsStep({
                 {index + 1}. {s.title}
               </span>
               <p className="text-neutral-500">{s.description}</p>
+              {s.imageUrl && (
+                <div className="relative mt-2 aspect-video w-32 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100">
+                  <Image src={resolveMediaUrl(s.imageUrl) ?? s.imageUrl} alt={s.title} fill sizes="128px" className="object-cover" unoptimized />
+                </div>
+              )}
             </div>
             <button
               type="button"

@@ -66,6 +66,34 @@ test("upload ảnh: xin presigned URL → PUT lên MinIO → gắn ảnh vào c�
   assert.equal(image.id, "img1");
 });
 
+test("ảnh minh hoạ bước (Tuần 10): chỉ xin presigned URL + PUT lên MinIO, trả publicUrl, không gắn vào công thức", async t => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method, headers: init.headers });
+    if (String(url).endsWith("/files/presigned-url"))
+      return json(200, { data: { fileId: "f2", uploadUrl: "http://localhost:9000/recipe-images/uploads/b1.png?sig=1",
+        publicUrl: "http://localhost:9000/recipe-images/uploads/b1.png", storageKey: "uploads/b1.png",
+        fileName: "pho-bo.png", contentType: "image/png", size: 4, expiresAt: "2026-11-06T00:00:00Z" } });
+    return new Response(null, { status: 200 });
+  });
+
+  const url = await images.uploadImageFile(png, { token: "jwt" });
+
+  assert.equal(url, "http://localhost:9000/recipe-images/uploads/b1.png");
+  assert.equal(calls.length, 2, "không gọi POST /recipes/{id}/images");
+  assert.equal(calls[1].method, "PUT");
+  assert.equal(calls[1].headers.Authorization, undefined, "không gửi JWT sang MinIO");
+});
+
+test("ảnh minh hoạ bước: file sai loại bị chặn trước khi gọi mạng", async t => {
+  let called = false;
+  t.mock.method(globalThis, "fetch", async () => { called = true; return new Response(null, { status: 200 }); });
+  const gif = new File([new Uint8Array([71, 73, 70])], "anh.gif", { type: "image/gif" });
+
+  await assert.rejects(() => images.uploadImageFile(gif, { token: "jwt" }), (err) => err.name === "StorageUploadError" && /JPEG/.test(err.message));
+  assert.equal(called, false);
+});
+
 test("upload ảnh: MinIO từ chối thì dừng, không gắn ảnh hỏng vào công thức", async t => {
   let attached = false;
   t.mock.method(globalThis, "fetch", async (url) => {

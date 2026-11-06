@@ -302,11 +302,7 @@ public class RecipeItemTests
         var recipe = await SeedRecipeAsync(db);
         var currentUser = new TestCurrentUser { UserId = recipe.AuthorId };
 
-        var handler = new AddRecipeStepCommandHandler(
-            new RepositoryBase<Recipe>(db),
-            new RepositoryBase<RecipeStep>(db),
-            db,
-            currentUser);
+        var handler = CreateAddStepHandler(db, currentUser, new TestRecipeFileStorageService());
 
         var step1 = await handler.Handle(new AddRecipeStepCommand(recipe.Id, "Sơ chế xương", "Rửa sạch ngâm nước muối"), CancellationToken.None);
         var step2 = await handler.Handle(new AddRecipeStepCommand(recipe.Id, "Ninh xương", "Ninh nhỏ lửa 4 tiếng", TimerMinutes: 240), CancellationToken.None);
@@ -357,18 +353,17 @@ public class RecipeItemTests
         await db.RecipeSteps.AddAsync(step);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateRecipeStepCommandHandler(
-            new RepositoryBase<Recipe>(db),
-            new RepositoryBase<RecipeStep>(db),
-            db,
-            currentUser);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/11/step.jpg", Jpeg, recipe.AuthorId);
+        var handler = CreateUpdateStepHandler(db, currentUser, storage);
 
-        var result = await handler.Handle(new UpdateRecipeStepCommand(recipe.Id, step.Id, "Title Mới", "Desc Mới", TimerMinutes: 15, ImageUrl: "http://minio/step.jpg"), CancellationToken.None);
+        var stepImage = storage.GetPublicUrl("recipes/2026/11/step.jpg");
+        var result = await handler.Handle(new UpdateRecipeStepCommand(recipe.Id, step.Id, "Title Mới", "Desc Mới", TimerMinutes: 15, ImageUrl: stepImage), CancellationToken.None);
 
         Assert.Equal("Title Mới", result.Title);
         Assert.Equal("Desc Mới", result.Description);
         Assert.Equal(15, result.TimerMinutes);
-        Assert.Equal("http://minio/step.jpg", result.ImageUrl);
+        Assert.Equal(stepImage, result.ImageUrl);
     }
 
     // ==========================================================
@@ -408,10 +403,26 @@ public class RecipeItemTests
         await db.SaveChangesAsync();
     }
 
+    private static RecipeImageUploadGuard CreateImageGuard(
+        CulinaryBlogDbContext db, TestCurrentUser user, TestRecipeFileStorageService storage) =>
+        new(storage, new UploadedFileRepository(db), new RepositoryBase<RecipeImage>(db),
+            new RepositoryBase<RecipeStep>(db), user);
+
     private static AddRecipeImageCommandHandler CreateAddImageHandler(
         CulinaryBlogDbContext db, TestCurrentUser user, TestRecipeFileStorageService storage) =>
         new(new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeImage>(db), db, user,
-            storage, new UploadedFileRepository(db));
+            CreateImageGuard(db, user, storage));
+
+    private static AddRecipeStepCommandHandler CreateAddStepHandler(
+        CulinaryBlogDbContext db, TestCurrentUser user, TestRecipeFileStorageService storage) =>
+        new(new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeStep>(db), db, user,
+            CreateImageGuard(db, user, storage));
+
+    private static UpdateRecipeStepCommandHandler CreateUpdateStepHandler(
+        CulinaryBlogDbContext db, TestCurrentUser user, TestRecipeFileStorageService storage,
+        TestFileDeletionScheduler? scheduler = null) =>
+        new(new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeStep>(db), db, user,
+            CreateImageGuard(db, user, storage), fileDeletionScheduler: scheduler);
 
     [Fact]
     public async Task AddImage_ShouldRejectExternalUrl()
@@ -575,5 +586,172 @@ public class RecipeItemTests
         Assert.True(reloadedImg1!.IsDeleted);
         Assert.False(reloadedImg1.IsPrimary);
         Assert.True(reloadedImg2!.IsPrimary);
+    }
+
+    // ==========================================================
+    // 4. ẢNH MINH HOẠ TỪNG BƯỚC (FR-RCP-010, Tuần 10 — Quang)
+    // ==========================================================
+
+    [Fact]
+    public async Task AddStep_WithOwnUploadedImage_StoresImageUrl()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var user = new TestCurrentUser { UserId = recipe.AuthorId };
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/11/so-che.jpg", Jpeg, recipe.AuthorId);
+        var url = storage.GetPublicUrl("recipes/2026/11/so-che.jpg");
+
+        var step = await CreateAddStepHandler(db, user, storage).Handle(
+            new AddRecipeStepCommand(recipe.Id, "Sơ chế thịt", "Bóp bột mì rồi rửa sạch", ImageUrl: url), CancellationToken.None);
+
+        Assert.Equal(url, step.ImageUrl);
+        Assert.Equal(url, (await db.RecipeSteps.SingleAsync()).ImageUrl);
+    }
+
+    [Fact]
+    public async Task AddStep_WithExternalImageUrl_IsRejected()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var handler = CreateAddStepHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, new TestRecipeFileStorageService());
+
+        await Assert.ThrowsAsync<InvalidFileException>(() => handler.Handle(
+            new AddRecipeStepCommand(recipe.Id, "B1", "D1", ImageUrl: "https://example.com/anh-ngoai.jpg"), CancellationToken.None));
+        Assert.Empty(db.RecipeSteps);
+    }
+
+    [Fact]
+    public async Task AddStep_WithImageUploadedByAnotherUser_IsForbidden()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/11/cua-nguoi-khac.jpg", Jpeg, "user-author-2");
+        var handler = CreateAddStepHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => handler.Handle(
+            new AddRecipeStepCommand(recipe.Id, "B1", "D1", ImageUrl: storage.GetPublicUrl("recipes/2026/11/cua-nguoi-khac.jpg")),
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddStep_WithImageAlreadyUsedAsRecipeImage_Conflicts()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/11/bia.jpg", Jpeg, recipe.AuthorId);
+        var url = storage.GetPublicUrl("recipes/2026/11/bia.jpg");
+        db.RecipeImages.Add(new RecipeImage { Id = Guid.NewGuid(), RecipeId = recipe.Id, OriginalUrl = url, IsPrimary = true });
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ConflictException>(() => CreateAddStepHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage)
+            .Handle(new AddRecipeStepCommand(recipe.Id, "B1", "D1", ImageUrl: url), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddRecipeImage_WithImageAlreadyUsedByStep_Conflicts()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/11/buoc.jpg", Jpeg, recipe.AuthorId);
+        var url = storage.GetPublicUrl("recipes/2026/11/buoc.jpg");
+        db.RecipeSteps.Add(new RecipeStep { Id = Guid.NewGuid(), RecipeId = recipe.Id, StepNumber = 1, Title = "B1", Description = "D1", ImageUrl = url });
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ConflictException>(() => CreateAddImageHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage)
+            .Handle(new AddRecipeImageCommand(recipe.Id, url, null), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task UpdateStep_KeepingExistingImage_DoesNotRevalidateOrDelete()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        // Dữ liệu cũ (seed) dùng link ngoài — sửa chữ của bước không được bắt tải ảnh lại.
+        var step = new RecipeStep { Id = Guid.NewGuid(), RecipeId = recipe.Id, StepNumber = 1, Title = "B1", Description = "D1", ImageUrl = "https://example.com/cu.jpg" };
+        db.RecipeSteps.Add(step);
+        await db.SaveChangesAsync();
+        var scheduler = new TestFileDeletionScheduler();
+
+        var result = await CreateUpdateStepHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, new TestRecipeFileStorageService(), scheduler)
+            .Handle(new UpdateRecipeStepCommand(recipe.Id, step.Id, "B1 sửa", "D1", ImageUrl: "https://example.com/cu.jpg"), CancellationToken.None);
+
+        Assert.Equal("B1 sửa", result.Title);
+        Assert.Equal("https://example.com/cu.jpg", result.ImageUrl);
+        Assert.Empty(scheduler.Scheduled);
+    }
+
+    [Fact]
+    public async Task UpdateStep_ReplacingImage_SchedulesOldFileDeletion()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "recipes/2026/11/cu.jpg", Jpeg, recipe.AuthorId);
+        await SeedUploadAsync(db, storage, "recipes/2026/11/moi.jpg", Jpeg, recipe.AuthorId);
+        var step = new RecipeStep
+        {
+            Id = Guid.NewGuid(), RecipeId = recipe.Id, StepNumber = 1, Title = "B1", Description = "D1",
+            ImageUrl = storage.GetPublicUrl("recipes/2026/11/cu.jpg"),
+        };
+        db.RecipeSteps.Add(step);
+        await db.SaveChangesAsync();
+        var scheduler = new TestFileDeletionScheduler();
+
+        var result = await CreateUpdateStepHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage, scheduler)
+            .Handle(new UpdateRecipeStepCommand(recipe.Id, step.Id, "B1", "D1", ImageUrl: storage.GetPublicUrl("recipes/2026/11/moi.jpg")),
+                CancellationToken.None);
+
+        Assert.Equal(storage.GetPublicUrl("recipes/2026/11/moi.jpg"), result.ImageUrl);
+        Assert.Equal(new[] { "recipes/2026/11/cu.jpg" }, scheduler.Scheduled);
+    }
+
+    [Fact]
+    public async Task UpdateStep_RemovingImage_ClearsUrlAndSchedulesDeletion()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        var step = new RecipeStep
+        {
+            Id = Guid.NewGuid(), RecipeId = recipe.Id, StepNumber = 1, Title = "B1", Description = "D1",
+            ImageUrl = storage.GetPublicUrl("recipes/2026/11/go.jpg"),
+        };
+        db.RecipeSteps.Add(step);
+        await db.SaveChangesAsync();
+        var scheduler = new TestFileDeletionScheduler();
+
+        var result = await CreateUpdateStepHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage, scheduler)
+            .Handle(new UpdateRecipeStepCommand(recipe.Id, step.Id, "B1", "D1", ImageUrl: null), CancellationToken.None);
+
+        Assert.Null(result.ImageUrl);
+        Assert.Equal(new[] { "recipes/2026/11/go.jpg" }, scheduler.Scheduled);
+    }
+
+    [Fact]
+    public async Task DeleteStep_WithImage_SchedulesFileDeletion()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var user = new TestCurrentUser { UserId = recipe.AuthorId };
+        var storage = new TestRecipeFileStorageService();
+        var step = new RecipeStep
+        {
+            Id = Guid.NewGuid(), RecipeId = recipe.Id, StepNumber = 1, Title = "B1", Description = "D1",
+            ImageUrl = storage.GetPublicUrl("recipes/2026/11/xoa.jpg"),
+        };
+        db.RecipeSteps.Add(step);
+        await db.SaveChangesAsync();
+        var scheduler = new TestFileDeletionScheduler();
+
+        await new DeleteRecipeStepCommandHandler(
+                new RepositoryBase<Recipe>(db), new RepositoryBase<RecipeStep>(db), db, user,
+                imageGuard: CreateImageGuard(db, user, storage), fileDeletionScheduler: scheduler)
+            .Handle(new DeleteRecipeStepCommand(recipe.Id, step.Id), CancellationToken.None);
+
+        Assert.Equal(new[] { "recipes/2026/11/xoa.jpg" }, scheduler.Scheduled);
     }
 }

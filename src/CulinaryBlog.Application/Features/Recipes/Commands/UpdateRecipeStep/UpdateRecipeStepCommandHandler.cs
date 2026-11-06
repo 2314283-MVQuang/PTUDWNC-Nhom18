@@ -14,7 +14,9 @@ public class UpdateRecipeStepCommandHandler(
     IRepository<RecipeStep> steps,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    ICacheInvalidator? cacheInvalidator = null)
+    RecipeImageUploadGuard imageGuard,
+    ICacheInvalidator? cacheInvalidator = null,
+    IFileDeletionScheduler? fileDeletionScheduler = null)
     : IRequestHandler<UpdateRecipeStepCommand, RecipeStepItemDto>
 {
     public async Task<RecipeStepItemDto> Handle(UpdateRecipeStepCommand request, CancellationToken ct)
@@ -40,10 +42,24 @@ public class UpdateRecipeStepCommandHandler(
             throw new NotFoundException(nameof(RecipeStep), request.StepId);
         }
 
+        // Tuần 10 (Quang): PUT gửi lại đủ trường — imageUrl rỗng nghĩa là gỡ ảnh. Ảnh MỚI phải qua
+        // RecipeImageUploadGuard; ảnh giữ nguyên thì không kiểm lại (dữ liệu cũ vẫn sửa chữ được).
+        var newImageUrl = NullIfBlank(request.ImageUrl);
+        var imageChanged = !string.Equals(newImageUrl, step.ImageUrl, StringComparison.Ordinal);
+        if (imageChanged && newImageUrl is not null)
+        {
+            await imageGuard.EnsureCanAttachAsync(newImageUrl, step.Id, ct);
+        }
+
+        // Ảnh cũ bị thay/gỡ → file trên MinIO thành rác, lên lịch xoá SAU khi lưu thành công.
+        IReadOnlyList<string> obsoleteObjects = imageChanged
+            ? await imageGuard.ObjectNamesToDeleteAsync(step.ImageUrl, step.Id, ct)
+            : [];
+
         step.Title = request.Title.Trim();
         step.Description = request.Description.Trim();
         step.TimerMinutes = request.TimerMinutes;
-        step.ImageUrl = NullIfBlank(request.ImageUrl);
+        step.ImageUrl = newImageUrl;
 
         if (request.StepNumber.HasValue && request.StepNumber.Value != step.StepNumber)
         {
@@ -79,6 +95,11 @@ public class UpdateRecipeStepCommandHandler(
         {
             steps.Update(step);
             await unitOfWork.SaveChangesAsync(ct);
+        }
+
+        if (obsoleteObjects.Count > 0)
+        {
+            fileDeletionScheduler?.Enqueue(obsoleteObjects);
         }
 
         if (cacheInvalidator is not null)

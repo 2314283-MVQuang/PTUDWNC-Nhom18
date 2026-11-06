@@ -25,7 +25,8 @@ public sealed class CreateRecipeCommandHandler(
     IRepository<Category> categoryRepository,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork,
-    ICacheInvalidator cacheInvalidator)
+    ICacheInvalidator cacheInvalidator,
+    RecipeImageUploadGuard imageGuard)
     : IRequestHandler<CreateRecipeCommand, RecipeDetailDto>
 {
     public async Task<RecipeDetailDto> Handle(
@@ -51,6 +52,22 @@ public sealed class CreateRecipeCommandHandler(
             {
                 [nameof(request.CategoryId)] = ["Danh mục không tồn tại hoặc đã bị xóa."],
             });
+        }
+
+        // Tuần 10 (Quang): ảnh minh hoạ từng bước phải là ảnh chính người dùng tải lên hệ thống, và
+        // mỗi ảnh chỉ dùng cho MỘT bước (xoá bước này không được làm mất ảnh của bước kia).
+        var stepImageUrls = (request.Steps ?? Array.Empty<CreateRecipeStepInput>())
+            .Select(s => NullIfBlank(s.ImageUrl))
+            .OfType<string>()
+            .ToList();
+        if (stepImageUrls.Count != stepImageUrls.Distinct(StringComparer.Ordinal).Count())
+        {
+            throw new ConflictException("Mỗi ảnh chỉ dùng cho một bước thực hiện.");
+        }
+
+        foreach (var imageUrl in stepImageUrls)
+        {
+            await imageGuard.EnsureCanAttachAsync(imageUrl, exceptStepId: null, ct);
         }
 
         // Sinh slug:

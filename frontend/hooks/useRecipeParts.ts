@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import { uploadRecipeImage } from "@/lib/recipe-images";
+import { uploadImageFile, uploadRecipeImage } from "@/lib/recipe-images";
 import { useCurrentUser } from "./useAuth";
 import { recipeKeys } from "./useRecipes";
 import type {
@@ -173,5 +173,18 @@ export function useDeleteImage(recipeId: string) {
         token: accessToken,
       }),
     onSuccess: invalidate,
+  });
+}
+
+/**
+ * FR-RCP-010 (Tuần 10): tải ảnh minh hoạ cho MỘT bước thực hiện — chỉ upload lên MinIO và trả về
+ * URL; URL đó được gửi kèm khi thêm/sửa bước (POST/PUT /steps) hoặc khi tạo công thức.
+ * Không cần recipeId nên dùng được cả ở form tạo mới (công thức chưa tồn tại).
+ */
+export function useUploadImageFile() {
+  const { accessToken } = useCurrentUser();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadImageFile(file, { token: accessToken }),
   });
 }

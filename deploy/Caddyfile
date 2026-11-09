@@ -1,0 +1,36 @@
+# =============================================================================
+#  Caddy — reverse proxy + HTTPS tự động (Let's Encrypt) cho Culinary Blog trên máy chủ thật (Azure/Oracle/VPS).
+#  Một địa chỉ duy nhất (SITE_DOMAIN, vd 20-195-1-2.sslip.io) phục vụ cả 3 thành phần:
+#    /api/v1/*, /hangfire, /health*, /sitemap.xml  → API (.NET)
+#    /recipe-images/*                              → MinIO (ảnh; giữ nguyên Host để chữ ký presigned URL hợp lệ)
+#    còn lại (kể cả /api/auth/* của Auth.js)       → Next.js
+# =============================================================================
+{
+	email {$ACME_EMAIL}
+}
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	@api path /api/v1/* /hangfire /hangfire/* /health /health/* /sitemap.xml
+	handle @api {
+		reverse_proxy api:8080
+	}
+
+	handle /recipe-images/* {
+		# Ảnh tối đa 5 MB (FR-FILE-001) — để dư cho header multipart/PUT.
+		request_body {
+			max_size 10MB
+		}
+		reverse_proxy minio:9000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

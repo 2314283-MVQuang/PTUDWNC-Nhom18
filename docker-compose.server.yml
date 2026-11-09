@@ -1,0 +1,55 @@
+# =============================================================================
+#  docker-compose.server.yml — Tuần 10 (Quang): chạy trên máy chủ thật (Azure for Students, Oracle, VPS)
+#  Dùng KÈM docker-compose.prod.yml (file này chỉ ghi đè phần khác):
+#
+#    docker compose -f docker-compose.prod.yml -f docker-compose.server.yml --env-file .env.server up -d --build
+#
+#  (hoặc chạy deploy/deploy.sh — script tự tạo .env.server với mật khẩu ngẫu nhiên)
+#
+#  Khác bản prod:
+#    - Chỉ mở cổng 80/443 (Caddy, HTTPS tự động). API, frontend, MinIO KHÔNG mở cổng ra Internet.
+#    - Web, API và ảnh dùng chung 1 địa chỉ https://SITE_DOMAIN → không cần CORS, cookie an toàn.
+#    - API bật ReverseProxy__Enabled để rate limit thấy IP thật của người dùng.
+#    - Seq tắt mặc định (profile "seq") để vừa máy ảo 1 GiB RAM.
+# =============================================================================
+services:
+  api:
+    ports: !reset []
+    environment:
+      ReverseProxy__Enabled: "true"
+
+  frontend:
+    ports: !reset []
+
+  minio:
+    # Bỏ cổng 9000 công khai — ảnh đi qua Caddy. Console 9001 chỉ mở trên máy chủ (SSH tunnel).
+    ports: !override
+      - "127.0.0.1:9001:9001"
+
+  seq:
+    # Máy ảo miễn phí (Azure B2ats_v2) chỉ có 1 GiB RAM — tắt Seq (~300 MB) mặc định. Log vẫn có
+    # qua `docker compose logs api`. Máy nhiều RAM hơn thì bật: thêm `--profile seq` vào lệnh up.
+    profiles: ["seq"]
+
+  caddy:
+    image: caddy:2
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Đặt SITE_DOMAIN, vd 20-195-1-2.sslip.io}
+      ACME_EMAIL: ${ACME_EMAIL:?Đặt ACME_EMAIL (email nhận thông báo chứng chỉ Let's Encrypt)}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - frontend
+      - minio
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

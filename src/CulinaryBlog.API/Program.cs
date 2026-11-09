@@ -321,6 +321,12 @@ catch (Exception ex)
 // ---------------------------------------------------------------------------
 // Middleware pipeline
 // ---------------------------------------------------------------------------
+// Tuần 10 (Quang — triển khai máy chủ thật): chạy sau Caddy thì lấy IP thật từ X-Forwarded-For để rate limit
+// và log đúng người dùng. Đứng ĐẦU pipeline. Chỉ bật khi ReverseProxy:Enabled = true.
+if (app.Configuration.GetValue<bool>("ReverseProxy:Enabled"))
+{
+    app.UseMiddleware<ReverseProxyHeadersMiddleware>();
+}
 app.UseMiddleware<CorrelationIdMiddleware>(); // Đứng TRƯỚC GlobalException — request lỗi 500 vẫn cần có CorrelationId trong log.
 // Tuần 8 (Tiến) — FR-OBS-002: mỗi HTTP request 1 dòng log có method/path/status/elapsed + UserId
 // (khi đã xác thực) + CorrelationId (nằm trong LogContext do CorrelationIdMiddleware đẩy vào).

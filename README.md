@@ -618,3 +618,24 @@ Chạy toàn bộ hệ thống ở chế độ **Production** trên 1 máy chủ
 6. **HTTPS / domain**: đặt Nginx hoặc Caddy làm reverse proxy trước 3 cổng trên, đổi các biến `PUBLIC_*` sang `https://...` rồi chạy lại lệnh ở bước 2 (frontend phải build lại vì `NEXT_PUBLIC_API_BASE_URL` được nhúng lúc build).
 
 Cập nhật phiên bản mới: `git pull` rồi chạy lại lệnh ở bước 2 — dữ liệu nằm trong Docker volume nên không mất.
+
+### 9.1. Đưa lên máy chủ thật có HTTPS (Tuần 10 — Azure for Students)
+
+Không cần mua domain: dùng địa chỉ miễn phí `https://<IP-gạch-ngang>.sslip.io`, Caddy tự xin chứng chỉ Let's Encrypt. Web, API (`/api/v1`) và ảnh (`/recipe-images`) dùng chung **một** địa chỉ, chỉ mở cổng 80/443.
+
+1. Tạo máy ảo **Ubuntu 24.04 x64** (Azure for Students: vùng **East Asia**, cỡ miễn phí **Standard_B2ats_v2**; mở cổng 22, 80, 443).
+2. SSH vào máy rồi chạy:
+   ```bash
+   git clone -b 2314283_MaiVanQuang_nhom18 https://github.com/2314283-MVQuang/PTUDWNC-Nhom18.git
+   cd PTUDWNC-Nhom18
+   bash deploy/deploy.sh
+   ```
+   Script tự cài Docker, tạo 4 GB swap (máy < 6 GB RAM), sinh `.env.server` với mật khẩu ngẫu nhiên (không commit), build từng image (máy ít RAM) và chạy `docker-compose.prod.yml` + `docker-compose.server.yml`, rồi in địa chỉ web. Mật khẩu Admin: `grep ADMIN_PASSWORD .env.server`.
+3. Cập nhật bản mới: `git pull && bash deploy/deploy.sh` (dữ liệu nằm trong Docker volume, không mất).
+4. Đăng nhập Google: thêm `https://<địa chỉ>/api/auth/callback/google` vào Authorized redirect URIs trên Google Cloud Console, điền `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` vào `.env.server` rồi chạy lại script.
+
+| Thành phần | Vai trò |
+|---|---|
+| `deploy/Caddyfile` | Reverse proxy + HTTPS: `/api/v1`, `/hangfire`, `/health`, `/sitemap.xml` → API; `/recipe-images/*` → MinIO (giữ Host để chữ ký presigned URL hợp lệ); còn lại → Next.js |
+| `docker-compose.server.yml` | Ghi đè bản prod: bỏ cổng 3000/5000/9000 ra Internet, thêm `caddy`, tắt Seq (profile `seq`) cho máy 1 GiB RAM, bật `ReverseProxy__Enabled` |
+| `ReverseProxyHeadersMiddleware` | Lấy IP thật từ `X-Forwarded-For` (chỉ tin request từ mạng nội bộ Docker) để rate limit đăng nhập/bình luận tính theo từng người dùng |

@@ -501,3 +501,6 @@ logs/
 # Cấu hình production thật (Tuần 8) — chỉ commit file mẫu .env.prod.example
 .env.prod
 explain-analyze-ketqua.txt
+
+# Triển khai máy chủ thật (Tuần 10) — sinh bởi deploy/deploy.sh, chứa mật khẩu thật
+.env.server

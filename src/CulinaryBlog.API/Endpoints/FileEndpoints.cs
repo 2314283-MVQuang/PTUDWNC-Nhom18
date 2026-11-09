@@ -1,5 +1,6 @@
 using CulinaryBlog.Application.Features.Files.Commands.GeneratePresignedUrl;
 using CulinaryBlog.API.Extensions;
+using CulinaryBlog.Application.Features.Files.Queries.GetMyImages;
 using CulinaryBlog.Application.Features.Files.Queries.GetUploadedFileById;
 using MediatR;
 
@@ -34,6 +35,18 @@ public static class FileEndpoints
         .WithSummary("Sinh presigned upload URL cho MinIO và lưu metadata tệp")
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        // Tuần 10 (Quang): "Thư viện ảnh của tôi" — ảnh người dùng hiện tại đã tải lên, mới nhất trước.
+        group.MapGet("/mine", async (int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetMyImagesQuery(page ?? 1, pageSize ?? 24), ct);
+            return Results.Ok(new { data = result });
+        })
+        .WithName("GetMyImages")
+        .WithSummary("Thư viện ảnh của tôi: ảnh người dùng hiện tại đã tải lên")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         // GET /api/v1/files/{id}: Lấy metadata của tệp tin theo ID

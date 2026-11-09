@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Domain.Interfaces;
@@ -10,7 +11,9 @@ namespace CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 public class UpdateCategoryCommandHandler(
     IRepository<Category> categories,
     IUnitOfWork unitOfWork,
-    ICacheInvalidator? cacheInvalidator = null)
+    RecipeImageUploadGuard imageGuard,
+    ICacheInvalidator? cacheInvalidator = null,
+    IFileDeletionScheduler? fileDeletionScheduler = null)
     : IRequestHandler<UpdateCategoryCommand, Category>
 {
     public async Task<Category> Handle(UpdateCategoryCommand request, CancellationToken ct)
@@ -46,10 +49,29 @@ public class UpdateCategoryCommandHandler(
             // URL /categories/{slug} đã chia sẻ, sitemap và SEO. (Tuần 8 - Thịnh: bỏ sinh lại slug.)
         }
 
+        // Tuần 10 (Quang): PUT gửi lại đủ trường — imageUrl rỗng là gỡ ảnh. Ảnh MỚI phải qua
+        // RecipeImageUploadGuard; ảnh giữ nguyên thì không kiểm lại (dữ liệu cũ vẫn sửa được).
+        var newImageUrl = NullIfBlank(request.ImageUrl);
+        var imageChanged = !string.Equals(newImageUrl, category.ImageUrl, StringComparison.Ordinal);
+        if (imageChanged && newImageUrl is not null)
+        {
+            await imageGuard.EnsureCanAttachAsync(newImageUrl, exceptStepId: null, ct, exceptCategoryId: category.Id);
+        }
+
+        IReadOnlyList<string> obsoleteObjects = imageChanged
+            ? await imageGuard.ObjectNamesToDeleteAsync(category.ImageUrl, exceptStepId: null, ct, exceptCategoryId: category.Id)
+            : [];
+
         category.Description = NullIfBlank(request.Description);
-        category.ImageUrl = NullIfBlank(request.ImageUrl);
+        category.ImageUrl = newImageUrl;
 
         await unitOfWork.SaveChangesAsync(ct);
+
+        // Ảnh cũ bị thay/gỡ → lên lịch xoá file trên MinIO SAU khi lưu thành công.
+        if (obsoleteObjects.Count > 0)
+        {
+            fileDeletionScheduler?.Enqueue(obsoleteObjects);
+        }
 
         // Xóa cache categories ngay sau khi cập nhật
         if (cacheInvalidator is not null)

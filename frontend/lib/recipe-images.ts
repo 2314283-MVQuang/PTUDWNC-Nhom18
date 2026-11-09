@@ -94,6 +94,31 @@ export async function uploadImageFile(
   return presigned.publicUrl;
 }
 
+/**
+ * Tuần 10 — dùng lại một ảnh trong "Thư viện ảnh của tôi": tải ảnh cũ về trình duyệt rồi tải lên
+ * thành một BẢN SAO mới (uploadImageFile). Backend chỉ cho mỗi file gắn MỘT chỗ — nếu dùng chung
+ * URL, xoá ảnh ở chỗ này sẽ làm hỏng ảnh ở chỗ kia (xoá file trên MinIO).
+ */
+export async function copyImageFromUrl(
+  source: { url: string; fileName: string; contentType: string },
+  options: { token?: string; fetchImpl?: typeof fetch } = {},
+): Promise<string> {
+  const { token, fetchImpl = fetch } = options;
+  let response: Response;
+  try {
+    response = await fetchImpl(source.url);
+  } catch {
+    throw new StorageUploadError("Không tải được ảnh từ thư viện. Vui lòng thử lại.");
+  }
+  if (!response.ok) {
+    throw new StorageUploadError("Ảnh này không còn trên kho lưu trữ. Hãy chọn ảnh khác.");
+  }
+  const blob = await response.blob();
+  const type = source.contentType || blob.type;
+  const file = new File([blob], source.fileName || "anh.jpg", { type });
+  return uploadImageFile(file, { token, fetchImpl });
+}
+
 export async function uploadRecipeImage(
   recipeId: string,
   file: File,

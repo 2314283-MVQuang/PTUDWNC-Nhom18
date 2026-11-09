@@ -85,6 +85,38 @@ test("ảnh minh hoạ bước (Tuần 10): chỉ xin presigned URL + PUT lên M
   assert.equal(calls[1].headers.Authorization, undefined, "không gửi JWT sang MinIO");
 });
 
+test("thư viện ảnh (Tuần 10): dùng lại ảnh cũ = tải về rồi tải lên bản sao mới, không dùng chung URL", async t => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method ?? "GET", body: init.body });
+    if (String(url) === "http://localhost:9000/recipe-images/uploads/cu.png")
+      return new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { "Content-Type": "image/png" } });
+    if (String(url).endsWith("/files/presigned-url"))
+      return json(200, { data: { uploadUrl: "http://localhost:9000/recipe-images/uploads/ban-sao.png?sig=1",
+        publicUrl: "http://localhost:9000/recipe-images/uploads/ban-sao.png", contentType: "image/png" } });
+    return new Response(null, { status: 200 });
+  });
+
+  const url = await images.copyImageFromUrl(
+    { url: "http://localhost:9000/recipe-images/uploads/cu.png", fileName: "cu.png", contentType: "image/png" },
+    { token: "jwt" });
+
+  assert.equal(url, "http://localhost:9000/recipe-images/uploads/ban-sao.png");
+  assert.deepEqual(calls.map(c => c.method), ["GET", "POST", "PUT"]);
+  assert.deepEqual(JSON.parse(calls[1].body), { fileName: "cu.png", contentType: "image/png", size: 4 });
+  assert.equal(calls[2].body.name, "cu.png");
+});
+
+test("thư viện ảnh: ảnh cũ không còn trên MinIO thì báo lỗi, không tạo upload rác", async t => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url) => { calls.push(String(url)); return new Response("NoSuchKey", { status: 404 }); });
+
+  await assert.rejects(
+    () => images.copyImageFromUrl({ url: "http://localhost:9000/recipe-images/x.png", fileName: "x.png", contentType: "image/png" }),
+    (err) => err.name === "StorageUploadError");
+  assert.equal(calls.length, 1);
+});
+
 test("ảnh minh hoạ bước: file sai loại bị chặn trước khi gọi mạng", async t => {
   let called = false;
   t.mock.method(globalThis, "fetch", async () => { called = true; return new Response(null, { status: 200 }); });

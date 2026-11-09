@@ -14,7 +14,8 @@ export interface Category {
 export interface CategoryInput {
   name: string;
   description?: string;
-  imageUrl?: string;
+  /** null = gỡ ảnh. PUT gửi lại đủ trường nên luôn gửi ảnh hiện tại (Tuần 10). */
+  imageUrl?: string | null;
 }
 
 /**

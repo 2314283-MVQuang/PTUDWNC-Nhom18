@@ -389,9 +389,9 @@ public class RecipeItemTests
     }
 
     // Tuần 8 (Thịnh) — ảnh phải do chính người dùng tải lên bucket của hệ thống, nội dung đúng là ảnh.
-    private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46, 0x49, 0x46, 0, 1];
+    internal static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46, 0x49, 0x46, 0, 1];
 
-    private static async Task SeedUploadAsync(
+    internal static async Task SeedUploadAsync(
         CulinaryBlogDbContext db, TestRecipeFileStorageService storage, string key, byte[] content, string? uploadedBy)
     {
         storage.Objects[key] = content;
@@ -403,10 +403,10 @@ public class RecipeItemTests
         await db.SaveChangesAsync();
     }
 
-    private static RecipeImageUploadGuard CreateImageGuard(
+    internal static RecipeImageUploadGuard CreateImageGuard(
         CulinaryBlogDbContext db, TestCurrentUser user, TestRecipeFileStorageService storage) =>
         new(storage, new UploadedFileRepository(db), new RepositoryBase<RecipeImage>(db),
-            new RepositoryBase<RecipeStep>(db), user);
+            new RepositoryBase<RecipeStep>(db), new RepositoryBase<Category>(db), user);
 
     private static AddRecipeImageCommandHandler CreateAddImageHandler(
         CulinaryBlogDbContext db, TestCurrentUser user, TestRecipeFileStorageService storage) =>
@@ -753,5 +753,20 @@ public class RecipeItemTests
             .Handle(new DeleteRecipeStepCommand(recipe.Id, step.Id), CancellationToken.None);
 
         Assert.Equal(new[] { "recipes/2026/11/xoa.jpg" }, scheduler.Scheduled);
+    }
+
+    [Fact]
+    public async Task AddStep_WithImageAlreadyUsedByCategory_Conflicts()
+    {
+        using var db = CreateDbContext();
+        var recipe = await SeedRecipeAsync(db);
+        var storage = new TestRecipeFileStorageService();
+        await SeedUploadAsync(db, storage, "categories/mon-nuoc.jpg", Jpeg, recipe.AuthorId);
+        var url = storage.GetPublicUrl("categories/mon-nuoc.jpg");
+        db.Categories.Add(new Category { Id = Guid.NewGuid(), Name = "Món nước", Slug = "mon-nuoc-2", ImageUrl = url });
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ConflictException>(() => CreateAddStepHandler(db, new TestCurrentUser { UserId = recipe.AuthorId }, storage)
+            .Handle(new AddRecipeStepCommand(recipe.Id, "B1", "D1", ImageUrl: url), CancellationToken.None));
     }
 }

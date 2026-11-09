@@ -8,7 +8,7 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { apiErrorMessage } from "@/lib/api-client";
 import { useAddStep, useDeleteStep, useUpdateStep } from "@/hooks/useRecipeParts";
 import { formatMinutes, resolveMediaUrl } from "@/lib/utils";
-import { StepImageField } from "./StepImageField";
+import { ImagePickerField } from "./ImagePickerField";
 import type { RecipeStep } from "@/types/recipe";
 
 /**
@@ -17,7 +17,7 @@ import type { RecipeStep } from "@/types/recipe";
  * KHÔNG có ô nhập số thứ tự: backend tự đánh số khi thêm và tự đánh số lại toàn bộ khi xoá, nên
  * để người dùng tự gõ chỉ tạo cơ hội đụng ràng buộc UNIQUE(RecipeId, StepNumber) trong database.
  *
- * Tuần 10: mỗi bước có thể kèm 1 ảnh minh hoạ (StepImageField). PUT gửi lại đủ trường nên luôn
+ * Tuần 10: mỗi bước có thể kèm 1 ảnh minh hoạ (ImagePickerField). PUT gửi lại đủ trường nên luôn
  * gửi kèm imageUrl hiện tại — bỏ trống nghĩa là gỡ ảnh (trước đây sửa chữ làm mất ảnh của bước).
  */
 export function StepsEditor({ recipeId, steps }: { recipeId: string; steps: RecipeStep[] }) {
@@ -78,7 +78,7 @@ export function StepsEditor({ recipeId, steps }: { recipeId: string; steps: Reci
             value={draft.description}
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
           />
-          <StepImageField
+          <ImagePickerField
             value={draft.imageUrl}
             onChange={(imageUrl) => setDraft((current) => ({ ...current, imageUrl }))}
             alt={draft.title || "Ảnh minh hoạ bước mới"}
@@ -182,7 +182,7 @@ function StepRow({ recipeId, step }: { recipeId: string; step: RecipeStep }) {
               value={draft.description}
               onChange={(e) => setDraft({ ...draft, description: e.target.value })}
             />
-            <StepImageField
+            <ImagePickerField
               value={draft.imageUrl}
               onChange={(imageUrl) => setDraft((current) => ({ ...current, imageUrl }))}
               alt={draft.title || `Ảnh minh hoạ bước ${step.stepNumber}`}

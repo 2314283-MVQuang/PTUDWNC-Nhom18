@@ -6,6 +6,8 @@ using CulinaryBlog.Domain.Interfaces;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Persistence.Repositories;
 using CulinaryBlog.Infrastructure.Services;
+using CulinaryBlog.UnitTests.Recipes;
+using CulinaryBlog.Application.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -24,6 +26,10 @@ public class TestCacheInvalidator : ICacheInvalidator
 
 public class UpdateCategoryCommandHandlerTests
 {
+    private static RecipeImageUploadGuard AdminGuard(CulinaryBlogDbContext db, TestRecipeFileStorageService? storage = null) =>
+        RecipeItemTests.CreateImageGuard(db, new TestCurrentUser { UserId = "admin-1", Role = "Admin" },
+            storage ?? new TestRecipeFileStorageService());
+
     private CulinaryBlogDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<CulinaryBlogDbContext>()
@@ -52,12 +58,17 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddAsync(category);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, cacheInv);
+        // Tuần 10: ảnh danh mục mới phải được tải lên qua hệ thống (presigned URL).
+        var storage = new TestRecipeFileStorageService();
+        await RecipeItemTests.SeedUploadAsync(db, storage, "categories/khai-vi.jpg", RecipeItemTests.Jpeg, "admin-1");
+        var newImage = storage.GetPublicUrl("categories/khai-vi.jpg");
+
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, AdminGuard(db, storage), cacheInv);
         var command = new UpdateCategoryCommand(
             category.Id,
             "Món Khai Vị Đặc Biệt",
             "Mô tả mới",
-            "https://example.com/new.jpg");
+            newImage);
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -67,7 +78,7 @@ public class UpdateCategoryCommandHandlerTests
         Assert.Equal("Món Khai Vị Đặc Biệt", result.Name);
         Assert.Equal("mon-khai-vi", result.Slug); // SRS FR-CAT-004: slug không đổi khi đổi tên
         Assert.Equal("Mô tả mới", result.Description);
-        Assert.Equal("https://example.com/new.jpg", result.ImageUrl);
+        Assert.Equal(newImage, result.ImageUrl);
         Assert.Contains("categories", cacheInv.EvictedTags);
     }
 
@@ -94,7 +105,7 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddRangeAsync(existingCategory, targetCategory);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db, cacheInv);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, AdminGuard(db), cacheInv);
 
         // Act: Đổi tên targetCategory thành "Món Chay" — TÊN khác "Mon Chay" nhưng SLUG trùng "mon-chay"
         var command = new UpdateCategoryCommand(targetCategory.Id, "Món Chay");
@@ -121,7 +132,7 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddRangeAsync(cat1, cat2, catToUpdate);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, AdminGuard(db));
 
         // Act: Đổi tên catToUpdate thành "Món Tráng Miệng"
         var command = new UpdateCategoryCommand(catToUpdate.Id, "Món Tráng Miệng");
@@ -144,7 +155,7 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddAsync(category);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, AdminGuard(db));
 
         // Act
         var command = new UpdateCategoryCommand(category.Id, "Hải Sản", "Mô tả mới");
@@ -166,7 +177,7 @@ public class UpdateCategoryCommandHandlerTests
         await db.Categories.AddRangeAsync(existing, target);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateCategoryCommandHandler(catRepo, db);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, AdminGuard(db));
         var command = new UpdateCategoryCommand(target.Id, "Món Chay");
 
         // Act & Assert
@@ -179,11 +190,67 @@ public class UpdateCategoryCommandHandlerTests
         // Arrange
         using var db = CreateDbContext();
         var catRepo = new RepositoryBase<Category>(db);
-        var handler = new UpdateCategoryCommandHandler(catRepo, db);
+        var handler = new UpdateCategoryCommandHandler(catRepo, db, AdminGuard(db));
 
         var command = new UpdateCategoryCommand(Guid.NewGuid(), "Tên Bất Kỳ");
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() => handler.Handle(command, CancellationToken.None));
+    }
+
+    // ==========================================================
+    // Ảnh danh mục (Tuần 10 — Quang)
+    // ==========================================================
+
+    [Fact]
+    public async Task Handle_ShouldRejectExternalImageUrl()
+    {
+        using var db = CreateDbContext();
+        var category = new Category { Id = Guid.NewGuid(), Name = "Món Nướng", Slug = "mon-nuong" };
+        await db.Categories.AddAsync(category);
+        await db.SaveChangesAsync();
+
+        var handler = new UpdateCategoryCommandHandler(new RepositoryBase<Category>(db), db, AdminGuard(db));
+
+        await Assert.ThrowsAsync<InvalidFileException>(() => handler.Handle(
+            new UpdateCategoryCommand(category.Id, "Món Nướng", null, "https://example.com/anh-ngoai.jpg"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Handle_ShouldKeepExistingImage_WithoutRevalidating()
+    {
+        using var db = CreateDbContext();
+        var category = new Category { Id = Guid.NewGuid(), Name = "Món Nướng", Slug = "mon-nuong", ImageUrl = "https://example.com/cu.jpg" };
+        await db.Categories.AddAsync(category);
+        await db.SaveChangesAsync();
+        var scheduler = new TestFileDeletionScheduler();
+
+        var result = await new UpdateCategoryCommandHandler(new RepositoryBase<Category>(db), db, AdminGuard(db), fileDeletionScheduler: scheduler)
+            .Handle(new UpdateCategoryCommand(category.Id, "Món Nướng BBQ", null, "https://example.com/cu.jpg"), CancellationToken.None);
+
+        Assert.Equal("https://example.com/cu.jpg", result.ImageUrl);
+        Assert.Empty(scheduler.Scheduled);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldScheduleOldImageDeletion_WhenImageReplaced()
+    {
+        using var db = CreateDbContext();
+        var storage = new TestRecipeFileStorageService();
+        await RecipeItemTests.SeedUploadAsync(db, storage, "categories/cu.jpg", RecipeItemTests.Jpeg, "admin-1");
+        await RecipeItemTests.SeedUploadAsync(db, storage, "categories/moi.jpg", RecipeItemTests.Jpeg, "admin-1");
+        var category = new Category
+        {
+            Id = Guid.NewGuid(), Name = "Món Nướng", Slug = "mon-nuong", ImageUrl = storage.GetPublicUrl("categories/cu.jpg"),
+        };
+        await db.Categories.AddAsync(category);
+        await db.SaveChangesAsync();
+        var scheduler = new TestFileDeletionScheduler();
+
+        var result = await new UpdateCategoryCommandHandler(new RepositoryBase<Category>(db), db, AdminGuard(db, storage), fileDeletionScheduler: scheduler)
+            .Handle(new UpdateCategoryCommand(category.Id, "Món Nướng", null, storage.GetPublicUrl("categories/moi.jpg")), CancellationToken.None);
+
+        Assert.Equal(storage.GetPublicUrl("categories/moi.jpg"), result.ImageUrl);
+        Assert.Equal(new[] { "categories/cu.jpg" }, scheduler.Scheduled);
     }
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
-import { uploadImageFile, uploadRecipeImage } from "@/lib/recipe-images";
+import { copyImageFromUrl, uploadImageFile, uploadRecipeImage } from "@/lib/recipe-images";
+import type { MyImage, MyImagePage } from "@/types/media";
 import { useCurrentUser } from "./useAuth";
 import { recipeKeys } from "./useRecipes";
 import type {
@@ -177,14 +178,36 @@ export function useDeleteImage(recipeId: string) {
 }
 
 /**
- * FR-RCP-010 (Tuần 10): tải ảnh minh hoạ cho MỘT bước thực hiện — chỉ upload lên MinIO và trả về
- * URL; URL đó được gửi kèm khi thêm/sửa bước (POST/PUT /steps) hoặc khi tạo công thức.
- * Không cần recipeId nên dùng được cả ở form tạo mới (công thức chưa tồn tại).
+ * Tuần 10: tải một ảnh lên MinIO và trả về URL — dùng cho ảnh minh hoạ từng bước (FR-RCP-010) và
+ * ảnh danh mục (FR-CAT-003/004). Nhận file từ máy/camera/kéo thả, hoặc một ảnh trong "Thư viện ảnh
+ * của tôi" (khi đó tải lên bản sao mới). URL trả về được gửi kèm khi lưu bước / danh mục.
  */
 export function useUploadImageFile() {
   const { accessToken } = useCurrentUser();
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (file: File) => uploadImageFile(file, { token: accessToken }),
+    mutationFn: (source: File | MyImage) =>
+      source instanceof File
+        ? uploadImageFile(source, { token: accessToken })
+        : copyImageFromUrl(source, { token: accessToken }),
+    // Ảnh mới tải lên xuất hiện ngay trong thư viện.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myImageKeys.all }),
+  });
+}
+
+export const myImageKeys = { all: ["files", "mine"] as const };
+
+/** GET /files/mine — "Thư viện ảnh của tôi", mới nhất trước, 24 ảnh mỗi lần "Xem thêm". */
+export function useMyImages(enabled: boolean) {
+  const { accessToken } = useCurrentUser();
+
+  return useInfiniteQuery({
+    queryKey: myImageKeys.all,
+    enabled: enabled && !!accessToken,
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      apiFetch<MyImagePage>("/files/mine", { params: { page: pageParam, pageSize: 24 }, token: accessToken }),
+    getNextPageParam: (last) => (last.hasNextPage ? last.page + 1 : undefined),
   });
 }

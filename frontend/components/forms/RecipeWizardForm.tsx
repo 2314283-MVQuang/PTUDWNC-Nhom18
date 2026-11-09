@@ -19,7 +19,7 @@ import {
   type RecipeStepValues,
 } from "@/lib/validations/recipe.schema";
 import { DIFFICULTY_LABEL, resolveMediaUrl } from "@/lib/utils";
-import { StepImageField } from "./StepImageField";
+import { ImagePickerField } from "./ImagePickerField";
 import type { CreateRecipeInput } from "@/types/recipe";
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -275,7 +275,7 @@ function StepsStep({
       <form onSubmit={handleSubmit(addStep)} className="flex flex-col gap-3 rounded-card border border-neutral-200 p-4">
         <Input placeholder="Tiêu đề bước" error={errors.title?.message} {...register("title")} />
         <Textarea placeholder="Mô tả chi tiết" error={errors.description?.message} {...register("description")} />
-        <StepImageField value={imageUrl} onChange={setImageUrl} alt="Ảnh minh hoạ bước mới" />
+        <ImagePickerField value={imageUrl} onChange={setImageUrl} alt="Ảnh minh hoạ bước mới" />
         <div className="flex items-center gap-3">
           <Input placeholder="Thời gian (phút, tuỳ chọn)" type="number" className="max-w-xs" {...register("timerMinutes")} />
           <Button type="submit" variant="outline">

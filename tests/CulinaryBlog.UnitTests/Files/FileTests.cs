@@ -3,6 +3,7 @@ using CulinaryBlog.Application.Common.Helpers;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Features.Files.Commands.DeleteFile;
 using CulinaryBlog.Application.Features.Files.Commands.GeneratePresignedUrl;
+using CulinaryBlog.Application.Features.Files.Queries.GetMyImages;
 using CulinaryBlog.Application.Features.Files.Queries.GetUploadedFileById;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure.Persistence;
@@ -291,5 +292,67 @@ public class FileTests
 
         // Act & Assert
         await Assert.ThrowsAsync<NotFoundException>(() => handler.Handle(new GetUploadedFileByIdQuery(nonExistentId), CancellationToken.None));
+    }
+
+    // ==========================================================
+    // Tuần 10 (Quang): "Thư viện ảnh của tôi"
+    // ==========================================================
+
+    private static UploadedFile NewUpload(string key, string? uploadedBy, string contentType = "image/jpeg") => new()
+    {
+        Id = Guid.NewGuid(), FileName = key, ContentType = contentType, Size = 100, StorageKey = key,
+        Url = $"http://minio:9000/test-bucket/{key}", BucketName = "test-bucket", UploadedBy = uploadedBy,
+    };
+
+    [Fact]
+    public async Task DeleteFile_ShouldMarkUploadedFileRecordDeleted()
+    {
+        using var db = CreateDbContext();
+        db.UploadedFiles.Add(NewUpload("recipes/pho.jpg", "test-user-id"));
+        await db.SaveChangesAsync();
+
+        await new DeleteFileCommandHandler(new TestFileStorageService(), new UploadedFileRepository(db))
+            .Handle(new DeleteFileCommand("recipes/pho.jpg"), CancellationToken.None);
+
+        Assert.True((await db.UploadedFiles.IgnoreQueryFilters().SingleAsync()).IsDeleted);
+    }
+
+    [Fact]
+    public async Task GetMyImages_ReturnsOnlyOwnLiveImages_NewestFirst_Paged()
+    {
+        using var db = CreateDbContext();
+        var deleted = NewUpload("recipes/da-xoa.jpg", "test-user-id");
+        deleted.IsDeleted = true;
+        var uploads = new (UploadedFile File, int MinutesAgo)[]
+        {
+            (NewUpload("recipes/cu.jpg", "test-user-id"), 30),
+            (NewUpload("recipes/moi.png", "test-user-id", "image/png"), 5),
+            (NewUpload("recipes/giua.webp", "test-user-id", "image/webp"), 10),
+            (NewUpload("recipes/nguoi-khac.jpg", "other-user"), 2),
+            (NewUpload("docs/khong-phai-anh.pdf", "test-user-id", "application/pdf"), 3),
+            (deleted, 1),
+        };
+        db.UploadedFiles.AddRange(uploads.Select(u => u.File));
+        await db.SaveChangesAsync();
+        // AuditInterceptor ghi đè CreatedAt khi thêm mới → đặt lại thời điểm tải lên rồi lưu lần nữa.
+        foreach (var (file, minutesAgo) in uploads) file.CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-minutesAgo);
+        await db.SaveChangesAsync();
+        var handler = new GetMyImagesQueryHandler(new RepositoryBase<UploadedFile>(db), new TestCurrentUser());
+
+        var page1 = await handler.Handle(new GetMyImagesQuery(Page: 1, PageSize: 2), CancellationToken.None);
+        var page2 = await handler.Handle(new GetMyImagesQuery(Page: 2, PageSize: 2), CancellationToken.None);
+
+        Assert.Equal(3, page1.TotalCount);
+        Assert.Equal(new[] { "recipes/moi.png", "recipes/giua.webp" }, page1.Items.Select(i => i.FileName));
+        Assert.Equal(new[] { "recipes/cu.jpg" }, page2.Items.Select(i => i.FileName));
+    }
+
+    [Theory]
+    [InlineData(0, 24)]
+    [InlineData(1, 0)]
+    [InlineData(1, 49)]
+    public void GetMyImagesValidator_RejectsInvalidPaging(int page, int pageSize)
+    {
+        Assert.False(new GetMyImagesQueryValidator().Validate(new GetMyImagesQuery(page, pageSize)).IsValid);
     }
 }

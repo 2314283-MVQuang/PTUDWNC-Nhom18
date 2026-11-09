@@ -35,5 +35,7 @@ export type RecipeStepValues = z.infer<typeof recipeStepSchema>;
 export const categorySchema = z.object({
   name: z.string().min(1, "Vui lòng nhập tên danh mục").max(100),
   description: z.string().max(1000).optional(),
+  /** Tuần 10: URL ảnh danh mục đã tải lên MinIO (ImagePickerField); null = không có / gỡ ảnh. */
+  imageUrl: z.string().max(500).nullable().optional(),
 });
 export type CategoryFormValues = z.infer<typeof categorySchema>;

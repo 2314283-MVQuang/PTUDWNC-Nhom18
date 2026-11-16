@@ -1,9 +1,10 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { SessionProvider } from "next-auth/react";
 import { useState } from "react";
+import { revalidatePublicPages } from "@/app/actions/revalidate-public";
 
 /**
  * Gom toàn bộ Context Provider của app vào 1 chỗ — app/layout.tsx (Server Component)
@@ -15,6 +16,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        // Mọi thao tác ghi thành công (sửa/xuất bản công thức, danh mục, bình luận...) đều làm mới
+        // cache ISR của trang công khai, để người dùng thấy ngay thay đổi thay vì chờ 5–60 phút.
+        mutationCache: new MutationCache({
+          onSuccess: () => {
+            void revalidatePublicPages().catch(() => undefined);
+          },
+        }),
         defaultOptions: {
           queries: {
             staleTime: 30_000,

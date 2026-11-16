@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Features.Recipes.Common;
 using FluentValidation;
 
 namespace CulinaryBlog.Application.Features.Recipes.Commands.CreateRecipe;
@@ -48,6 +49,10 @@ public sealed class CreateRecipeCommandValidator
         RuleFor(x => x.Instructions)
             .MaximumLength(10000)
             .WithMessage("Instructions tối đa 10000 ký tự.");
+
+        RuleFor(x => x.Nutrition!)
+            .SetValidator(new RecipeNutritionInputValidator())
+            .When(x => x.Nutrition is not null);
 
         RuleForEach(x => x.Steps)
             .SetValidator(new CreateRecipeStepInputValidator());
@@ -157,5 +162,20 @@ public sealed class CreateRecipeIngredientInputValidator
         RuleFor(x => x.OrderIndex)
             .GreaterThanOrEqualTo(0)
             .WithMessage("OrderIndex phải >= 0.");
+    }
+}
+
+/// <summary>Dinh dưỡng tuỳ chọn khi tạo công thức (FR-RCP-003, mục 7.2.1).</summary>
+public sealed class RecipeNutritionInputValidator
+    : AbstractValidator<RecipeNutritionInput>
+{
+    public RecipeNutritionInputValidator()
+    {
+        RuleFor(x => x.Calories).ValidNutrient();
+        RuleFor(x => x.Protein).ValidNutrient();
+        RuleFor(x => x.Carbohydrates).ValidNutrient();
+        RuleFor(x => x.Fat).ValidNutrient();
+        RuleFor(x => x.Fiber).ValidNutrient();
+        RuleFor(x => x.Sodium).ValidNutrient();
     }
 }

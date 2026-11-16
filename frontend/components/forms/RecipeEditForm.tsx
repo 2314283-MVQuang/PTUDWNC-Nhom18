@@ -8,6 +8,8 @@ import { Input, Select, Textarea } from "@/components/ui/Input";
 import { ImagesEditor } from "@/components/forms/ImagesEditor";
 import { IngredientsEditor } from "@/components/forms/IngredientsEditor";
 import { StepsEditor } from "@/components/forms/StepsEditor";
+import { NutritionFields } from "@/components/forms/NutritionFields";
+import { nutritionFormDefaults, toNutritionInput } from "@/lib/nutrition";
 import { StatusBadge } from "@/components/recipe/StatusBadge";
 import { useCategories } from "@/hooks/useCategories";
 import {
@@ -63,6 +65,7 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
       cookTimeMinutes: recipe.cookTime,
       servings: recipe.servings,
       difficulty: recipe.difficulty,
+      nutrition: nutritionFormDefaults(recipe.nutrition),
     },
   });
 
@@ -78,6 +81,8 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
         cookTime: values.cookTimeMinutes,
         servings: values.servings,
         difficulty: values.difficulty,
+        // Luôn gửi đủ 6 trường để xoá trắng một ô cũng xoá giá trị cũ trên server.
+        nutrition: toNutritionInput(values.nutrition, true),
       };
 
       const updatedRecipe = await updateRecipe.mutateAsync({
@@ -206,6 +211,7 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
           error={errors.difficulty?.message}
           {...register("difficulty")}
         />
+        <NutritionFields register={register} errors={errors.nutrition} />
 
         <div className="flex justify-end">
           <Button type="submit" disabled={isActionPending} isLoading={isSubmitting || updateRecipe.isPending}>

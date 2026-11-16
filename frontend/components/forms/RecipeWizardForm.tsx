@@ -20,6 +20,8 @@ import {
 } from "@/lib/validations/recipe.schema";
 import { DIFFICULTY_LABEL, resolveMediaUrl } from "@/lib/utils";
 import { ImagePickerField } from "./ImagePickerField";
+import { NutritionFields } from "./NutritionFields";
+import { NUTRITION_FIELDS, hasNutrition, toNutritionInput } from "@/lib/nutrition";
 import type { CreateRecipeInput } from "@/types/recipe";
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -49,6 +51,7 @@ export function RecipeWizardForm() {
       cookTime: basicInfo.cookTimeMinutes,
       servings: basicInfo.servings,
       difficulty: basicInfo.difficulty,
+      nutrition: toNutritionInput(basicInfo.nutrition),
       // Zod trả về `undefined` cho field bỏ trống, còn DTO của backend (mục 7.3/7.4) dùng `null`.
       // Đổi undefined -> null ở đây để JSON gửi đi đúng chuẩn API, không phải bỏ hẳn key.
       ingredients: ingredients.map((item, index) => ({
@@ -170,6 +173,7 @@ function BasicInfoStep({
         error={errors.difficulty?.message}
         {...register("difficulty")}
       />
+      <NutritionFields register={register} errors={errors.nutrition} />
       <div className="flex justify-end">
         <Button type="submit">Tiếp theo</Button>
       </div>
@@ -348,6 +352,14 @@ function ReviewStep({
         <p className="mt-2 text-sm text-neutral-500">
           {ingredients.length} nguyên liệu · {steps.length} bước thực hiện
         </p>
+        {hasNutrition(basicInfo.nutrition) && (
+          <p className="mt-1 text-sm text-neutral-500">
+            Dinh dưỡng / khẩu phần:{" "}
+            {NUTRITION_FIELDS.filter(({ key }) => basicInfo.nutrition?.[key] !== undefined)
+              .map(({ key, label, unit }) => `${label} ${basicInfo.nutrition?.[key]} ${unit}`)
+              .join(" · ")}
+          </p>
+        )}
       </div>
 
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

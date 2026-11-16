@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Features.Recipes.Common;
 using FluentValidation;
 
 namespace CulinaryBlog.Application.Features.Recipes.Commands.UpdateRecipe;
@@ -55,8 +56,27 @@ public sealed class UpdateRecipeCommandValidator
             .When(x => x.Instructions is not null)
             .WithMessage("Instructions tối đa 10000 ký tự.");
 
+        RuleFor(x => x.Nutrition!)
+            .SetValidator(new UpdateRecipeNutritionInputValidator())
+            .When(x => x.Nutrition is not null);
+
         RuleFor(x => x.IfMatch)
             .NotEmpty()
             .WithMessage("If-Match là bắt buộc.");
+    }
+}
+
+/// <summary>Dinh dưỡng tuỳ chọn khi cập nhật công thức (FR-RCP-004, mục 7.2.1).</summary>
+public sealed class UpdateRecipeNutritionInputValidator
+    : AbstractValidator<UpdateRecipeNutritionInput>
+{
+    public UpdateRecipeNutritionInputValidator()
+    {
+        RuleFor(x => x.Calories).ValidNutrient();
+        RuleFor(x => x.Protein).ValidNutrient();
+        RuleFor(x => x.Carbohydrates).ValidNutrient();
+        RuleFor(x => x.Fat).ValidNutrient();
+        RuleFor(x => x.Fiber).ValidNutrient();
+        RuleFor(x => x.Sodium).ValidNutrient();
     }
 }

@@ -147,3 +147,35 @@ test("upload ảnh: file sai loại bị chặn trước khi gọi API", async t
   await assert.rejects(images.uploadRecipeImage("r1", bad), images.StorageUploadError);
   assert.equal(fetchMock.mock.callCount(), 0);
 });
+
+// Dinh dưỡng cho 1 khẩu phần (RecipeNutrition, mục 7.2.1) — trường tuỳ chọn của FR-RCP-003/004.
+const { module: nutrition } = await loadTs("../lib/nutrition.ts");
+
+test("form dinh dưỡng: ô trống thành undefined, số hợp lệ được giữ, số âm/quá lớn bị chặn", () => {
+  const ok = nutrition.recipeNutritionSchema.safeParse({ calories: "350", protein: "", fat: "0", sodium: "99999" });
+  assert.equal(ok.success, true);
+  assert.deepEqual({ ...ok.data }, { calories: 350, protein: undefined, fat: 0, sodium: 99999 });
+
+  assert.equal(nutrition.recipeNutritionSchema.safeParse({ calories: "-1" }).success, false);
+  assert.equal(nutrition.recipeNutritionSchema.safeParse({ sodium: "100000" }).success, false);
+  assert.equal(nutrition.recipeNutritionSchema.safeParse({ fat: "abc" }).success, false);
+});
+
+test("toNutritionInput: tạo mới bỏ qua khi trống; cập nhật luôn gửi đủ 6 trường để xoá được giá trị cũ", () => {
+  assert.equal(nutrition.toNutritionInput({}), undefined);
+  assert.deepEqual(nutrition.toNutritionInput({ calories: 350, fat: 0 }), {
+    calories: 350, protein: null, carbohydrates: null, fat: 0, fiber: null, sodium: null,
+  });
+  assert.deepEqual(nutrition.toNutritionInput({}, true), {
+    calories: null, protein: null, carbohydrates: null, fat: null, fiber: null, sodium: null,
+  });
+});
+
+test("nutritionFormDefaults: null từ API thành ô trống, số giữ nguyên", () => {
+  assert.deepEqual(
+    nutrition.nutritionFormDefaults({ calories: 420, protein: null, carbohydrates: 12.5, fat: null, fiber: null, sodium: 0 }),
+    { calories: 420, carbohydrates: 12.5, sodium: 0 },
+  );
+  assert.equal(nutrition.hasNutrition({ calories: null }), false);
+  assert.equal(nutrition.hasNutrition({ sodium: 0 }), true);
+});

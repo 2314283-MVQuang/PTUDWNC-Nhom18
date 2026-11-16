@@ -275,7 +275,7 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
               </span>
               Dinh dưỡng / khẩu phần
             </h2>
-            <NutritionTable nutrition={recipe.nutrition} />
+            <NutritionTable nutrition={recipe.nutrition} servings={recipe.servings} />
           </section>
 
           <Link

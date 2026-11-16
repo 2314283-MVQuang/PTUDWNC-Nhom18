@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { recipeNutritionSchema } from "@/lib/nutrition";
 
 /** Khớp ràng buộc bảng "Recipes" (mục 7.2): PrepTime>0, CookTime>=0, Servings>0. */
 export const recipeBasicInfoSchema = z.object({
@@ -9,6 +10,8 @@ export const recipeBasicInfoSchema = z.object({
   cookTimeMinutes: z.coerce.number().int().min(0, "Thời gian nấu không được âm"),
   servings: z.coerce.number().int().positive("Số khẩu phần phải lớn hơn 0"),
   difficulty: z.enum(["Easy", "Medium", "Hard", "Expert"]),
+  /** Dinh dưỡng cho 1 khẩu phần (mục 7.2.1) — tuỳ chọn trong FR-RCP-003/004. */
+  nutrition: recipeNutritionSchema.optional(),
 });
 export type RecipeBasicInfoValues = z.infer<typeof recipeBasicInfoSchema>;
 

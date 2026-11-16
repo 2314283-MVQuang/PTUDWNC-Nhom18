@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
@@ -54,6 +55,7 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RecipeBasicInfoValues>({
     resolver: zodResolver(recipeBasicInfoSchema),
@@ -68,6 +70,13 @@ export function RecipeEditForm({ recipe }: { recipe: RecipeDetail }) {
       nutrition: nutritionFormDefaults(recipe.nutrition),
     },
   });
+
+  // Ô "Danh mục" là <select> không điều khiển: lúc form khởi tạo danh sách danh mục chưa tải xong
+  // nên trình duyệt chọn tạm option đầu tiên. Khi danh mục về thì đặt lại đúng danh mục của công
+  // thức, nếu không bấm "Lưu thay đổi" sẽ vô tình chuyển công thức sang danh mục khác.
+  useEffect(() => {
+    if (categories?.length) setValue("categoryId", recipe.categoryId);
+  }, [categories, recipe.categoryId, setValue]);
 
   async function onSubmit(values: RecipeBasicInfoValues) {
     try {

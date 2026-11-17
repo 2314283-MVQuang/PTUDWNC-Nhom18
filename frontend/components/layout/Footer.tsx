@@ -18,6 +18,13 @@ const LINK_GROUPS = [
       { href: "/dashboard/recipes/new", label: "Đăng công thức" },
     ],
   },
+  {
+    title: "Thông tin",
+    links: [
+      { href: "/privacy", label: "Chính sách quyền riêng tư" },
+      { href: "/terms", label: "Điều khoản sử dụng" },
+    ],
+  },
 ];
 
 /** Footer hiển thị ở mọi trang — nền tối ấm, chia cột, có dải emoji món ăn chạy ngang. */
@@ -40,7 +47,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="container-page grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="container-page grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-2">
           <Link href="/" className="group inline-flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gradient shadow-soft transition-transform duration-500 ease-springy group-hover:rotate-6 group-hover:scale-110">

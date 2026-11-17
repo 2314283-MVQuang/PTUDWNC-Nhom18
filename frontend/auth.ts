@@ -95,7 +95,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // FR-AUTH-003: Đăng nhập Google OAuth 2.0. Chỉ bật khi có đủ env — tránh crash lúc dev
     // nếu intern chưa xin được Google Client ID/Secret.
     ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
-      ? [Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET })]
+      ? [
+          Google({
+            clientId: process.env.AUTH_GOOGLE_ID,
+            clientSecret: process.env.AUTH_GOOGLE_SECRET,
+            // Luôn hiện màn hình chọn tài khoản Google. Không có dòng này, trình duyệt đang đăng nhập
+            // sẵn 1 tài khoản Google thì Google tự chọn luôn tài khoản đó (vd máy dùng chung).
+            authorization: { params: { prompt: "select_account" } },
+          }),
+        ]
       : []),
   ],
 });

@@ -48,6 +48,9 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 // ---------------------------------------------------------------------------
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+// Tuần 11 (Quang): dữ liệu thật (10 danh mục, 50 công thức có ảnh) — chạy nền 1 lần sau khi khởi động,
+// chỉ khi Seed:RealData = true. Đồng thời ẩn dữ liệu ngẫu nhiên cũ. Xem RealDataSeeder.cs.
+builder.Services.AddHostedService<RealDataSeeder>();
 
 // ---------------------------------------------------------------------------
 // Tuần 4: Output Cache backed bởi Redis (mâu thuẫn #3 — chỉ 1 tầng cache duy nhất, bỏ hẳn
@@ -351,21 +354,14 @@ app.UseMiddleware<GlobalExceptionMiddleware>(); // Phải đứng ĐẦU pipelin
 app.MapCulinaryApiDocumentation();
 if (app.Environment.IsDevelopment())
 {
-    // Sinh dữ liệu mẫu ngẫu nhiên bằng Bogus (chỉ ở Development, KHÔNG bao giờ chạy ở production).
-    // DbSeeder tự kiểm tra số lượng hiện có và chỉ chèn thêm cho tới khi đạt tối thiểu 20
-    // categories / 100 recipes (mỗi recipe >= 10 nguyên liệu, >= 5 bước) — xem
-    // Infrastructure/Persistence/Seed/DbSeeder.cs. An toàn khi chạy lại nhiều lần.
-    // GIỮ LẠI theo yêu cầu Lab: đảm bảo database luôn có đủ dữ liệu mẫu, dù các module CRUD
-    // Category/Recipe (FR-CAT, FR-RCP...) đã tạm gỡ khỏi phạm vi triển khai để phân công lại.
+    // Tuần 11: KHÔNG còn sinh dữ liệu ngẫu nhiên (DbSeeder) — giảng viên yêu cầu dữ liệu thật, xoá dữ
+    // liệu test. Dữ liệu thật do RealDataSeeder (hosted service) nạp; ở đây chỉ tạo admin dev.
     try
     {
         using var seedScope = app.Services.CreateScope();
         // Tài khoản Admin THẬT trong DB (chỉ Development) để test API cần quyền Admin.
         var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         await RoleSeeder.SeedDevAdminAsync(userManager, app.Logger);
-
-        var seedContext = seedScope.ServiceProvider.GetRequiredService<CulinaryBlogDbContext>();
-        await DbSeeder.SeedRandomDataAsync(seedContext, app.Logger);
     }
     catch (Exception ex)
     {

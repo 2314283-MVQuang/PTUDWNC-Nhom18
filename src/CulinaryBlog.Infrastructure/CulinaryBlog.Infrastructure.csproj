@@ -53,4 +53,9 @@
     <ProjectReference Include="..\CulinaryBlog.Application\CulinaryBlog.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Tuần 11 (Quang): 10 danh mục + 50 công thức thật cho RealDataSeeder (nhúng vào DLL). -->
+    <EmbeddedResource Include="Persistence/Seed/RealData/real-data.json" />
+  </ItemGroup>
+
 </Project>

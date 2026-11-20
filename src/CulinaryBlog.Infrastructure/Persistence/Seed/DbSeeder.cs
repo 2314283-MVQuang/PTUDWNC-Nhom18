@@ -33,7 +33,7 @@ public static class DbSeeder
     // thay vì chữ Latin vô nghĩa (Lorem ipsum) không phù hợp với một blog ẩm thực tiếng Việt.
     // -------------------------------------------------------------------------------------
 
-    private static readonly string[] ExtraCategoryNames =
+    internal static readonly string[] ExtraCategoryNames =
     [
         "Món hấp", "Món chiên", "Món xào", "Món kho", "Lẩu & Nồi nước",
         "Bánh mặn", "Bánh ngọt", "Mứt & Ô mai", "Nước chấm & Gia vị", "Món ăn vặt",
@@ -126,7 +126,7 @@ public static class DbSeeder
         "Cách làm {0} đơn giản tại nhà, không cần dụng cụ cầu kỳ.",
     ];
 
-    private static readonly string[] InstructionsTemplates =
+    internal static readonly string[] InstructionsTemplates =
     [
         "Chuẩn bị đầy đủ nguyên liệu theo danh sách, sơ chế sạch sẽ trước khi bắt tay vào nấu. " +
         "Thực hiện lần lượt theo các bước bên dưới, nêm nếm lại gia vị cho vừa khẩu vị gia đình.",

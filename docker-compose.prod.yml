@@ -88,6 +88,8 @@ services:
       dockerfile: src/CulinaryBlog.API/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      # Tuần 11: nạp 10 danh mục + 50 công thức thật (ảnh Wikimedia Commons) lúc khởi động — RealDataSeeder.
+      Seed__RealData: "true"
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=culinaryblog;Username=culinary;Password=${POSTGRES_PASSWORD}"
       Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD},abortConnect=false"
       Jwt__Secret: ${JWT_SECRET:?Đặt JWT_SECRET (>= 32 ký tự ngẫu nhiên) trong .env.prod}

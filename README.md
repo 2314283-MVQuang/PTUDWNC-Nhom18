@@ -406,7 +406,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(recipes): implement FR-RCP-006 archive/unpublish`
 
-**Chung Thiện Ý · FR-RCP-005 Publish công thức** — ⬜ Chưa làm
+**Chung Thiện Ý · FR-RCP-005 Publish công thức** — ✅ Đã hoàn thành
 
 - **Cách làm:** `PublishRecipeCommand` [Author-Owner/Admin] gọi `Recipe.Publish()`; domain method kiểm tra `Steps.Count > 0 && Ingredients.Count > 0` (mâu thuẫn #7), thiếu thì ném exception map sang `RECIPE_PUBLISH_INCOMPLETE` (400) kèm thông báo rõ thiếu gì; set `PublishedAt`.
 
@@ -463,7 +463,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Commit:** `feat(categories): implement FR-CAT-002 category detail with paged recipes`
 
-**Chung Thiện Ý · FR-SRCH-002 Lọc kết quả tìm kiếm** — ⬜ Chưa làm
+**Chung Thiện Ý · FR-SRCH-002 Lọc kết quả tìm kiếm** — ✅ Đã hoàn thành
 
 - **Cách làm:** thêm tham số `categoryId`, `difficulty`, khoảng `prepTime`/`cookTime` vào `SearchRecipesQuery`; áp từng điều kiện bằng `Where` động, kết hợp được nhiều điều kiện lọc cùng lúc.
 
@@ -519,7 +519,7 @@ Quá trình phát triển dự án kéo dài **8 buổi**: Buổi 1–2 cả nh�
 
 - **Đã làm:** `lib/backend-auth.ts` gom mọi lời gọi `/auth` (đăng nhập `POST /auth/login` dùng luôn `user` trong response — 1 request thay vì 2, đỡ tốn rate limit 10/phút; đăng ký `POST /auth/register` lưu vào PostgreSQL; đăng xuất `POST /auth/logout` thu hồi refresh token qua `events.signOut` trong `auth.ts`). `lib/auth-errors.ts` phân biệt lỗi 401 sai mật khẩu / 423 tài khoản khoá / 429 quá giới hạn / backend không chạy để form hiện đúng nguyên nhân. Danh sách user cục bộ và token `local-token-...` chỉ còn chạy khi bật `AUTH_DEMO_ENABLED=true` ở Development. Kiểm thử: `npm test` (13 test, `tests/backend-auth.test.mjs` giả lập backend bằng fetch giả).
 
-**Chung Thiện Ý · FR-JOB-001 Welcome Email + bổ sung health check MinIO** — ⬜ Chưa làm
+**Chung Thiện Ý · FR-JOB-001 Welcome Email + bổ sung health check MinIO** — ✅ Đã hoàn thành
 
 - **Cách làm:** trong `RegisterCommandHandler` (Buổi 2), sau khi `UserManager.CreateAsync` thành công, `BackgroundJob.Enqueue<WelcomeEmailJob>` (Hangfire); `WelcomeEmailJob.SendAsync` dùng `IEmailSender` (MailKit, SMTP; dev trỏ về MailHog) gửi email chào mừng có tên người dùng.
 

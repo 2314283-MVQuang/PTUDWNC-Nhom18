@@ -9,15 +9,16 @@ import { useRecipes } from "@/hooks/useRecipes";
 import { formatDate } from "@/lib/utils";
 
 /**
- * Mục 9: "/dashboard/recipes" — CSR, danh sách công thức để vào trang chỉnh sửa.
+ * Mục 9: "/dashboard/recipes" — CSR, trang quản lý "Công thức của tôi".
  *
- * GET /recipes trả Published cùng bản nháp/lưu trữ của chủ sở hữu; Admin xem tất cả.
- * Danh sách không có bộ lọc "chỉ của tôi", vì vậy tiêu đề và thông báo phản ánh đúng phạm vi.
+ * GET /recipes?mine=true chỉ trả công thức do chính người đang đăng nhập đăng (mọi trạng thái),
+ * áp dụng cho cả Author và Admin. Công thức của người khác xem ở trang công khai /recipes.
  */
 export default function DashboardRecipesPage() {
   const { data, isLoading, isError, refetch } = useRecipes({
     pageSize: 50,
     sort: "-createdAt",
+    mine: true,
   });
 
   const recipes = data?.items ?? [];
@@ -25,7 +26,7 @@ export default function DashboardRecipesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-neutral-900">Danh sách công thức</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">Công thức của tôi</h1>
         <Link href="/dashboard/recipes/new">
           <Button>
             <FilePlus2 className="mr-2 h-4 w-4" />
@@ -35,8 +36,8 @@ export default function DashboardRecipesPage() {
       </div>
 
       <p className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        Danh sách gồm công thức đã xuất bản và bản nháp/lưu trữ của bạn; quản trị viên xem
-        được tất cả. Bạn có thể chỉnh sửa công thức do mình tạo hoặc bằng quyền quản trị.
+        Danh sách chỉ gồm công thức do bạn đăng (cả bản nháp và bản lưu trữ). Công thức của người
+        khác xem ở trang <Link href="/recipes" className="font-semibold underline underline-offset-2">Công thức</Link>.
       </p>
 
       {isLoading && <LoadingBlock />}
@@ -44,7 +45,7 @@ export default function DashboardRecipesPage() {
 
       {!isLoading && !isError && recipes.length === 0 && (
         <div className="rounded-card border border-dashed border-neutral-300 py-16 text-center text-neutral-500">
-          Chưa có công thức nào trong danh sách. Bấm &quot;Tạo công thức mới&quot; để bắt đầu.
+          Bạn chưa đăng công thức nào. Bấm &quot;Tạo công thức mới&quot; để bắt đầu.
         </div>
       )}
 

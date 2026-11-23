@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Interfaces;
 using CulinaryBlog.Application.Common.Models;
 using CulinaryBlog.Application.Features.Recipes.Dtos;
@@ -32,11 +33,28 @@ public sealed class GetRecipesQueryHandler(
         //
         // Admin:
         // tất cả Recipe không bị soft-delete.
-        query = query.Where(x =>
-            x.Status == RecipeStatus.Published ||
-            currentUser.IsInRole("Admin") ||
-            (!string.IsNullOrWhiteSpace(currentUser.UserId) &&
-             x.AuthorId == currentUser.UserId));
+        //
+        // Mine = true: chỉ Recipe của chính người gọi (cả Admin).
+        if (request.Mine)
+        {
+            // Trang quản lý "Công thức của tôi": chỉ công thức do chính mình đăng (mọi trạng
+            // thái), kể cả Admin — muốn xem/gỡ bài người khác thì Admin mở từ trang công khai.
+            if (string.IsNullOrWhiteSpace(currentUser.UserId))
+            {
+                throw new UnauthorizedException("Bạn cần đăng nhập để xem công thức của mình.");
+            }
+
+            var userId = currentUser.UserId;
+            query = query.Where(x => x.AuthorId == userId);
+        }
+        else
+        {
+            query = query.Where(x =>
+                x.Status == RecipeStatus.Published ||
+                currentUser.IsInRole("Admin") ||
+                (!string.IsNullOrWhiteSpace(currentUser.UserId) &&
+                 x.AuthorId == currentUser.UserId));
+        }
 
         if (request.CategoryId.HasValue)
         {

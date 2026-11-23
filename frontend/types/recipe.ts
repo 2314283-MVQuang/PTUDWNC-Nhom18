@@ -110,6 +110,8 @@ export interface RecipeListParams {
   maxCookTime?: number;
   minServings?: number;
   sort?: string; // vd. "-createdAt", "title", "cookTime"
+  /** true = chỉ công thức do người đang đăng nhập đăng (trang quản lý "Công thức của tôi"). */
+  mine?: boolean;
 }
 
 /** Query params cho GET /recipes/search (FR-SRCH-001). */

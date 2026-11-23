@@ -28,9 +28,11 @@ import type { RecipeStatus, RecipeSummary } from "@/types/recipe";
  */
 export default function DashboardOverviewPage() {
   const { user, isAdmin } = useCurrentUser();
+  // Thống kê trạng thái chỉ tính công thức của chính mình (giống trang "Công thức của tôi").
   const { data, isLoading, isError, refetch } = useRecipes({
     pageSize: 50,
     sort: "-createdAt",
+    mine: true,
   });
   const { data: categories } = useCategories();
 
@@ -55,7 +57,7 @@ export default function DashboardOverviewPage() {
       <div>
         <h1 className="text-2xl font-bold text-neutral-900">Xin chào, {user?.name ?? "bạn"} 👋</h1>
         <p className="mt-1 text-neutral-500">
-          {isAdmin ? "Bạn đang đăng nhập với quyền Admin." : "Theo dõi các công thức và danh mục bạn được phép xem."}
+          {isAdmin ? "Bạn đang đăng nhập với quyền Admin." : "Theo dõi các công thức bạn đã đăng."}
         </p>
       </div>
 
@@ -88,7 +90,7 @@ export default function DashboardOverviewPage() {
           {/* Section: Thống kê trạng thái công thức */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-neutral-900">Trạng thái công thức</h2>
+              <h2 className="text-base font-bold text-neutral-900">Trạng thái công thức của tôi</h2>
               <span className="text-xs text-neutral-500">Nhấn vào từng mục để xem danh sách</span>
             </div>
 

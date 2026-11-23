@@ -65,10 +65,11 @@ public class GetMyRecipesTests
         return db;
     }
 
-    private static async Task<List<string>> SlugsAsync(CulinaryBlogDbContext db, TestCurrentUser user, bool mine)
+    private static async Task<List<string>> SlugsAsync(
+        CulinaryBlogDbContext db, TestCurrentUser user, bool mine, RecipeStatus? status = null)
     {
         var result = await new GetRecipesQueryHandler(new RecipeRepository(db), user)
-            .Handle(new GetRecipesQuery(PageSize: 50, Mine: mine), CancellationToken.None);
+            .Handle(new GetRecipesQuery(PageSize: 50, Mine: mine, Status: status), CancellationToken.None);
         return result.Items.Select(x => x.Slug).OrderBy(x => x, StringComparer.Ordinal).ToList();
     }
 
@@ -109,5 +110,28 @@ public class GetMyRecipesTests
 
         await Assert.ThrowsAsync<UnauthorizedException>(
             () => SlugsAsync(db, new TestCurrentUser { UserId = null }, mine: true));
+    }
+
+    [Fact]
+    public async Task Admin_AllRecipes_ShouldSeeEveryAuthor_AndFilterByStatus()
+    {
+        await using var db = await CreateSeededDbAsync();
+        var admin = new TestCurrentUser { UserId = AdminId, Role = "Admin" };
+
+        var all = await SlugsAsync(db, admin, mine: false);
+        var drafts = await SlugsAsync(db, admin, mine: false, status: RecipeStatus.Draft);
+
+        Assert.Equal(6, all.Count);
+        Assert.Equal(new[] { "a-draft", "b-draft" }, drafts);
+    }
+
+    [Fact]
+    public async Task StatusFilter_ShouldNotWidenAccess_ForAnonymous()
+    {
+        await using var db = await CreateSeededDbAsync();
+
+        var drafts = await SlugsAsync(db, new TestCurrentUser { UserId = null }, mine: false, status: RecipeStatus.Draft);
+
+        Assert.Empty(drafts);
     }
 }

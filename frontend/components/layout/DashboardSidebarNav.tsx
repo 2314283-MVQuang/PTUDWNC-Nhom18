@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, BookOpen, FolderTree, Users } from "lucide-react";
+import { LayoutGrid, BookOpen, FolderTree, Library, Users } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 
 const NAV = [
@@ -12,7 +12,10 @@ const NAV = [
 ];
 
 /** Tuần 9 (Quang): mục chỉ Admin thấy. Backend vẫn tự chặn 403 nếu tác giả gõ thẳng URL. */
-const ADMIN_NAV = [{ href: "/dashboard/users", label: "Người dùng", icon: Users }];
+const ADMIN_NAV = [
+  { href: "/dashboard/all-recipes", label: "Tất cả công thức", icon: Library },
+  { href: "/dashboard/users", label: "Người dùng", icon: Users },
+];
 
 export function DashboardSidebarNav() {
   const pathname = usePathname();

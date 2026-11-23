@@ -1,0 +1,130 @@
+{
+  "source": "4 món ăn Việt Nam do nhóm 18 biên soạn, đăng dưới tên một tài khoản tác giả (không phải Admin) để demo trang \"Công thức của tôi\". Email tác giả lấy từ cấu hình máy chủ Seed:UserRecipesEmail, không ghi trong repo. Ảnh: Wikimedia Commons.",
+  "recipes": [
+    {
+      "slug": "banh-xeo-mien-tay",
+      "title": "Bánh xèo miền Tây",
+      "category": "mon-chien-xao-ap-chao",
+      "description": "Bánh xèo vỏ mỏng giòn rụm vàng nghệ, nhân tôm thịt và giá, cuốn cùng rau sống rồi chấm nước mắm chua ngọt.",
+      "prepTime": 30,
+      "cookTime": 30,
+      "servings": 4,
+      "difficulty": 2,
+      "image": { "file": "Banh Xeo with fish sauce and vegetables.jpg", "author": "HungryHuy", "license": "CC BY 2.0" },
+      "ingredients": [
+        { "name": "Bột bánh xèo", "quantity": 300, "unit": "g", "notes": null },
+        { "name": "Nước cốt dừa", "quantity": 200, "unit": "ml", "notes": null },
+        { "name": "Bột nghệ", "quantity": 1, "unit": "muỗng cà phê", "notes": null },
+        { "name": "Hành lá", "quantity": 3, "unit": "cây", "notes": "Thái nhỏ" },
+        { "name": "Tôm", "quantity": 300, "unit": "g", "notes": "Bóc vỏ, bỏ chỉ lưng" },
+        { "name": "Thịt ba chỉ", "quantity": 250, "unit": "g", "notes": "Thái lát mỏng" },
+        { "name": "Giá đỗ", "quantity": 200, "unit": "g", "notes": null },
+        { "name": "Hành tây", "quantity": 1, "unit": "củ", "notes": "Thái mỏng" },
+        { "name": "Rau sống (xà lách, cải bẹ xanh, húng, tía tô)", "quantity": 1, "unit": "rổ", "notes": null },
+        { "name": "Nước mắm", "quantity": 4, "unit": "muỗng canh", "notes": "Pha nước chấm" },
+        { "name": "Đường", "quantity": 3, "unit": "muỗng canh", "notes": null },
+        { "name": "Chanh, tỏi, ớt", "quantity": 1, "unit": "ít", "notes": "Pha nước chấm" },
+        { "name": "Dầu ăn", "quantity": 100, "unit": "ml", "notes": null }
+      ],
+      "steps": [
+        { "title": "Pha bột", "description": "Trộn bột bánh xèo với nước cốt dừa, bột nghệ, 400 ml nước và chút muối cho thật đều. Thêm hành lá, để bột nghỉ 30 phút.", "timerMinutes": 30 },
+        { "title": "Sơ chế nhân", "description": "Ướp tôm và thịt ba chỉ với ít nước mắm, tiêu. Rửa sạch giá, thái mỏng hành tây.", "timerMinutes": null },
+        { "title": "Pha nước chấm", "description": "Hoà 4 muỗng nước mắm, 3 muỗng đường, 6 muỗng nước ấm, vắt chanh, thêm tỏi ớt băm. Nếm vừa chua ngọt.", "timerMinutes": null },
+        { "title": "Đổ bánh", "description": "Làm nóng chảo với 1 muỗng dầu, xào sơ vài con tôm, vài lát thịt và hành tây. Đổ một vá bột, nghiêng chảo cho bột láng mỏng, rải giá lên rồi đậy nắp 2 phút.", "timerMinutes": 2 },
+        { "title": "Chiên giòn", "description": "Mở nắp, rưới thêm chút dầu quanh mép, chiên lửa vừa đến khi đáy bánh vàng giòn thì gấp đôi bánh, lấy ra đĩa.", "timerMinutes": 3 },
+        { "title": "Thưởng thức", "description": "Cắt bánh thành miếng, cuốn với rau sống (có thể cuốn thêm bánh tráng) và chấm nước mắm chua ngọt khi còn nóng.", "timerMinutes": null }
+      ]
+    },
+    {
+      "slug": "bun-rieu-cua-dong",
+      "title": "Bún riêu cua đồng",
+      "category": "bun-pho-mi",
+      "description": "Nước dùng chua dịu từ cà chua và giấm bỗng, riêu cua đóng tảng béo ngậy, ăn kèm đậu phụ rán và rau sống.",
+      "prepTime": 40,
+      "cookTime": 40,
+      "servings": 4,
+      "difficulty": 3,
+      "image": { "file": "Bún riêu cua nước.jpg", "author": "Alpha", "license": "CC BY-SA 2.0" },
+      "ingredients": [
+        { "name": "Cua đồng xay", "quantity": 500, "unit": "g", "notes": "Hoặc giã nhuyễn, lọc lấy nước" },
+        { "name": "Bún tươi", "quantity": 1, "unit": "kg", "notes": null },
+        { "name": "Cà chua", "quantity": 4, "unit": "quả", "notes": "Cắt múi cau" },
+        { "name": "Đậu phụ", "quantity": 4, "unit": "bìa", "notes": "Cắt miếng, rán vàng" },
+        { "name": "Trứng gà", "quantity": 2, "unit": "quả", "notes": null },
+        { "name": "Giấm bỗng (hoặc me)", "quantity": 3, "unit": "muỗng canh", "notes": "Tạo vị chua" },
+        { "name": "Hành tím", "quantity": 4, "unit": "củ", "notes": "Băm" },
+        { "name": "Mắm tôm", "quantity": 2, "unit": "muỗng canh", "notes": "Ăn kèm" },
+        { "name": "Nước mắm", "quantity": 3, "unit": "muỗng canh", "notes": null },
+        { "name": "Hành lá, rau kinh giới, tía tô", "quantity": 1, "unit": "nắm", "notes": null },
+        { "name": "Rau muống chẻ, bắp chuối bào", "quantity": 300, "unit": "g", "notes": "Ăn kèm" }
+      ],
+      "steps": [
+        { "title": "Lọc nước cua", "description": "Hoà cua xay với 2,5 lít nước và chút muối, khuấy đều rồi lọc qua rây lấy nước, bỏ bã.", "timerMinutes": null },
+        { "title": "Nấu cho riêu nổi", "description": "Đun nước cua lửa vừa, khuấy nhẹ một chiều đến khi gần sôi thì ngừng khuấy. Riêu cua sẽ nổi và đóng tảng; hạ nhỏ lửa, vớt riêu ra bát.", "timerMinutes": 15 },
+        { "title": "Xào cà chua", "description": "Phi thơm hành tím, cho cà chua vào xào mềm, nêm chút nước mắm rồi đổ vào nồi nước dùng.", "timerMinutes": 5 },
+        { "title": "Nêm nước dùng", "description": "Cho đậu phụ rán và giấm bỗng vào nồi, nêm nước mắm, muối, chút đường cho vừa vị chua dịu. Đánh tan trứng, rưới vào để tạo vân.", "timerMinutes": 10 },
+        { "title": "Hoàn thành", "description": "Trụng bún cho vào tô, xếp đậu phụ, riêu cua, chan nước dùng nóng, rắc hành lá. Ăn kèm rau sống và mắm tôm.", "timerMinutes": null }
+      ]
+    },
+    {
+      "slug": "com-tam-suon-nuong",
+      "title": "Cơm tấm sườn nướng",
+      "category": "mon-nuong",
+      "description": "Món ăn sáng quen thuộc của Sài Gòn: cơm tấm mềm thơm, sườn cốt lết nướng than đậm vị, mỡ hành và nước mắm ngọt.",
+      "prepTime": 30,
+      "cookTime": 35,
+      "servings": 4,
+      "difficulty": 2,
+      "image": { "file": "Cơm tấm SG (cơm sườn) ng27th9n2020 (1).jpg", "author": "Phương Huy", "license": "CC0" },
+      "ingredients": [
+        { "name": "Gạo tấm", "quantity": 500, "unit": "g", "notes": "Vo sạch" },
+        { "name": "Sườn cốt lết", "quantity": 4, "unit": "miếng", "notes": "Dày khoảng 1 cm, dần mỏng" },
+        { "name": "Sả", "quantity": 2, "unit": "cây", "notes": "Băm nhuyễn" },
+        { "name": "Tỏi, hành tím", "quantity": 1, "unit": "muỗng canh", "notes": "Băm" },
+        { "name": "Mật ong", "quantity": 2, "unit": "muỗng canh", "notes": null },
+        { "name": "Nước mắm", "quantity": 3, "unit": "muỗng canh", "notes": null },
+        { "name": "Dầu hào", "quantity": 1, "unit": "muỗng canh", "notes": null },
+        { "name": "Hành lá", "quantity": 5, "unit": "cây", "notes": "Làm mỡ hành" },
+        { "name": "Dưa leo, cà chua, đồ chua", "quantity": 1, "unit": "đĩa", "notes": "Ăn kèm" },
+        { "name": "Dầu ăn", "quantity": 3, "unit": "muỗng canh", "notes": null }
+      ],
+      "steps": [
+        { "title": "Ướp sườn", "description": "Trộn sả, tỏi, hành tím, mật ong, 2 muỗng nước mắm, dầu hào, tiêu và 1 muỗng dầu ăn. Ướp sườn ít nhất 1 giờ (để tủ lạnh qua đêm càng ngon).", "timerMinutes": 60 },
+        { "title": "Nấu cơm tấm", "description": "Nấu gạo tấm với lượng nước ít hơn gạo thường một chút để hạt cơm tơi, không nhão.", "timerMinutes": 25 },
+        { "title": "Nướng sườn", "description": "Nướng sườn trên than hồng hoặc lò 200°C, mỗi mặt 8–10 phút, phết nước ướp còn lại để sườn bóng và cháy cạnh thơm.", "timerMinutes": 20 },
+        { "title": "Làm mỡ hành và nước mắm", "description": "Đổ dầu nóng vào hành lá thái nhỏ để làm mỡ hành. Pha nước mắm với đường, nước, tỏi ớt theo tỉ lệ 1:1:3.", "timerMinutes": null },
+        { "title": "Bày đĩa", "description": "Xới cơm ra đĩa, rưới mỡ hành, đặt sườn lên, thêm dưa leo, cà chua, đồ chua và chan nước mắm khi ăn.", "timerMinutes": null }
+      ]
+    },
+    {
+      "slug": "banh-bot-loc-tom-thit",
+      "title": "Bánh bột lọc tôm thịt",
+      "category": "mon-hap-luoc",
+      "description": "Đặc sản xứ Huế với lớp vỏ bột năng trong veo, dai dai, nhân tôm thịt rim đậm đà, chấm nước mắm ớt cay ngọt.",
+      "prepTime": 45,
+      "cookTime": 25,
+      "servings": 4,
+      "difficulty": 3,
+      "image": { "file": "Bánh bột lọc saigonnais.jpg", "author": "Vietcuongdao", "license": "CC BY-SA 4.0" },
+      "ingredients": [
+        { "name": "Bột năng", "quantity": 400, "unit": "g", "notes": null },
+        { "name": "Nước sôi", "quantity": 300, "unit": "ml", "notes": null },
+        { "name": "Tôm đất", "quantity": 250, "unit": "g", "notes": "Để nguyên vỏ mỏng hoặc bóc vỏ" },
+        { "name": "Thịt ba chỉ", "quantity": 200, "unit": "g", "notes": "Thái hạt lựu nhỏ" },
+        { "name": "Hành tím", "quantity": 3, "unit": "củ", "notes": "Băm" },
+        { "name": "Nước mắm", "quantity": 3, "unit": "muỗng canh", "notes": null },
+        { "name": "Đường", "quantity": 2, "unit": "muỗng canh", "notes": null },
+        { "name": "Ớt bột (màu điều)", "quantity": 1, "unit": "muỗng cà phê", "notes": "Tạo màu đỏ cho nhân" },
+        { "name": "Lá chuối", "quantity": 20, "unit": "miếng", "notes": "Nếu làm bánh gói lá" },
+        { "name": "Dầu ăn", "quantity": 2, "unit": "muỗng canh", "notes": null }
+      ],
+      "steps": [
+        { "title": "Rim nhân", "description": "Phi thơm hành tím, cho thịt vào xào săn, thêm tôm, nước mắm, đường, ớt bột. Rim lửa nhỏ đến khi nhân khô, bóng đỏ.", "timerMinutes": 10 },
+        { "title": "Nhồi bột", "description": "Cho chút muối vào bột năng, rót từ từ nước sôi vừa khuấy vừa trộn, để bớt nóng rồi nhồi đến khi khối bột mịn, dẻo, không dính tay.", "timerMinutes": 10 },
+        { "title": "Gói bánh", "description": "Chia bột thành viên nhỏ, cán dẹt, đặt 1 con tôm và ít thịt vào giữa rồi gấp mép bánh hình bán nguyệt. Có thể gói thêm lá chuối.", "timerMinutes": null },
+        { "title": "Luộc hoặc hấp bánh", "description": "Thả bánh trần vào nồi nước sôi, khi bánh nổi lên và vỏ trong thì vớt ngay ra thau nước nguội. Bánh gói lá thì hấp 20–25 phút.", "timerMinutes": 20 },
+        { "title": "Thưởng thức", "description": "Để ráo, trộn chút mỡ hành cho bánh không dính. Ăn kèm nước mắm ớt pha ngọt.", "timerMinutes": null }
+      ]
+    }
+  ]
+}

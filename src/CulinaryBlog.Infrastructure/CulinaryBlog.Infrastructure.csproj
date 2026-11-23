@@ -56,6 +56,8 @@
   <ItemGroup>
     <!-- Tuần 11 (Quang): 10 danh mục + 50 công thức thật cho RealDataSeeder (nhúng vào DLL). -->
     <EmbeddedResource Include="Persistence/Seed/RealData/real-data.json" />
+    <!-- 4 công thức demo đăng dưới tên một tài khoản tác giả (Seed:UserRecipesEmail). -->
+    <EmbeddedResource Include="Persistence/Seed/RealData/user-recipes.json" />
   </ItemGroup>
 
 </Project>

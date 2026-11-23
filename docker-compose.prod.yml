@@ -90,6 +90,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       # Tuần 11: nạp 10 danh mục + 50 công thức thật (ảnh Wikimedia Commons) lúc khởi động — RealDataSeeder.
       Seed__RealData: "true"
+      # 4 công thức demo cho một tài khoản tác giả — đặt SEED_USER_RECIPES_EMAIL trong .env của máy chủ (bỏ trống = không đăng).
+      Seed__UserRecipesEmail: ${SEED_USER_RECIPES_EMAIL:-}
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=culinaryblog;Username=culinary;Password=${POSTGRES_PASSWORD}"
       Redis__ConnectionString: "redis:6379,password=${REDIS_PASSWORD},abortConnect=false"
       Jwt__Secret: ${JWT_SECRET:?Đặt JWT_SECRET (>= 32 ký tự ngẫu nhiên) trong .env.prod}

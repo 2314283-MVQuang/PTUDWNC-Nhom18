@@ -56,6 +56,12 @@ public sealed class GetRecipesQueryHandler(
                  x.AuthorId == currentUser.UserId));
         }
 
+        if (request.Status.HasValue)
+        {
+            query = query.Where(
+                x => x.Status == request.Status.Value);
+        }
+
         if (request.CategoryId.HasValue)
         {
             query = query.Where(

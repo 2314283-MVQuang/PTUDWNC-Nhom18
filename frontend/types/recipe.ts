@@ -112,6 +112,8 @@ export interface RecipeListParams {
   sort?: string; // vd. "-createdAt", "title", "cookTime"
   /** true = chỉ công thức do người đang đăng nhập đăng (trang quản lý "Công thức của tôi"). */
   mine?: boolean;
+  /** Lọc theo trạng thái — dùng ở trang Admin "Tất cả công thức". */
+  status?: RecipeStatus;
 }
 
 /** Query params cho GET /recipes/search (FR-SRCH-001). */

@@ -10,6 +10,8 @@ namespace CulinaryBlog.Application.Features.Recipes.Queries.GetRecipes;
 /// GET /api/v1/recipes
 /// Mine = true (trang quản lý "Công thức của tôi"): chỉ trả công thức do chính người đang đăng
 /// nhập đăng — gồm cả Draft/Archived — áp dụng cho cả Author lẫn Admin.
+/// Status: lọc thêm theo trạng thái (trang Admin "Tất cả công thức"); chỉ lọc TRONG phạm vi
+/// người gọi được xem, không mở rộng quyền (khách lọc Draft sẽ nhận danh sách rỗng).
 /// </summary>
 public sealed record GetRecipesQuery(
     int Page = 1,
@@ -19,5 +21,6 @@ public sealed record GetRecipesQuery(
     int? MaxCookTime = null,
     int? MinServings = null,
     string? Sort = "-createdAt",
-    bool Mine = false)
+    bool Mine = false,
+    RecipeStatus? Status = null)
     : IRequest<PagedResult<RecipeSummaryDto>>;

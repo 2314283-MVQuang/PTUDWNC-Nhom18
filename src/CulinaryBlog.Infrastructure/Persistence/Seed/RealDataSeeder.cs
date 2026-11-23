@@ -40,6 +40,7 @@ public sealed class RealDataSeeder(
     private const string ResourceSuffix = "RealData.real-data.json";
     private const string CommonsFilePath = "https://commons.wikimedia.org/wiki/Special:FilePath/";
     private const string AttributionMarker = "Ảnh minh hoạ:";
+    private const string UserRecipesSuffix = "RealData.user-recipes.json";
 
     /// <summary>Id cố định của 3 công thức mẫu trong db/init/03-seed.sql (dữ liệu test).</summary>
     private static readonly Guid[] SampleRecipeIds =
@@ -134,6 +135,8 @@ public sealed class RealDataSeeder(
             if (wasCreated) created++;
             if (imageId.HasValue) newImageIds.Add(imageId.Value);
         }
+        // Công thức demo của một tài khoản tác giả (không phải Admin) — email lấy từ cấu hình máy chủ.
+        created += await SeedUserRecipesAsync(db, storage, http, userManager, categoryIds, newImageIds, start, ct);
         changed |= created > 0 || newImageIds.Count > 0;
 
         if (!changed)
@@ -164,15 +167,64 @@ public sealed class RealDataSeeder(
             created, newImageIds.Count, data.Recipes.Count);
     }
 
-    private static RealData LoadData()
+    private static RealData LoadData() => LoadJson<RealData>(ResourceSuffix);
+
+    private static T LoadJson<T>(string resourceSuffix)
     {
         var assembly = typeof(RealDataSeeder).Assembly;
-        var name = assembly.GetManifestResourceNames().Single(n => n.EndsWith(ResourceSuffix, StringComparison.Ordinal));
+        var name = assembly.GetManifestResourceNames().Single(n => n.EndsWith(resourceSuffix, StringComparison.Ordinal));
         using var stream = assembly.GetManifestResourceStream(name)!;
-        return JsonSerializer.Deserialize<RealData>(stream, new JsonSerializerOptions
+        return JsonSerializer.Deserialize<T>(stream, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
-        }) ?? throw new InvalidOperationException("real-data.json rỗng.");
+        }) ?? throw new InvalidOperationException($"{resourceSuffix} rỗng.");
+    }
+
+    /// <summary>
+    /// Đăng 4 công thức trong <c>RealData/user-recipes.json</c> dưới tên tài khoản có email
+    /// <c>Seed:UserRecipesEmail</c> (đặt trong .env của máy chủ, không ghi vào repo công khai).
+    /// Không cấu hình hoặc chưa có tài khoản đó thì bỏ qua. Idempotent theo slug như phần trên.
+    /// </summary>
+    private async Task<int> SeedUserRecipesAsync(
+        CulinaryBlogDbContext db, IFileStorageService storage, HttpClient http,
+        UserManager<ApplicationUser> userManager, Dictionary<string, Guid> categoryIds,
+        List<Guid> newImageIds, DateTimeOffset start, CancellationToken ct)
+    {
+        var email = configuration["Seed:UserRecipesEmail"]?.Trim();
+        if (string.IsNullOrEmpty(email))
+        {
+            return 0;
+        }
+
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            logger.LogWarning("[RealDataSeeder] Chưa có tài khoản cho Seed:UserRecipesEmail — bỏ qua công thức demo.");
+            return 0;
+        }
+
+        var data = LoadJson<UserRecipesData>(UserRecipesSuffix);
+        var created = 0;
+        for (var i = 0; i < data.Recipes.Count; i++)
+        {
+            var r = data.Recipes[i];
+            if (!categoryIds.TryGetValue(r.Category, out var categoryId))
+            {
+                logger.LogWarning("[RealDataSeeder] Danh mục {Category} không tồn tại — bỏ qua {Slug}.", r.Category, r.Slug);
+                continue;
+            }
+
+            var (wasCreated, imageId) = await UpsertRecipeAsync(
+                db, storage, http, user.Id, categoryId, r, start.AddMinutes(-3 * (i + 1)), ct);
+            if (wasCreated) created++;
+            if (imageId.HasValue) newImageIds.Add(imageId.Value);
+        }
+
+        if (created > 0)
+        {
+            logger.LogInformation("[RealDataSeeder] Đã đăng {Created} công thức demo cho tài khoản tác giả.", created);
+        }
+        return created;
     }
 
     /// <summary>Tác giả: Admin trong cấu hình (máy chủ) → Admin bất kỳ → người dùng đầu tiên.</summary>
@@ -436,6 +488,8 @@ public sealed class RealDataSeeder(
 
     // ---------------- Định dạng file real-data.json ----------------
     internal sealed record RealData(List<RealCategory> Categories, List<RealRecipe> Recipes);
+
+    internal sealed record UserRecipesData(List<RealRecipe> Recipes);
 
     internal sealed record RealCategory(string Slug, string Name, string Description, int Order, RealImage? Image);
 
